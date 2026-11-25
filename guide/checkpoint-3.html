@@ -1,0 +1,503 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Проверочная работа: часть III (pandas) — Ассоциативный гайд</title>
+<meta name="description" content="Контрольная по pandas: 8 вопросов, 4 задачи и 2 мостика в SQL. 20 баллов и рекомендация перед SQL.">
+<link rel="stylesheet" href="assets/style.css">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#fbf8f2" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#14131a" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="assets/icons/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="assets/icons/icon-180.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Гайд Py/SQL">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+</head>
+<body data-slug="checkpoint-3">
+<div class="app">
+  <aside class="sidebar" id="sidebar"></aside>
+  <main>
+    <div class="wrap">
+
+      <header class="chapter-head">
+        <div class="eyebrow">
+          <span class="part">Проверочная работа</span>
+          <span class="dot"></span>
+          <span>Часть III · главы 12–18</span>
+          <span class="dot"></span>
+          <span>60 минут</span>
+        </div>
+        <h1>Проверочная работа: pandas
+          <span class="sub">20 баллов: индекс, фильтры, группы, соединения и пропуски</span>
+        </h1>
+        <p class="lead">
+          Последняя контрольная перед SQL. Проверяет, держите ли вы в голове таблицу: метки против позиций,
+          маску как условие, агрегат против окна, кардинальность соединения и смысл пропуска.
+        </p>
+        <div class="meta">
+          <span class="chip">✍️ <b>14 заданий</b></span>
+          <span class="chip">🎯 <b>20 баллов</b></span>
+          <span class="chip">⏱ <b>60 минут</b></span>
+          <span class="chip">🖨 <b>печатается как бланк</b></span>
+        </div>
+      </header>
+
+      <section>
+        <h2><span class="num">01</span>Как устроена работа</h2>
+        <ul>
+          <li><strong>Часть A — 8 вопросов по 1 баллу.</strong> С мгновенным разбором: выбрали — увидели, верно ли.</li>
+          <li><strong>Часть B — 4 задачи по 2 балла.</strong> Код на фильтры, группировки, соединения и пропуски.</li>
+          <li><strong>Часть C — 2 мостика по 2 балла.</strong> Те же операции в SQL и разговор о форме данных.</li>
+          <li>Рубрика: 2 — решил и объяснил, 1 — решил, но не объяснил, 0 — не решил.</li>
+        </ul>
+
+        <div class="diag-panel">
+          <div class="col"><span class="cap">таймер</span><span class="diag-timer" id="timer">60:00</span></div>
+          <button id="start">Старт</button>
+          <div class="col" style="margin-left:auto"><span class="cap">баллы</span><span class="scoreline"><span class="n" id="total">0</span><span class="of">из 20</span></span></div>
+        </div>
+        <p class="small print-hint">Для бумажного варианта нажмите «Печатать»: решения, рубрики и разборы скрываются.
+          <button class="ghost" onclick="window.print()" style="font-family:var(--sans);font-size:12px;padding:4px 10px;border:1px solid var(--line);border-radius:7px;background:var(--card);cursor:pointer;margin-left:6px">Печать</button>
+        </p>
+      </section>
+
+      <section>
+        <h2><span class="num">02</span>Часть A. Теория</h2>
+
+        <div class="q-item" data-q="a1" data-answer="c">
+          <div class="q-h"><span class="qn">A1</span><span>Что такое индекс pandas?</span><span class="pt">1 балл</span></div>
+          <div class="options">
+            <label><input type="radio" name="a1" value="a"><span>Имена колонок</span></label>
+            <label><input type="radio" name="a1" value="b"><span>Номера строк, всегда 0..n-1</span></label>
+            <label><input type="radio" name="a1" value="c"><span>Подписи строк, по которым работает loc</span></label>
+            <label><input type="radio" name="a1" value="d"><span>Типы данных колонок</span></label>
+          </div>
+          <div class="verdict" hidden></div>
+          <div class="explain" hidden>Индекс — метки строк; после сортировки они сохраняются, а позиции меняются. Глава 12.</div>
+        </div>
+
+        <div class="q-item" data-q="a2" data-answer="d">
+          <div class="q-h"><span class="qn">A2</span><span>Чем loc отличается от iloc?</span><span class="pt">1 балл</span></div>
+          <div class="options">
+            <label><input type="radio" name="a2" value="a"><span>loc — по позиции, iloc — по метке</span></label>
+            <label><input type="radio" name="a2" value="b"><span>iloc — по метке, loc — по позиции</span></label>
+            <label><input type="radio" name="a2" value="c"><span>Они одинаковые</span></label>
+            <label><input type="radio" name="a2" value="d"><span>loc — по метке, iloc — по позиции</span></label>
+          </div>
+          <div class="verdict" hidden></div>
+          <div class="explain" hidden>Имя против номера. Глава 13.</div>
+        </div>
+
+        <div class="q-item" data-q="a3" data-answer="a">
+          <div class="q-h"><span class="qn">A3</span><span>Включает ли срез loc правую границу?</span><span class="pt">1 балл</span></div>
+          <div class="options">
+            <label><input type="radio" name="a3" value="a"><span>Да, включает</span></label>
+            <label><input type="radio" name="a3" value="b"><span>Нет, как в Python</span></label>
+            <label><input type="radio" name="a3" value="c"><span>Зависит от индекса</span></label>
+            <label><input type="radio" name="a3" value="d"><span>Это ошибка</span></label>
+          </div>
+          <div class="verdict" hidden></div>
+          <div class="explain" hidden>loc["anna":"ivan"] включает ivan, iloc[0:2] — нет. Глава 13.</div>
+        </div>
+
+        <div class="q-item" data-q="a4" data-answer="d">
+          <div class="q-h"><span class="qn">A4</span><span>Что такое булева маска?</span><span class="pt">1 балл</span></div>
+          <div class="options">
+            <label><input type="radio" name="a4" value="a"><span>Список номеров строк</span></label>
+            <label><input type="radio" name="a4" value="b"><span>Отфильтрованная таблица</span></label>
+            <label><input type="radio" name="a4" value="c"><span>Функция фильтрации</span></label>
+            <label><input type="radio" name="a4" value="d"><span>Series из True/False той же длины</span></label>
+          </div>
+          <div class="verdict" hidden></div>
+          <div class="explain" hidden>Маска — отдельный объект. Глава 14.</div>
+        </div>
+
+        <div class="q-item" data-q="a5" data-answer="c">
+          <div class="q-h"><span class="qn">A5</span><span>Почему нельзя использовать and для двух условий?</span><span class="pt">1 балл</span></div>
+          <div class="options">
+            <label><input type="radio" name="a5" value="a"><span>and работает, но медленнее</span></label>
+            <label><input type="radio" name="a5" value="b"><span>Разницы нет</span></label>
+            <label><input type="radio" name="a5" value="c"><span>and требует одного True/False, нужен &amp; и скобки</span></label>
+            <label><input type="radio" name="a5" value="d"><span>Нужно использовать not</span></label>
+          </div>
+          <div class="verdict" hidden></div>
+          <div class="explain" hidden>Поэлементная логика: &amp;, |, ~. Глава 14.</div>
+        </div>
+
+        <div class="q-item" data-q="a6" data-answer="a">
+          <div class="q-h"><span class="qn">A6</span><span>Чем agg отличается от transform?</span><span class="pt">1 балл</span></div>
+          <div class="options">
+            <label><input type="radio" name="a6" value="a"><span>agg схлопывает до группы, transform сохраняет длину</span></label>
+            <label><input type="radio" name="a6" value="b"><span>Наоборот</span></label>
+            <label><input type="radio" name="a6" value="c"><span>Оба схлопывают</span></label>
+            <label><input type="radio" name="a6" value="d"><span>Оба сохраняют длину</span></label>
+          </div>
+          <div class="verdict" hidden></div>
+          <div class="explain" hidden>agg = GROUP BY, transform = окно. Глава 15.</div>
+        </div>
+
+        <div class="q-item" data-q="a7" data-answer="a">
+          <div class="q-h"><span class="qn">A7</span><span>Что будет при many-to-many merge?</span><span class="pt">1 балл</span></div>
+          <div class="options">
+            <label><input type="radio" name="a7" value="a"><span>Строки перемножатся</span></label>
+            <label><input type="radio" name="a7" value="b"><span>Будет ошибка</span></label>
+            <label><input type="radio" name="a7" value="c"><span>Дубли удалятся автоматически</span></label>
+            <label><input type="radio" name="a7" value="d"><span>Останется левая таблица</span></label>
+          </div>
+          <div class="verdict" hidden></div>
+          <div class="explain" hidden>2 × 2 = 4 строки. Глава 16.</div>
+        </div>
+
+        <div class="q-item" data-q="a8" data-answer="c">
+          <div class="q-h"><span class="qn">A8</span><span>Почему fillna(0) может быть ошибкой?</span><span class="pt">1 балл</span></div>
+          <div class="options">
+            <label><input type="radio" name="a8" value="a"><span>Всегда правильно</span></label>
+            <label><input type="radio" name="a8" value="b"><span>Возвращает int</span></label>
+            <label><input type="radio" name="a8" value="c"><span>Меняет смысл, если 0 не равно «нет данных»</span></label>
+            <label><input type="radio" name="a8" value="d"><span>Удаляет строки</span></label>
+          </div>
+          <div class="verdict" hidden></div>
+          <div class="explain" hidden>Пропуск — не ноль. Глава 17.</div>
+        </div>
+      </section>
+
+      <section>
+        <h2><span class="num">03</span>Часть B. Задачи на код</h2>
+        <p class="small">2 балла за задачу: 1 — работает, 1 — объяснили выбор операции.</p>
+
+        <div class="task">
+          <h3>B1. Фильтр по двум условиям <span class="point">2 балла</span></h3>
+          <p>Оставьте заказы из Москвы дороже 600 и выберите колонки user и amount.</p>
+          <div class="code">
+            <div class="bar"><span class="file">B1</span><span class="lang">python</span><button class="copy">копировать</button></div>
+            <pre data-lang="python">df = pd.DataFrame({
+    "user": ["anna", "ivan", "olga"],
+    "amount": [1200, 800, 500],
+    "city": ["Москва", "Казань", "Москва"],
+})</pre>
+          </div>
+          <div class="qa">
+            <details>
+              <summary>Показать решение</summary>
+              <div class="a">
+                <div class="code" style="margin-top:0">
+                  <div class="bar"><span class="file">решение</span><span class="lang">python</span><button class="copy">копировать</button></div>
+                  <pre data-lang="python">mask = (df["city"] == "Москва") &amp; (df["amount"] &gt; 600)
+print(df.loc[mask, ["user", "amount"]])</pre>
+                  <div class="out">   user  amount
+0  anna    1200</div>
+                </div>
+                <p><strong>Критерии.</strong> Скобки, &amp; вместо and, loc для колонок.</p>
+              </div>
+            </details>
+          </div>
+          <div class="rubric" data-task="b1">
+            <span class="h">Оценка:</span>
+            <label><input type="radio" name="b1" value="0"> 0 — не решил</label>
+            <label><input type="radio" name="b1" value="1"> 1 — решил, объяснить не смог</label>
+            <label><input type="radio" name="b1" value="2"> 2 — решил и объяснил</label>
+          </div>
+        </div>
+
+        <div class="task">
+          <h3>B2. Сводка по пользователям <span class="point">2 балла</span></h3>
+          <p>Посчитайте для каждого пользователя сумму, количество и средний чек. Отсортируйте по сумме.</p>
+          <div class="code">
+            <div class="bar"><span class="file">B2</span><span class="lang">python</span><button class="copy">копировать</button></div>
+            <pre data-lang="python">orders = pd.DataFrame({
+    "user": ["anna", "ivan", "anna", "petr"],
+    "amount": [1200, 800, 500, 2100],
+})</pre>
+          </div>
+          <div class="qa">
+            <details>
+              <summary>Показать решение</summary>
+              <div class="a">
+                <div class="code" style="margin-top:0">
+                  <div class="bar"><span class="file">решение</span><span class="lang">python</span><button class="copy">копировать</button></div>
+                  <pre data-lang="python">summary = orders.groupby("user")["amount"].agg(["sum", "count", "mean"])
+print(summary.sort_values("sum", ascending=False))</pre>
+                </div>
+                <p><strong>Критерии.</strong> Один groupby с несколькими агрегатами; сортировка после агрегата.</p>
+              </div>
+            </details>
+          </div>
+          <div class="rubric" data-task="b2">
+            <span class="h">Оценка:</span>
+            <label><input type="radio" name="b2" value="0"> 0 — не решил</label>
+            <label><input type="radio" name="b2" value="1"> 1 — решил, объяснить не смог</label>
+            <label><input type="radio" name="b2" value="2"> 2 — решил и объяснил</label>
+          </div>
+        </div>
+
+        <div class="task">
+          <h3>B3. Соединение без потерь <span class="point">2 балла</span></h3>
+          <p>Добавьте к заказам имена пользователей, сохранив все заказы, и найдите заказ без пользователя.</p>
+          <div class="code">
+            <div class="bar"><span class="file">B3</span><span class="lang">python</span><button class="copy">копировать</button></div>
+            <pre data-lang="python">orders = pd.DataFrame({"order_id": [1, 2], "user_id": [10, 30]})
+users = pd.DataFrame({"user_id": [10], "name": ["anna"]})</pre>
+          </div>
+          <div class="qa">
+            <details>
+              <summary>Показать решение</summary>
+              <div class="a">
+                <div class="code" style="margin-top:0">
+                  <div class="bar"><span class="file">решение</span><span class="lang">python</span><button class="copy">копировать</button></div>
+                  <pre data-lang="python">merged = orders.merge(users, on="user_id", how="left",
+                      validate="many_to_one", indicator=True)
+print(len(merged) == len(orders))
+print(merged[merged["_merge"] == "left_only"])</pre>
+                </div>
+                <p><strong>Критерии.</strong> left join + validate + indicator; проверка числа строк.</p>
+              </div>
+            </details>
+          </div>
+          <div class="rubric" data-task="b3">
+            <span class="h">Оценка:</span>
+            <label><input type="radio" name="b3" value="0"> 0 — не решил</label>
+            <label><input type="radio" name="b3" value="1"> 1 — решил, объяснить не смог</label>
+            <label><input type="radio" name="b3" value="2"> 2 — решил и объяснил</label>
+          </div>
+        </div>
+
+        <div class="task">
+          <h3>B4. Пропуски <span class="point">2 балла</span></h3>
+          <p>Найдите долю пропусков в amount, добавьте флаг и заполните медианой. Объясните, почему не нулём.</p>
+          <div class="qa">
+            <details>
+              <summary>Показать решение</summary>
+              <div class="a">
+                <div class="code" style="margin-top:0">
+                  <div class="bar"><span class="file">решение</span><span class="lang">python</span><button class="copy">копировать</button></div>
+                  <pre data-lang="python">print(df["amount"].isna().mean())
+
+df["amount_missing"] = df["amount"].isna()
+df["amount"] = df["amount"].fillna(df["amount"].median())</pre>
+                </div>
+                <p><strong>Критерии.</strong> Флаг до заполнения; медиана вместо нуля; объяснение, что ноль — это значение, а не отсутствие.</p>
+              </div>
+            </details>
+          </div>
+          <div class="rubric" data-task="b4">
+            <span class="h">Оценка:</span>
+            <label><input type="radio" name="b4" value="0"> 0 — не решил</label>
+            <label><input type="radio" name="b4" value="1"> 1 — решил, объяснить не смог</label>
+            <label><input type="radio" name="b4" value="2"> 2 — решил и объяснил</label>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h2><span class="num">04</span>Часть C. Мостики</h2>
+
+        <div class="task">
+          <h3>C1. Фильтр, группа и соединение в SQL <span class="point">2 балла</span></h3>
+          <p>Запишите SQL-эквиваленты: фильтр по городу, сумма по пользователям, заказы без пользователя.</p>
+          <div class="qa">
+            <details>
+              <summary>Показать решение</summary>
+              <div class="a">
+                <div class="code" style="margin-top:0">
+                  <div class="bar"><span class="file">sql</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+                  <pre data-lang="sql">SELECT * FROM orders WHERE city = 'Москва';
+
+SELECT user_id, SUM(amount) FROM orders GROUP BY user_id;
+
+SELECT o.order_id FROM orders o
+LEFT JOIN users u ON u.user_id = o.user_id
+WHERE u.user_id IS NULL;</pre>
+                </div>
+                <p><strong>Критерии.</strong> Три конструкции соответствуют mask, groupby и left+indicator.</p>
+              </div>
+            </details>
+          </div>
+          <div class="rubric" data-task="c1">
+            <span class="h">Оценка:</span>
+            <label><input type="radio" name="c1" value="0"> 0 — не решил</label>
+            <label><input type="radio" name="c1" value="1"> 1 — написал, но связь не объяснил</label>
+            <label><input type="radio" name="c1" value="2"> 2 — написал и объяснил связь</label>
+          </div>
+        </div>
+
+        <div class="task">
+          <h3>C2. Даты и форма таблицы <span class="point">2 балла</span></h3>
+          <p>Получите выручку по месяцам в pandas и в SQL. Почему в SQL нет pivot?</p>
+          <div class="qa">
+            <details>
+              <summary>Показать решение</summary>
+              <div class="a">
+                <div class="code" style="margin-top:0">
+                  <div class="bar"><span class="file">pandas и SQL</span><span class="lang">python</span><button class="copy">копировать</button></div>
+                  <pre data-lang="python">orders["date"] = pd.to_datetime(orders["date"])
+monthly = orders.groupby(orders["date"].dt.to_period("M"))["amount"].sum()</pre>
+                </div>
+                <div class="code">
+                  <div class="bar"><span class="file">sql</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+                  <pre data-lang="sql">SELECT DATE_TRUNC('month', created_at) AS month, SUM(amount)
+FROM orders GROUP BY 1 ORDER BY 1;</pre>
+                </div>
+                <p>В SQL таблица всегда «длинная»: pivot — это преобразование для отчёта, его делают в приложении или через CASE WHEN.</p>
+                <p><strong>Критерии.</strong> Оба запроса; объяснение про длинную форму и presentation-слой.</p>
+              </div>
+            </details>
+          </div>
+          <div class="rubric" data-task="c2">
+            <span class="h">Оценка:</span>
+            <label><input type="radio" name="c2" value="0"> 0 — не решил</label>
+            <label><input type="radio" name="c2" value="1"> 1 — написал, но связь не объяснил</label>
+            <label><input type="radio" name="c2" value="2"> 2 — написал и объяснил связь</label>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h2><span class="num">05</span>Результат</h2>
+        <div class="result">
+          <div class="scoreline"><span class="n" id="total2">0</span><span class="of">из 20 баллов</span></div>
+          <div class="band" id="band"><b>Пока пусто</b><p>Отвечайте на вопросы и ставьте оценки за задачи — результат посчитается сам.</p></div>
+          <p class="small" style="margin-top:14px">
+            Часть A: <span id="partA">0</span>/8 · Часть B: <span id="partB">0</span>/8 · Часть C: <span id="partC">0</span>/4
+          </p>
+          <button id="reset" class="ghost" style="font-family:var(--sans);font-size:12.5px;padding:7px 14px;border:1px solid var(--line);border-radius:8px;background:var(--card);cursor:pointer;margin-top:8px">Сбросить ответы</button>
+        </div>
+        <div class="note">
+          <span class="t">Что делать с результатом</span>
+          <p>17–20 — можно переходить к SQL. 12–16 — перечитайте главы, где потеряли баллы, и перепройдите.
+          Меньше 12 — вернитесь к 12–18 и решайте задачи на реальных таблицах.</p>
+        </div>
+      </section>
+
+      <div class="pager">
+        <a class="prev" href="ch-18-dates-reshape.html"><span class="dir">← Назад</span><span class="ttl">18 · даты и reshape</span></a>
+        <a class="next" href="ch-19-order-of-execution.html"><span class="dir">Часть IV →</span><span class="ttl">19 · порядок выполнения SQL</span></a>
+      </div>
+
+    </div>
+  </main>
+</div>
+<script src="assets/toc.js"></script>
+<script src="assets/app.js"></script>
+<script>
+(function () {
+  const STORE = "assoc-checkpoint-3";
+  let state = { quiz: {}, self: {} };
+  try {
+    const s = JSON.parse(localStorage.getItem(STORE) || "null");
+    if (s) state = { quiz: s.quiz || {}, self: s.self || {} };
+  } catch {}
+
+  const qItems = [...document.querySelectorAll(".q-item")];
+  const selfInputs = [...document.querySelectorAll(".rubric input")];
+  const totalEl = document.getElementById("total");
+  const total2El = document.getElementById("total2");
+  const bandEl = document.getElementById("band");
+  const partA = document.getElementById("partA");
+  const partB = document.getElementById("partB");
+  const partC = document.getElementById("partC");
+
+  function evalQuiz(q) {
+    const sel = q.querySelector("input:checked");
+    q.querySelectorAll(".options label").forEach((l) => l.classList.remove("ok", "bad"));
+    const exp = q.querySelector(".explain");
+    const ver = q.querySelector(".verdict");
+    if (!sel) { exp.hidden = true; ver.hidden = true; return 0; }
+    const good = sel.value === q.dataset.answer;
+    sel.closest("label").classList.add(good ? "ok" : "bad");
+    if (!good) {
+      const right = q.querySelector('input[value="' + q.dataset.answer + '"]');
+      if (right) right.closest("label").classList.add("ok");
+    }
+    ver.hidden = false;
+    ver.className = "verdict " + (good ? "ok" : "bad");
+    ver.textContent = good ? "Верно (+1)" : "Неверно";
+    exp.hidden = false;
+    return good ? 1 : 0;
+  }
+
+  function update() {
+    let a = 0;
+    qItems.forEach((q) => { a += evalQuiz(q); });
+    let b = 0, c = 0;
+    selfInputs.forEach((i) => {
+      if (!i.checked) return;
+      const v = Number(i.value);
+      if (i.name.startsWith("b")) b += v; else c += v;
+    });
+    const total = a + b + c;
+    totalEl.textContent = String(total);
+    total2El.textContent = String(total);
+    partA.textContent = String(a);
+    partB.textContent = String(b);
+    partC.textContent = String(c);
+
+    let title, desc;
+    if (total >= 17) {
+      title = "pandas на месте";
+      desc = "Можно переходить к SQL. Просмотрите только темы, где потеряли баллы.";
+    } else if (total >= 12) {
+      title = "Почти: закройте 1–2 темы";
+      desc = "Чаще всего проседают merge и пропуски — перечитайте главы 16–17 и перепройдите работу.";
+    } else if (total === 0) {
+      title = "Пока пусто";
+      desc = "Отвечайте на вопросы и ставьте оценки за задачи — результат посчитается сам.";
+    } else {
+      title = "Стоит повторить часть III";
+      desc = "Вернитесь к главам 12–18 и решайте задачи на реальных таблицах: pandas осваивается руками.";
+    }
+    bandEl.innerHTML = "<b>" + title + "</b><p>" + desc + "</p>";
+    try { localStorage.setItem(STORE, JSON.stringify(state)); } catch {}
+  }
+
+  qItems.forEach((q) => {
+    const saved = state.quiz[q.dataset.q];
+    if (saved) {
+      const r = q.querySelector('input[value="' + saved + '"]');
+      if (r) r.checked = true;
+    }
+    q.querySelectorAll("input").forEach((inp) =>
+      inp.addEventListener("change", () => { state.quiz[q.dataset.q] = inp.value; update(); })
+    );
+  });
+
+  selfInputs.forEach((i) => {
+    if (state.self[i.name] === i.value) i.checked = true;
+    i.addEventListener("change", () => { state.self[i.name] = i.value; update(); });
+  });
+
+  document.getElementById("reset").addEventListener("click", () => {
+    qItems.forEach((q) => q.querySelectorAll("input").forEach((i) => (i.checked = false)));
+    selfInputs.forEach((i) => (i.checked = false));
+    state = { quiz: {}, self: {} };
+    localStorage.removeItem(STORE);
+    update();
+  });
+
+  const timer = document.getElementById("timer");
+  let left = 60 * 60, id = null, running = false;
+  const fmt = (s) => String(Math.floor(s / 60)).padStart(2, "0") + ":" + String(s % 60).padStart(2, "0");
+  timer.textContent = fmt(left);
+  document.getElementById("start").addEventListener("click", (e) => {
+    if (running) return;
+    running = true;
+    e.target.disabled = true;
+    e.target.textContent = "идёт";
+    id = setInterval(() => {
+      left -= 1;
+      timer.textContent = fmt(Math.max(0, left));
+      if (left <= 0) {
+        clearInterval(id);
+        timer.classList.add("out");
+        e.target.textContent = "время вышло";
+      }
+    }, 1000);
+  });
+
+  update();
+})();
+</script>
+</body>
+</html>

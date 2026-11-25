@@ -66,6 +66,9 @@
           <a class="nav-ch${slug === "checkpoint-2" ? " active" : ""}" href="checkpoint-2.html">
             <span class="n">60′</span><span>Проверочная: часть II</span>
           </a>
+          <a class="nav-ch${slug === "checkpoint-3" ? " active" : ""}" href="checkpoint-3.html">
+            <span class="n">60′</span><span>Проверочная: часть III</span>
+          </a>
         </div>
       </div>
       <div class="side-foot">

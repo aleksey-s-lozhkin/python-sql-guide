@@ -744,3 +744,20 @@ td b { font-weight: 700; }
   [data-slug="checkpoint-2"] .options label::before { content: "☐"; font-size: 13px; line-height: 1.2; margin-top: 1px; }
   [data-slug="checkpoint-2"] .options input { display: none; }
 }
+
+/* печать проверочной части III */
+@media print {
+  [data-slug="checkpoint-3"] .sidebar,
+  [data-slug="checkpoint-3"] .diag-panel,
+  [data-slug="checkpoint-3"] .qa,
+  [data-slug="checkpoint-3"] .rubric,
+  [data-slug="checkpoint-3"] .explain,
+  [data-slug="checkpoint-3"] .verdict,
+  [data-slug="checkpoint-3"] .result,
+  [data-slug="checkpoint-3"] .pager,
+  [data-slug="checkpoint-3"] .print-hint { display: none !important; }
+  [data-slug="checkpoint-3"] .q-item, [data-slug="checkpoint-3"] .task { break-inside: avoid; }
+  [data-slug="checkpoint-3"] .options label { border-color: #ccc; }
+  [data-slug="checkpoint-3"] .options label::before { content: "☐"; font-size: 13px; line-height: 1.2; margin-top: 1px; }
+  [data-slug="checkpoint-3"] .options input { display: none; }
+}

@@ -1,0 +1,79 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 520" role="img" aria-labelledby="t1 d1">
+  <title id="t1">melt переводит широкую таблицу в длинную, pivot — обратно; explode разворачивает списки в строки</title>
+  <desc id="d1">Широкая таблица с кварталами в колонках, длинная таблица с колонкой quarter, две стрелки между ними и пример explode.</desc>
+  <defs>
+    <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#8a7f73"/>
+    </marker>
+    <style>
+      .h { font: 700 12.5px system-ui, -apple-system, "Segoe UI", sans-serif; fill: #1d1b26; }
+      .lbl { font: 700 10.5px system-ui, -apple-system, "Segoe UI", sans-serif; fill: #8a7f73; letter-spacing: .12em; }
+      .v { font: 500 12px ui-monospace, "SF Mono", Menlo, monospace; fill: #1d1b26; }
+      .s { font: 400 12px system-ui, -apple-system, "Segoe UI", sans-serif; fill: #4a4458; }
+      .n { font: 400 11.5px system-ui, -apple-system, "Segoe UI", sans-serif; fill: #7a7285; }
+      .c { font: 700 12px ui-monospace, "SF Mono", Menlo, monospace; fill: #c2410c; }
+    </style>
+  </defs>
+
+  <text class="lbl" x="60" y="36">ШИРОКАЯ ФОРМА</text>
+  <text class="lbl" x="600" y="36">ДЛИННАЯ ФОРМА</text>
+
+  <!-- wide -->
+  <rect x="60" y="56" width="300" height="36" fill="#f4f1ea" stroke="#d8d1c6"/>
+  <text class="h" x="74" y="79">user</text>
+  <text class="h" x="180" y="79">Q1</text>
+  <text class="h" x="280" y="79">Q2</text>
+  <rect x="60" y="92" width="300" height="38" fill="#fff" stroke="#d8d1c6"/>
+  <text class="v" x="74" y="116">anna</text><text class="v" x="180" y="116">100</text><text class="v" x="280" y="116">200</text>
+  <rect x="60" y="130" width="300" height="38" fill="#fff" stroke="#d8d1c6"/>
+  <text class="v" x="74" y="154">ivan</text><text class="v" x="180" y="154">300</text><text class="v" x="280" y="154">400</text>
+  <text class="n" x="60" y="192">одна строка на пользователя</text>
+
+  <!-- long -->
+  <rect x="600" y="56" width="320" height="36" fill="#f4f1ea" stroke="#d8d1c6"/>
+  <text class="h" x="614" y="79">user</text>
+  <text class="h" x="714" y="79">quarter</text>
+  <text class="h" x="824" y="79">amount</text>
+  <rect x="600" y="92" width="320" height="34" fill="#fff" stroke="#d8d1c6"/>
+  <text class="v" x="614" y="114">anna</text><text class="v" x="714" y="114">Q1</text><text class="v" x="824" y="114">100</text>
+  <rect x="600" y="126" width="320" height="34" fill="#fff" stroke="#d8d1c6"/>
+  <text class="v" x="614" y="148">anna</text><text class="v" x="714" y="148">Q2</text><text class="v" x="824" y="148">200</text>
+  <rect x="600" y="160" width="320" height="34" fill="#fff" stroke="#d8d1c6"/>
+  <text class="v" x="614" y="182">ivan</text><text class="v" x="714" y="182">Q1</text><text class="v" x="824" y="182">300</text>
+  <rect x="600" y="194" width="320" height="34" fill="#fff" stroke="#d8d1c6"/>
+  <text class="v" x="614" y="216">ivan</text><text class="v" x="714" y="216">Q2</text><text class="v" x="824" y="216">400</text>
+  <text class="n" x="600" y="254">одна строка на факт; форма SQL и графиков</text>
+
+  <!-- arrows -->
+  <path d="M368,100 C450,90 520,86 592,84" fill="none" stroke="#c2410c" stroke-width="2" marker-end="url(#ar)"/>
+  <text class="c" x="424" y="70">melt()</text>
+  <path d="M592,200 C520,196 450,182 374,168" fill="none" stroke="#2f6b4f" stroke-width="2" marker-end="url(#ar)"/>
+  <text class="c" x="424" y="212" fill="#2f6b4f">pivot()</text>
+
+  <line x1="60" y1="288" x2="920" y2="288" stroke="#e6dfd3" stroke-dasharray="4 5"/>
+
+  <!-- explode -->
+  <text class="lbl" x="60" y="320">EXPLODE: СПИСОК → СТРОКИ</text>
+  <text class="c" x="320" y="320" font-size="11">explode("items")</text>
+  <rect x="60" y="336" width="300" height="34" fill="#f4f1ea" stroke="#d8d1c6"/>
+  <text class="h" x="74" y="358">order_id</text>
+  <text class="h" x="190" y="358">items</text>
+  <rect x="60" y="370" width="300" height="36" fill="#fff" stroke="#d8d1c6"/>
+  <text class="v" x="74" y="393">1</text>
+  <text class="v" x="190" y="393">[apple, pear]</text>
+  <text class="n" x="60" y="424">одна строка — список</text>
+
+  <path d="M376,392 L440,392" fill="none" stroke="#8a7f73" stroke-width="2" marker-end="url(#ar)"/>
+
+  <rect x="470" y="336" width="300" height="34" fill="#f4f1ea" stroke="#d8d1c6"/>
+  <text class="h" x="484" y="358">order_id</text>
+  <text class="h" x="600" y="358">items</text>
+  <rect x="470" y="370" width="300" height="30" fill="#e9f2ec" stroke="#9cc0a8"/>
+  <text class="v" x="484" y="390">1</text><text class="v" x="600" y="390">apple</text>
+  <rect x="470" y="400" width="300" height="30" fill="#e9f2ec" stroke="#9cc0a8"/>
+  <text class="v" x="484" y="420">1</text><text class="v" x="600" y="420">pear</text>
+
+  <rect x="60" y="452" width="860" height="52" rx="10" fill="#f4f1ea" stroke="#e0d9cd"/>
+  <text class="s" x="80" y="476">Правило: данные для анализа — длинные, отчёт для человека — широкий. melt и pivot переводят туда и обратно.</text>
+  <text class="n" x="80" y="496">В SQL таблица всегда «длинная»: pivot делают на стороне приложения или через CASE WHEN.</text>
+</svg>
