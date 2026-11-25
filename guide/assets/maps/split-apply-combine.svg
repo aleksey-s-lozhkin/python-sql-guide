@@ -1,0 +1,107 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 460" role="img" aria-labelledby="t2 d2">
+  <title id="t2">groupby: разложить по ключу, посчитать в каждой группе и собрать таблицу</title>
+  <desc id="d2">Таблица заказов раскладывается на группы по пользователю, в каждой считается сумма, результат собирается в таблицу.</desc>
+  <defs>
+    <marker id="a2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#8a7f73"/>
+    </marker>
+    <style>
+      .lbl { font: 700 10.5px system-ui, -apple-system, "Segoe UI", sans-serif; fill: #8a7f73; letter-spacing: .12em; }
+      .h { font: 700 11.5px system-ui, -apple-system, "Segoe UI", sans-serif; fill: #1d1b26; }
+      .v { font: 500 12px ui-monospace, "SF Mono", Menlo, monospace; fill: #1d1b26; }
+      .b { font: 600 11.5px ui-monospace, "SF Mono", Menlo, monospace; fill: #1d1b26; }
+      .s { font: 400 12px system-ui, -apple-system, "Segoe UI", sans-serif; fill: #4a4458; }
+      .n { font: 400 11.5px system-ui, -apple-system, "Segoe UI", sans-serif; fill: #7a7285; }
+      .r { font: 700 13px ui-monospace, "SF Mono", Menlo, monospace; fill: #2f6b4f; }
+    </style>
+  </defs>
+
+  <text class="lbl" x="30" y="34">РАЗЛОЖИТЬ</text>
+  <text class="lbl" x="330" y="34">ПОСЧИТАТЬ</text>
+  <text class="lbl" x="700" y="34">СОБРАТЬ</text>
+
+  <!-- исходная таблица -->
+  <rect x="30" y="56" width="110" height="34" fill="#f4f1ea" stroke="#d8d1c6"/>
+  <text class="h" x="46" y="78">user</text>
+  <rect x="140" y="56" width="100" height="34" fill="#f4f1ea" stroke="#d8d1c6"/>
+  <text class="h" x="156" y="78">amount</text>
+
+  <rect x="30" y="90" width="110" height="40" fill="#fdf0e6" stroke="#d8d1c6"/>
+  <text class="v" x="46" y="115">anna</text>
+  <rect x="140" y="90" width="100" height="40" fill="#fdf0e6" stroke="#d8d1c6"/>
+  <text class="v" x="156" y="115">1200</text>
+
+  <rect x="30" y="130" width="110" height="40" fill="#e9f2ec" stroke="#d8d1c6"/>
+  <text class="v" x="46" y="155">ivan</text>
+  <rect x="140" y="130" width="100" height="40" fill="#e9f2ec" stroke="#d8d1c6"/>
+  <text class="v" x="156" y="155">800</text>
+
+  <rect x="30" y="170" width="110" height="40" fill="#fdf0e6" stroke="#d8d1c6"/>
+  <text class="v" x="46" y="195">anna</text>
+  <rect x="140" y="170" width="100" height="40" fill="#fdf0e6" stroke="#d8d1c6"/>
+  <text class="v" x="156" y="195">500</text>
+
+  <rect x="30" y="210" width="110" height="40" fill="#f3eefb" stroke="#d8d1c6"/>
+  <text class="v" x="46" y="235">petr</text>
+  <rect x="140" y="210" width="100" height="40" fill="#f3eefb" stroke="#d8d1c6"/>
+  <text class="v" x="156" y="235">2100</text>
+
+  <rect x="30" y="250" width="110" height="40" fill="#e9f2ec" stroke="#d8d1c6"/>
+  <text class="v" x="46" y="275">ivan</text>
+  <rect x="140" y="250" width="100" height="40" fill="#e9f2ec" stroke="#d8d1c6"/>
+  <text class="v" x="156" y="275">300</text>
+
+  <!-- стрелки к группам -->
+  <path d="M248,120 C280,120 292,108 320,106" fill="none" stroke="#8a7f73" stroke-width="1.6" marker-end="url(#a2)"/>
+  <path d="M248,180 C280,180 290,150 320,128" fill="none" stroke="#8a7f73" stroke-width="1.6" marker-end="url(#a2)"/>
+  <path d="M248,158 C280,158 292,236 320,240" fill="none" stroke="#8a7f73" stroke-width="1.6" marker-end="url(#a2)"/>
+  <path d="M248,236 C280,236 292,262 320,264" fill="none" stroke="#8a7f73" stroke-width="1.6" marker-end="url(#a2)"/>
+  <path d="M248,272 C280,272 292,300 320,308" fill="none" stroke="#8a7f73" stroke-width="1.6" marker-end="url(#a2)"/>
+
+  <!-- группы -->
+  <rect x="330" y="76" width="270" height="76" rx="10" fill="#fff" stroke="#e8b48c"/>
+  <text class="b" x="348" y="98">anna</text>
+  <text class="v" x="348" y="122">1200, 500</text>
+  <text class="r" x="348" y="144">Σ 1700</text>
+
+  <rect x="330" y="182" width="270" height="76" rx="10" fill="#fff" stroke="#9cc0a8"/>
+  <text class="b" x="348" y="204">ivan</text>
+  <text class="v" x="348" y="228">800, 300</text>
+  <text class="r" x="348" y="250">Σ 1100</text>
+
+  <rect x="330" y="288" width="270" height="76" rx="10" fill="#fff" stroke="#c9b8e0"/>
+  <text class="b" x="348" y="310">petr</text>
+  <text class="v" x="348" y="334">2100</text>
+  <text class="r" x="348" y="356">Σ 2100</text>
+
+  <!-- стрелки к результату -->
+  <path d="M604,114 C640,114 656,120 690,124" fill="none" stroke="#8a7f73" stroke-width="1.6" marker-end="url(#a2)"/>
+  <path d="M604,220 C640,220 656,180 690,170" fill="none" stroke="#8a7f73" stroke-width="1.6" marker-end="url(#a2)"/>
+  <path d="M604,326 C640,326 656,240 690,216" fill="none" stroke="#8a7f73" stroke-width="1.6" marker-end="url(#a2)"/>
+
+  <!-- результат -->
+  <rect x="700" y="76" width="110" height="40" fill="#f4f1ea" stroke="#d8d1c6"/>
+  <text class="h" x="716" y="101">user</text>
+  <rect x="810" y="76" width="120" height="40" fill="#f4f1ea" stroke="#d8d1c6"/>
+  <text class="h" x="826" y="101">total</text>
+
+  <rect x="700" y="116" width="110" height="42" fill="#fdf0e6" stroke="#d8d1c6"/>
+  <text class="v" x="716" y="142">anna</text>
+  <rect x="810" y="116" width="120" height="42" fill="#fdf0e6" stroke="#d8d1c6"/>
+  <text class="v" x="826" y="142">1700</text>
+
+  <rect x="700" y="158" width="110" height="42" fill="#e9f2ec" stroke="#d8d1c6"/>
+  <text class="v" x="716" y="184">ivan</text>
+  <rect x="810" y="158" width="120" height="42" fill="#e9f2ec" stroke="#d8d1c6"/>
+  <text class="v" x="826" y="184">1100</text>
+
+  <rect x="700" y="200" width="110" height="42" fill="#f3eefb" stroke="#d8d1c6"/>
+  <text class="v" x="716" y="226">petr</text>
+  <rect x="810" y="200" width="120" height="42" fill="#f3eefb" stroke="#d8d1c6"/>
+  <text class="v" x="826" y="226">2100</text>
+
+  <text class="s" x="700" y="278">одна строка на группу</text>
+
+  <rect x="30" y="396" width="920" height="48" rx="10" fill="#f4f1ea" stroke="#e0d9cd"/>
+  <text class="s" x="50" y="426">split — apply — combine: та же механика, что у defaultdict с суммой, только векторно и сразу таблицей.</text>
+</svg>

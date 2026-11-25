@@ -1,5 +1,5 @@
 // Сгенерировано tools/gen_sw.cjs — не править руками.
-const CACHE = "assoc-guide-v3a99eda2";
+const CACHE = "assoc-guide-vee4985c0";
 const PRECACHE = [
   "./assets/app.js",
   "./assets/icons/favicon.svg",
@@ -15,12 +15,14 @@ const PRECACHE = [
   "./assets/maps/comprehension-vs-generator.svg",
   "./assets/maps/dataframe-anatomy.svg",
   "./assets/maps/dict-hash.svg",
+  "./assets/maps/filter-sieve.svg",
   "./assets/maps/list-as-train.svg",
   "./assets/maps/loc-vs-iloc.svg",
   "./assets/maps/mask-trafaret.svg",
   "./assets/maps/ndarray-vs-list.svg",
   "./assets/maps/one-model-three-worlds.svg",
   "./assets/maps/set-operations.svg",
+  "./assets/maps/split-apply-combine.svg",
   "./assets/maps/view-copy.svg",
   "./assets/style.css",
   "./assets/toc.js",
@@ -66,7 +68,9 @@ const PRECACHE = [
   "./snippets/10_broadcasting_lab.py",
   "./snippets/11_views_copies_lab.py",
   "./snippets/12_series_dataframe_lab.py",
-  "./snippets/13_loc_iloc_lab.py"
+  "./snippets/13_loc_iloc_lab.py",
+  "./snippets/14_filtering_lab.py",
+  "./snippets/15_groupby_lab.py"
 ];
 
 self.addEventListener("install", (e) => {

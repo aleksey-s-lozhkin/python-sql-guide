@@ -1,0 +1,78 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 460" role="img" aria-labelledby="t1 d1">
+  <title id="t1">Фильтрация в pandas: маска Series bool и строки, которые проходят через сито</title>
+  <desc id="d1">Таблица из четырёх строк с колонкой-маской «amount больше 600»; True-строки попадают в результат.</desc>
+  <defs>
+    <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#8a7f73"/>
+    </marker>
+    <style>
+      .lbl { font: 700 10.5px system-ui, -apple-system, "Segoe UI", sans-serif; fill: #8a7f73; letter-spacing: .12em; }
+      .h { font: 700 11.5px system-ui, -apple-system, "Segoe UI", sans-serif; fill: #1d1b26; }
+      .v { font: 500 12.5px ui-monospace, "SF Mono", Menlo, monospace; fill: #1d1b26; }
+      .t { font: 700 11px ui-monospace, "SF Mono", Menlo, monospace; fill: #2f6b4f; }
+      .f { font: 700 11px ui-monospace, "SF Mono", Menlo, monospace; fill: #b9ad9d; }
+      .s { font: 400 12.5px system-ui, -apple-system, "Segoe UI", sans-serif; fill: #4a4458; }
+      .n { font: 400 12px system-ui, -apple-system, "Segoe UI", sans-serif; fill: #7a7285; }
+    </style>
+  </defs>
+
+  <text class="lbl" x="80" y="36">ТАБЛИЦА</text>
+  <text class="lbl" x="466" y="36">МАСКА</text>
+
+  <!-- header -->
+  <rect x="80" y="52" width="120" height="36" fill="#f4f1ea" stroke="#d8d1c6"/>
+  <text class="h" x="96" y="76">user</text>
+  <rect x="200" y="52" width="130" height="36" fill="#f4f1ea" stroke="#d8d1c6"/>
+  <text class="h" x="216" y="76">amount</text>
+  <rect x="330" y="52" width="130" height="36" fill="#f4f1ea" stroke="#d8d1c6"/>
+  <text class="h" x="346" y="76">city</text>
+  <rect x="460" y="52" width="120" height="36" fill="#f4f1ea" stroke="#d8d1c6"/>
+  <text class="h" x="470" y="76">&gt; 600</text>
+
+  <!-- rows -->
+  <g stroke="#d8d1c6">
+    <rect x="80" y="88" width="120" height="40" fill="#e9f2ec"/><rect x="200" y="88" width="130" height="40" fill="#e9f2ec"/><rect x="330" y="88" width="130" height="40" fill="#e9f2ec"/><rect x="460" y="88" width="120" height="40" fill="#e9f2ec"/>
+    <rect x="80" y="128" width="120" height="40" fill="#e9f2ec"/><rect x="200" y="128" width="130" height="40" fill="#e9f2ec"/><rect x="330" y="128" width="130" height="40" fill="#e9f2ec"/><rect x="460" y="128" width="120" height="40" fill="#e9f2ec"/>
+    <rect x="80" y="168" width="120" height="40" fill="#fff"/><rect x="200" y="168" width="130" height="40" fill="#fff"/><rect x="330" y="168" width="130" height="40" fill="#fff"/><rect x="460" y="168" width="120" height="40" fill="#fff"/>
+    <rect x="80" y="208" width="120" height="40" fill="#fff"/><rect x="200" y="208" width="130" height="40" fill="#fff"/><rect x="330" y="208" width="130" height="40" fill="#fff"/><rect x="460" y="208" width="120" height="40" fill="#fff"/>
+  </g>
+  <g class="v">
+    <text x="94" y="113">anna</text><text x="212" y="113">1200</text><text x="344" y="113">Москва</text>
+    <text x="94" y="153">ivan</text><text x="212" y="153">800</text><text x="344" y="153">Казань</text>
+    <text x="94" y="193">olga</text><text x="212" y="193">500</text><text x="344" y="193">Москва</text>
+    <text x="94" y="233">petr</text><text x="212" y="233">NaN</text><text x="344" y="233">Москва</text>
+  </g>
+  <g class="t"><text x="490" y="113">True</text><text x="490" y="153">True</text></g>
+  <g class="f"><text x="490" y="193">False</text><text x="490" y="233">False</text></g>
+
+  <path d="M340,256 L340,296" fill="none" stroke="#8a7f73" stroke-width="2" marker-end="url(#ar)"/>
+  <text class="s" x="356" y="282">df[mask]</text>
+
+  <!-- result -->
+  <text class="lbl" x="80" y="318">РЕЗУЛЬТАТ: 2 СТРОКИ</text>
+  <rect x="80" y="330" width="120" height="34" fill="#f4f1ea" stroke="#d8d1c6"/>
+  <rect x="200" y="330" width="130" height="34" fill="#f4f1ea" stroke="#d8d1c6"/>
+  <rect x="330" y="330" width="130" height="34" fill="#f4f1ea" stroke="#d8d1c6"/>
+  <text class="h" x="96" y="352">user</text>
+  <text class="h" x="216" y="352">amount</text>
+  <text class="h" x="346" y="352">city</text>
+  <rect x="80" y="364" width="120" height="38" fill="#e9f2ec" stroke="#9cc0a8"/>
+  <rect x="200" y="364" width="130" height="38" fill="#e9f2ec" stroke="#9cc0a8"/>
+  <rect x="330" y="364" width="130" height="38" fill="#e9f2ec" stroke="#9cc0a8"/>
+  <rect x="80" y="402" width="120" height="38" fill="#e9f2ec" stroke="#9cc0a8"/>
+  <rect x="200" y="402" width="130" height="38" fill="#e9f2ec" stroke="#9cc0a8"/>
+  <rect x="330" y="402" width="130" height="38" fill="#e9f2ec" stroke="#9cc0a8"/>
+  <g class="v">
+    <text x="94" y="388">anna</text><text x="212" y="388">1200</text><text x="344" y="388">Москва</text>
+    <text x="94" y="426">ivan</text><text x="212" y="426">800</text><text x="344" y="426">Казань</text>
+  </g>
+
+  <!-- notes -->
+  <text class="s" x="640" y="100">Маска — это Series bool</text>
+  <text class="n" x="640" y="122">длиной с таблицу и с тем же индексом.</text>
+  <text class="s" x="640" y="164">True — строка проходит,</text>
+  <text class="n" x="640" y="186">False — отбрасывается.</text>
+  <text class="s" x="640" y="228">Условия соединяются &amp; и |,</text>
+  <text class="n" x="640" y="250">а не and/or — и в скобках.</text>
+  <text class="n" x="640" y="292">mask.sum() = 2, mask.mean() = 0.5</text>
+</svg>
