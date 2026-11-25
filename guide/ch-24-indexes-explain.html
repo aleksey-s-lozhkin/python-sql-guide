@@ -3,7 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>24 · Индексы и EXPLAIN: верить плану, а не догадкам — Ассоциативный гайд</title>
+<title>24 · Индексы и EXPLAIN: где на самом деле тормозит запрос — Ассоциативный гайд</title>
+<meta name="description" content="SQL индексы и EXPLAIN на живой базе: Seq Scan против Index Scan, B-tree, селективность, функция на колонке и чтение плана.">
 <link rel="stylesheet" href="assets/style.css">
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#fbf8f2" media="(prefers-color-scheme: light)">
@@ -20,37 +21,451 @@
   <aside class="sidebar" id="sidebar"></aside>
   <main>
     <div class="wrap">
+
       <header class="chapter-head">
         <div class="eyebrow">
-          <span class="part">Часть IV · SQL</span><span class="dot"></span><span>Неделя 7 · день 5</span><span class="dot"></span><span>в работе</span>
+          <span class="part">Часть IV · SQL</span>
+          <span class="dot"></span>
+          <span>Неделя 7 · дни 5–6</span>
+          <span class="dot"></span>
+          <span>готово</span>
         </div>
-        <h1>Индексы и EXPLAIN: верить плану, а не догадкам<span class="sub">Глава ещё не написана — сейчас она в очереди по программе</span></h1>
-        <p class="lead">Здесь появится тот же формат, что в главе 02: ассоциация-якорь, схема, запускаемый код, разбор типичных ошибок, вопросы с собеседования и задачи с решениями.</p>
+        <h1>Индексы и EXPLAIN: где на самом деле тормозит запрос
+          <span class="sub">Индекс — не «ускорение по кнопке», а другой способ добраться до строк</span>
+        </h1>
+        <p class="lead">
+          Добавить индекс и надеяться — плохая стратегия. Нужно уметь читать план: какие таблицы читаются,
+          сколько строк отбрасывается, сколько времени занимает каждый шаг. Тогда видно, где реальная
+          проблема, а где она только чудится.
+        </p>
         <div class="meta">
-          <span class="chip">📐 <b>1 схема</b></span>
-          <span class="chip">💻 <b>лаборатория</b></span>
-          <span class="chip">🎤 <b>6–8 вопросов</b></span>
-          <span class="chip">✍️ <b>3 задачи</b></span>
+          <span class="chip">⏱ <b>40 минут</b></span>
+          <span class="chip">🎯 уровень <b>3 — понимать</b></span>
+          <span class="chip">🐘 <b>PostgreSQL 14</b></span>
+          <span class="chip">📚 <b>Using EXPLAIN</b></span>
         </div>
       </header>
 
       <section>
-        <h2><span class="num">01</span>Что войдёт в главу</h2>
+        <h2><span class="num">01</span>Зачем это backend-разработчику</h2>
+        <ul>
+          <li><strong>Запросы «внезапно» замедляются</strong> после роста таблицы — или не используют созданный индекс.</li>
+          <li><strong>EXPLAIN показывает правду:</strong> где Seq Scan на 100 000 строк, а где Index Scan на 1 440.</li>
+          <li><strong>ORM не спасает:</strong> N+1 запросы и лишние сортировки видны только в плане.</li>
+          <li><strong>Собеседование:</strong> «как понять, почему запрос медленный», «какие типы индексов», «что такое B-tree».</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2><span class="num">02</span>Ассоциация-якорь: оглавление книги</h2>
+
+        <div class="anchor">
+          <div class="glyph">📖</div>
+          <div>
+            <div class="t">Держите эту картинку в голове</div>
+            <p class="kick"><strong>Индекс — оглавление книги.</strong> Без него, чтобы найти главу, приходится
+            листать весь том (Seq Scan). С ним вы идёте по оглавлению к нужной странице (Index Scan) —
+            быстро, но только если ищете по тому, что в оглавлении есть.</p>
+            <p><strong>Не всякая книга нуждается в оглавлении, и не всякий запрос — в индексе.</strong>
+            Планировщик решает по статистике: иногда листать 10 страниц быстрее, чем открывать оглавление.</p>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h2><span class="num">03</span>Ассоциативный ряд: восемь звеньев</h2>
         <ol class="chain">
-          <li><b>B-tree как оглавление книги</b></li>
-          <li><b>почему индекс не используется и как это увидеть</b></li>
-          <li><b>EXPLAIN против EXPLAIN ANALYZE</b></li>
+          <li><b>Seq Scan</b><span>читаем всю таблицу</span></li>
+          <li><b>Index Scan</b><span>идём по индексу</span></li>
+          <li><b>Bitmap</b><span>сначала карта страниц</span></li>
+          <li><b>Hash Join</b><span>соединение через хеш</span></li>
+          <li><b>Nested Loop</b><span>вложенный перебор</span></li>
+          <li><b>cost</b><span>оценка планировщика</span></li>
+          <li><b>actual time</b><span>реальное время</span></li>
+          <li><b>rows</b><span>оценка против факта</span></li>
         </ol>
-        <div class="note">
-          <span class="t">Пока это заглушка</span>
-          <p>Заглушка нужна, чтобы оглавление и мостики работали как карта: видно, куда ведёт каждая тема. Начните с готовой главы 02 — она задаёт шаблон для всех остальных.</p>
+      </section>
+
+      <section>
+        <h2><span class="num">04</span>Схема: два способа добраться до строк</h2>
+
+        <figure>
+          <div class="frame">
+            <img src="assets/maps/index-explain.svg" alt="Seq Scan читает все страницы, Index Scan идёт по B-tree к нужным строкам; примеры времени.">
+          </div>
+          <figcaption>
+            <b>Рис. 1.</b> 100 000 строк: Seq Scan — 3.48 мс, Index Scan по created_at — 0.11 мс.
+            Но индекс не помогает, если сравнивать функцию от колонки.
+          </figcaption>
+        </figure>
+      </section>
+
+      <section>
+        <h2><span class="num">05</span>Как это устроено на самом деле</h2>
+
+        <h3>EXPLAIN и EXPLAIN ANALYZE</h3>
+        <p>
+          <code class="inl">EXPLAIN</code> показывает план и оценку стоимости, не выполняя запрос.
+          <code class="inl">EXPLAIN ANALYZE</code> действительно выполняет запрос и добавляет реальные
+          <code class="inl">actual time</code> и <code class="inl">rows</code>. Первое безопасно на проде,
+          второе — нет (запрос реально выполнится).
+        </p>
+
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Строка плана</th><th>Что значит</th></tr></thead>
+            <tbody>
+              <tr><td class="mono">Seq Scan on t</td><td>последовательное чтение всей таблицы</td></tr>
+              <tr><td class="mono">Index Scan using idx</td><td>чтение по индексу</td></tr>
+              <tr><td class="mono">Bitmap Heap Scan</td><td>сначала bitmap по индексу, потом страницы таблицы</td></tr>
+              <tr><td class="mono">cost=0.29..57.99</td><td>оценка: стартовая и полная стоимость</td></tr>
+              <tr><td class="mono">rows=1435</td><td>сколько строк ожидает планировщик</td></tr>
+              <tr><td class="mono">actual time=0.010..0.075</td><td>реальное время до первой/последней строки, мс</td></tr>
+              <tr><td class="mono">rows=1440</td><td>сколько строк реально получено</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>Индекс работает для «того, что в оглавлении»</h3>
+        <p>
+          B-tree хорош для <code class="inl">=</code>, <code class="inl">&lt;</code>, <code class="inl">&gt;</code>,
+          <code class="inl">BETWEEN</code> и сортировки. Но <code class="inl">WHERE EXTRACT(MONTH FROM created_at) = 3</code>
+          сравнивает результат функции, а не колонку — обычный индекс на <code class="inl">created_at</code>
+          тут не подходит. Помогает переписать в диапазон дат или создать функциональный индекс.
+        </p>
+
+        <h3>Селективность и «маленькая таблица»</h3>
+        <p>
+          Планировщик выбирает Seq Scan, если фильтр пропускает большую долю строк: читать всё подряд
+          дешевле, чем прыгать по индексу. На таблице из 10 строк Seq Scan — нормальное решение, а не ошибка.
+          Статистика обновляется командой <code class="inl">ANALYZE</code>.
+        </p>
+
+        <h3>Индекс не бесплатен</h3>
+        <p>
+          Каждый индекс замедляет <code class="inl">INSERT</code>/<code class="inl">UPDATE</code> и занимает место.
+          Композитный индекс <code class="inl">(user_id, created_at)</code> работает и для фильтра по
+          <code class="inl">user_id</code> (левая колонка), и для пары. Индекс по <code class="inl">created_at</code>
+          не поможет запросу только по <code class="inl">user_id</code>.
+        </p>
+      </section>
+
+      <section>
+        <h2><span class="num">06</span>Лаборатория: запустить и увидеть</h2>
+        <p>
+          Для наглядности создадим <code class="inl">orders_big</code> на 100 000 строк — на маленькой
+          <code class="inl">orders</code> планировщик честно выберет Seq Scan.
+        </p>
+
+        <h3>Шаг 1. EXPLAIN без индекса</h3>
+        <div class="code">
+          <div class="bar"><span class="file">24_indexes_explain.sql</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">CREATE TABLE orders_big AS
+SELECT gs AS id,
+       (gs % 5) + 1 AS user_id,
+       (gs % 6) + 1 AS product_id,
+       (gs % 3) + 1 AS quantity,
+       timestamp '2024-01-01' + (gs || ' minutes')::interval AS created_at
+FROM generate_series(1, 100000) AS gs;
+ALTER TABLE orders_big ADD PRIMARY KEY (id);
+ANALYZE orders_big;
+
+EXPLAIN ANALYZE SELECT * FROM orders_big WHERE user_id = 3;</pre>
+          <div class="out">Seq Scan on orders_big  (cost=0.00..1887.00 rows=19647 width=24)
+                       (actual time=0.004..3.368 rows=20000 loops=1)
+  Filter: (user_id = 3)
+  Rows Removed by Filter: 80000
+Planning Time: 0.129 ms
+Execution Time: 3.776 ms</div>
+        </div>
+        <p>
+          Прочитаны все 100 000 строк, 80 000 отброшены фильтром. Оценка rows=19647 близка к факту 20000 —
+          статистика в порядке.
+        </p>
+
+        <h3>Шаг 2. Индекс по user_id</h3>
+        <div class="code">
+          <div class="bar"><span class="file">24_indexes_explain.sql</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">CREATE INDEX idx_orders_big_user ON orders_big(user_id);
+ANALYZE orders_big;
+
+EXPLAIN ANALYZE SELECT * FROM orders_big WHERE user_id = 3;</pre>
+          <div class="out">Bitmap Heap Scan on orders_big  (cost=228.25..1116.78 rows=20123 width=24)
+                              (actual time=0.498..2.066 rows=20000 loops=1)
+  Recheck Cond: (user_id = 3)
+  Heap Blocks: exact=637
+  ->  Bitmap Index Scan on idx_orders_big_user
+        (cost=0.00..223.21 rows=20123 width=0) (actual time=0.448..0.448 rows=20000 loops=1)
+        Index Cond: (user_id = 3)
+Planning Time: 0.202 ms
+Execution Time: 2.469 ms</div>
+        </div>
+        <p>
+          Планировщик выбрал Bitmap Heap Scan: 20% строк — заметная доля, и сначала собрать карту страниц,
+          а потом читать их пачкой эффективнее, чем прыгать по одной. Разница меньше, чем кажется,
+          потому что фильтр не очень селективен.
+        </p>
+
+        <h3>Шаг 3. Индекс по created_at: узкий диапазон</h3>
+        <div class="code">
+          <div class="bar"><span class="file">24_indexes_explain.sql</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">CREATE INDEX idx_orders_big_created ON orders_big(created_at);
+ANALYZE orders_big;
+
+EXPLAIN ANALYZE SELECT * FROM orders_big
+WHERE created_at >= '2024-01-02' AND created_at < '2024-01-03';</pre>
+          <div class="out">Index Scan using idx_orders_big_created on orders_big
+  (cost=0.29..57.99 rows=1435 width=24) (actual time=0.010..0.075 rows=1440 loops=1)
+  Index Cond: ((created_at >= '2024-01-02 00:00:00') AND (created_at < '2024-01-03 00:00:00'))
+Planning Time: 0.180 ms
+Execution Time: 0.108 ms</div>
+        </div>
+        <p>
+          Узкий фильтр (примерно 1,4% строк) — идеальный случай для индекса: 0.108 мс против 3.48 мс
+          у Seq Scan.
+        </p>
+
+        <h3>Шаг 4. Функция на колонке ломает индекс</h3>
+        <div class="code">
+          <div class="bar"><span class="file">24_indexes_explain.sql</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">EXPLAIN ANALYZE SELECT * FROM orders_big
+WHERE EXTRACT(MONTH FROM created_at) = 3;</pre>
+          <div class="out">Seq Scan on orders_big  (cost=0.00..2137.00 rows=500 width=24)
+                       (actual time=7.052..8.150 rows=13601 loops=1)
+  Filter: (EXTRACT(month FROM created_at) = '3'::numeric)
+  Rows Removed by Filter: 86399
+Planning Time: 0.038 ms
+Execution Time: 8.354 ms</div>
+        </div>
+        <p>
+          Индекс на <code class="inl">created_at</code> уже создан, но не используется: планировщик не может
+          применить его к результату функции. Оценка rows=500 сильно занижена (факт 13601) — тоже сигнал.
+        </p>
+
+        <h3>Шаг 5. План соединения на маленькой базе</h3>
+        <div class="code">
+          <div class="bar"><span class="file">24_indexes_explain.sql</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">EXPLAIN SELECT o.id, u.name, p.name
+FROM orders o
+JOIN users u ON u.id = o.user_id
+JOIN products p ON p.id = o.product_id
+WHERE u.city = 'Москва';</pre>
+          <div class="out">Nested Loop  (cost=18.06..49.14 rows=7 width=68)
+  ->  Hash Join  (cost=17.91..47.76 rows=7 width=40)
+        Hash Cond: (o.user_id = u.id)
+        ->  Seq Scan on orders o  (cost=0.00..25.70 rows=1570 width=12)
+        ->  Hash  (cost=17.88..17.88 rows=3 width=36)
+              ->  Seq Scan on users u  (cost=0.00..17.88 rows=3 width=36)
+                    Filter: (city = 'Москва'::text)
+  ->  Index Scan using products_pkey on products p  (cost=0.15..0.20 rows=1 width=36)
+        Index Cond: (id = o.product_id)</div>
+        </div>
+        <p>
+          Порядок в плане — снизу вверх: два Seq Scan, Hash Join, затем для каждой строки — Index Scan
+          по первичному ключу products. Даже на пяти строках планировщик использует индекс
+          <code class="inl">products_pkey</code>.
+        </p>
+      </section>
+
+      <section>
+        <h2><span class="num">07</span>Мост: где это живёт в приложении</h2>
+        <div class="code">
+          <div class="bar"><span class="file">практика</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">-- включить реальные планы для медленных запросов
+ALTER DATABASE learning_shop SET log_min_duration_statement = 500;
+
+-- какие индексы уже есть
+SELECT indexname, indexdef FROM pg_indexes WHERE tablename = 'orders_big';
+
+-- как часто используется индекс
+SELECT relname, seq_scan, idx_scan FROM pg_stat_user_tables;</pre>
+        </div>
+        <p>
+          В ORM та же история: <code class="inl">.where(...)</code> превращается в SQL, и только EXPLAIN
+          покажет, использовался ли индекс. Для pandas-аналога — <code class="inl">df.groupby</code> держит
+          хеш-таблицу в памяти, а не индекс в базе; это разные механики с одной идеей «найти нужное быстро».
+        </p>
+      </section>
+
+      <section>
+        <h2><span class="num">08</span>Шесть ошибок, на которых спотыкаются</h2>
+
+        <div class="errors">
+          <div class="err">
+            <div class="h">Функция на колонке в WHERE</div>
+            <p><code class="inl">WHERE EXTRACT(MONTH FROM created_at) = 3</code> отключает обычный индекс.</p>
+            <div class="fix">Диапазон дат или функциональный индекс.</div>
+          </div>
+          <div class="err">
+            <div class="h">Ожидание индекса на маленькой таблице</div>
+            <p>На 10–100 строках Seq Scan быстрее — это правильное решение планировщика.</p>
+            <div class="fix">Проверять на объёме, близком к проду.</div>
+          </div>
+          <div class="err">
+            <div class="h">Индексы на всё подряд</div>
+            <p>Каждый индекс замедляет вставку и обновление, занимает место.</p>
+            <div class="fix">Индексировать по реальным запросам; убирать неиспользуемые.</div>
+          </div>
+          <div class="err">
+            <div class="h">Неверный порядок в композитном индексе</div>
+            <p><code class="inl">(created_at, user_id)</code> не заменит <code class="inl">(user_id, created_at)</code> для фильтра по user_id.</p>
+            <div class="fix">Первой ставьте колонку из самых частых фильтров.</div>
+          </div>
+          <div class="err">
+            <div class="h">EXPLAIN ANALYZE на проде</div>
+            <p>Запрос реально выполняется — можно нагрузить базу.</p>
+            <div class="fix">EXPLAIN без ANALYZE либо на реплике/тестовой базе.</div>
+          </div>
+          <div class="err">
+            <div class="h">Оценки rows сильно расходятся с фактом</div>
+            <p>Планировщик выбирает неудачный план из-за устаревшей статистики.</p>
+            <div class="fix"><code class="inl">ANALYZE</code> таблицы; проверить коррелированность колонок.</div>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h2><span class="num">09</span>Вопросы с собеседования</h2>
+        <div class="qa">
+          <details>
+            <summary>Чем EXPLAIN отличается от EXPLAIN ANALYZE?</summary>
+            <div class="a">
+              <p>EXPLAIN показывает план и оценку, не выполняя запрос. EXPLAIN ANALYZE выполняет и добавляет реальные времена и строки.</p>
+              <div class="verdict">Резюме: план против факта.</div>
+            </div>
+          </details>
+          <details>
+            <summary>Seq Scan или Index Scan — что быстрее?</summary>
+            <div class="a">
+              <p>Зависит от доли строк: на маленькой таблице или широком фильтре Seq Scan быстрее; на узком — индекс.</p>
+              <div class="verdict">Резюме: не «какой лучше», а «какой дешевле здесь».</div>
+            </div>
+          </details>
+          <details>
+            <summary>Что такое B-tree и для чего он?</summary>
+            <div class="a">
+              <p>Сбалансированное дерево поиска. Поддерживает =, &lt;, &gt;, BETWEEN, сортировку; стандартный тип индекса в PostgreSQL.</p>
+              <div class="verdict">Резюме: оглавление с поиском и диапазонами.</div>
+            </div>
+          </details>
+          <details>
+            <summary>Почему индекс не используется?</summary>
+            <div class="a">
+              <p>Функция на колонке, несоответствие типа, низкая селективность, маленькая таблица, устаревшая статистика или другой индекс оказался дешевле.</p>
+              <div class="verdict">Резюме: смотреть план, а не гадать.</div>
+            </div>
+          </details>
+          <details>
+            <summary>Что такое композитный индекс?</summary>
+            <div class="a">
+              <p>Индекс по нескольким колонкам. Работает для фильтров по левой колонке и по префиксу, но не по правой в одиночку.</p>
+              <div class="verdict">Резюме: порядок колонок важен.</div>
+            </div>
+          </details>
+          <details>
+            <summary>Почему много индексов — плохо?</summary>
+            <div class="a">
+              <p>Каждый индекс нужно обновлять при записи, он занимает диск и может сбивать планировщик.</p>
+              <div class="verdict">Резюме: индекс — налог на запись.</div>
+            </div>
+          </details>
+          <details>
+            <summary>Что означает cost в плане?</summary>
+            <div class="a">
+              <p>Условная стоимость: стартовая и полная. Она не в миллисекундах — это внутренние единицы, по которым планировщик сравнивает варианты.</p>
+              <div class="verdict">Резюме: cost — для сравнения планов, время — в actual.</div>
+            </div>
+          </details>
+          <details>
+            <summary>Как найти медленные запросы?</summary>
+            <div class="a">
+              <p><code class="inl">log_min_duration_statement</code>, <code class="inl">pg_stat_statements</code>, EXPLAIN ANALYZE для подозрительных запросов.</p>
+              <div class="verdict">Резюме: логи, статистика, план.</div>
+            </div>
+          </details>
+        </div>
+      </section>
+
+      <section>
+        <h2><span class="num">10</span>Три задачи: сначала своя попытка</h2>
+
+        <h3><span style="color:var(--muted);font-family:var(--mono);font-size:.8rem">01</span> Переписать месяц</h3>
+        <p>Перепишите <code class="inl">EXTRACT(MONTH FROM created_at) = 3</code> так, чтобы использовался индекс по created_at.</p>
+        <div class="qa">
+          <details>
+            <summary>Показать решение</summary>
+            <div class="a">
+              <div class="code" style="margin-top:0">
+                <div class="bar"><span class="file">решение</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+                <pre data-lang="sql">SELECT * FROM orders_big
+WHERE created_at >= '2024-03-01'
+  AND created_at &lt;  '2024-04-01';</pre>
+              </div>
+              <p><strong>Что важно.</strong> Индекс видит диапазон, а не функцию. Полуоткрытый интервал безопаснее
+              <code class="inl">BETWEEN</code> для последнего дня месяца.</p>
+            </div>
+          </details>
+        </div>
+
+        <h3><span style="color:var(--muted);font-family:var(--mono);font-size:.8rem">02</span> Композитный индекс</h3>
+        <p>Запрос фильтрует по user_id и сортирует по created_at. Какой индекс создать?</p>
+        <div class="qa">
+          <details>
+            <summary>Показать решение</summary>
+            <div class="a">
+              <div class="code" style="margin-top:0">
+                <div class="bar"><span class="file">решение</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+                <pre data-lang="sql">CREATE INDEX idx_orders_big_user_created
+    ON orders_big (user_id, created_at);</pre>
+              </div>
+              <p><strong>Что важно.</strong> Сначала колонка фильтра, потом сортировки — тогда индекс
+              закрывает и то, и другое.</p>
+            </div>
+          </details>
+        </div>
+
+        <h3><span style="color:var(--muted);font-family:var(--mono);font-size:.8rem">03</span> Прочитать план</h3>
+        <p>В плане: <code class="inl">Seq Scan ... Rows Removed by Filter: 86399</code>. Что это значит и что делать?</p>
+        <div class="qa">
+          <details>
+            <summary>Показать ответ</summary>
+            <div class="a">
+              <p>Прочитаны все строки, почти все отброшены — фильтр не использует индекс (вероятно, функция
+              на колонке). Нужно переписать условие в диапазон, создать функциональный индекс или проверить,
+              что тип совпадает.</p>
+              <div class="verdict">Резюме: «rows removed» — главный сигнал бесполезной работы.</div>
+            </div>
+          </details>
+        </div>
+      </section>
+
+      <section>
+        <h2><span class="num">11</span>Чек-лист освоения</h2>
+        <div class="check">
+          <label><input type="checkbox"><span class="box"></span><span class="txt">Отличить EXPLAIN от EXPLAIN ANALYZE</span></label>
+          <label><input type="checkbox"><span class="box"></span><span class="txt">Прочитать Seq Scan, Index Scan и cost</span></label>
+          <label><input type="checkbox"><span class="box"></span><span class="txt">Объяснить, почему индекс не используется при функции на колонке</span></label>
+          <label><input type="checkbox"><span class="box"></span><span class="txt">Выбрать порядок колонок в композитном индексе</span></label>
+          <label><input type="checkbox"><span class="box"></span><span class="txt">Переписать месяц в диапазон дат</span></label>
+        </div>
+      </section>
+
+      <section>
+        <h2><span class="num">12</span>Куда ведут мостики</h2>
+        <div class="bridges">
+          <a class="bridge" href="ch-22-subqueries-cte.html"><span class="to">Глава 22</span><span>CTE</span><span class="what">→ шаги плана</span></a>
+          <a class="bridge" href="ch-23-window-functions.html"><span class="to">Глава 23</span><span>Оконные функции</span><span class="what">→ сортировка в плане</span></a>
+          <a class="bridge" href="ch-13-loc-iloc.html"><span class="to">Глава 13</span><span>loc и iloc</span><span class="what">→ почему pandas не нужен индекс</span></a>
+          <a class="bridge" href="ch-26-project.html"><span class="to">Глава 26</span><span>Проект</span><span class="what">→ оптимизация отчёта</span></a>
+          <a class="bridge" href="ch-25-sql-vs-pandas.html"><span class="to">Глава 25</span><span>SQL или pandas</span><span class="what">→ где считать, где хранить</span></a>
         </div>
       </section>
 
       <div class="pager">
-        <a class="prev" href="ch-23-window-functions.html"><span class="dir">← Назад</span><span class="ttl">Оконные функции: строка и её группа</span></a>
-        <a class="next" href="ch-25-sql-vs-pandas.html"><span class="dir">Дальше →</span><span class="ttl">25 · SQL или pandas: где считать</span></a>
+        <a class="prev" href="ch-23-window-functions.html"><span class="dir">← Назад</span><span class="ttl">23 · оконные функции</span></a>
+        <a class="next" href="ch-25-sql-vs-pandas.html"><span class="dir">Часть V →</span><span class="ttl">25 · SQL или pandas: что где делать</span></a>
       </div>
+
     </div>
   </main>
 </div>

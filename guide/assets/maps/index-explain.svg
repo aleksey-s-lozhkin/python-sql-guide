@@ -1,0 +1,65 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 470" role="img" aria-labelledby="t2 d2">
+  <title id="t2">Seq Scan читает все страницы, Index Scan идёт по дереву к нужным строкам</title>
+  <desc id="d2">Слева последовательное чтение всех строк, справа B-tree индекс и переход к нужным строкам.</desc>
+  <defs>
+    <marker id="a2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#8a7f73"/>
+    </marker>
+    <style>
+      .h { font: 700 13px system-ui, -apple-system, "Segoe UI", sans-serif; fill: #1d1b26; }
+      .lbl { font: 700 10px system-ui, -apple-system, "Segoe UI", sans-serif; fill: #8a7f73; letter-spacing: .1em; }
+      .v { font: 500 11px ui-monospace, "SF Mono", Menlo, monospace; fill: #1d1b26; }
+      .s { font: 400 12px system-ui, -apple-system, "Segoe UI", sans-serif; fill: #4a4458; }
+      .n { font: 400 11px system-ui, -apple-system, "Segoe UI", sans-serif; fill: #7a7285; }
+      .r { font: 700 11.5px ui-monospace, "SF Mono", Menlo, monospace; fill: #a23b3b; }
+      .g { font: 700 11.5px ui-monospace, "SF Mono", Menlo, monospace; fill: #2f6b4f; }
+    </style>
+  </defs>
+
+  <text class="lbl" x="40" y="32">SEQ SCAN: ЧИТАЕМ ВСЁ</text>
+  <text class="lbl" x="540" y="32">INDEX SCAN: ИДЁМ ПО ДЕРЕВУ</text>
+
+  <!-- seq pages -->
+  <g stroke="#d8d1c6">
+    <rect x="40" y="52" width="60" height="70" fill="#fff"/><rect x="106" y="52" width="60" height="70" fill="#fff"/>
+    <rect x="172" y="52" width="60" height="70" fill="#fff"/><rect x="238" y="52" width="60" height="70" fill="#fff"/>
+    <rect x="304" y="52" width="60" height="70" fill="#fff"/><rect x="370" y="52" width="60" height="70" fill="#fff"/>
+    <rect x="436" y="52" width="60" height="70" fill="#fff"/>
+  </g>
+  <text class="n" x="46" y="92">стр.</text>
+  <rect x="238" y="52" width="60" height="70" fill="#fdf0e6" stroke="#e8b48c"/>
+  <text class="v" x="254" y="92">3</text>
+  <text class="n" x="40" y="146">читаются все страницы, фильтр отбрасывает почти всё</text>
+  <text class="r" x="40" y="170">Execution Time: 3.48 ms · Rows Removed: 98 560</text>
+
+  <!-- index tree -->
+  <rect x="600" y="48" width="90" height="40" rx="8" fill="#e9f2ec" stroke="#9cc0a8"/>
+  <text class="v" x="620" y="73">root</text>
+  <rect x="540" y="110" width="90" height="36" rx="8" fill="#fff" stroke="#9cc0a8"/>
+  <text class="v" x="560" y="133">leaf 1</text>
+  <rect x="650" y="110" width="90" height="36" rx="8" fill="#fff" stroke="#9cc0a8"/>
+  <text class="v" x="670" y="133">leaf 2</text>
+  <rect x="760" y="110" width="90" height="36" rx="8" fill="#e9f2ec" stroke="#2f6b4f"/>
+  <text class="v" x="780" y="133">leaf 3</text>
+
+  <path d="M630,88 L590,108" fill="none" stroke="#8a7f73" stroke-width="1.5" marker-end="url(#a2)"/>
+  <path d="M650,88 L690,108" fill="none" stroke="#8a7f73" stroke-width="1.5" marker-end="url(#a2)"/>
+  <path d="M680,88 L800,108" fill="none" stroke="#8a7f73" stroke-width="1.5" marker-end="url(#a2)"/>
+
+  <text class="n" x="540" y="172">индекс знает, где лежат нужные строки</text>
+  <text class="n" x="540" y="194">(для user_id = 3 — только часть таблицы)</text>
+  <text class="g" x="540" y="220">Execution Time: 0.11 ms · Index Scan</text>
+
+  <!-- B-tree note -->
+  <rect x="40" y="248" width="900" height="72" rx="10" fill="#f4f1ea" stroke="#e0d9cd"/>
+  <text class="s" x="60" y="274">Индекс — оглавление книги: не читаем весь том, чтобы найти главу.</text>
+  <text class="n" x="60" y="298">B-tree хорош для =, &lt;, &gt;, BETWEEN и сортировки; hash — только для =.</text>
+
+  <!-- when not used -->
+  <rect x="40" y="336" width="900" height="112" rx="10" fill="#fff" stroke="#d8d1c6"/>
+  <text class="s" x="60" y="362" font-weight="600">Когда индекс не поможет:</text>
+  <text class="n" x="60" y="382">• функция на колонке: WHERE EXTRACT(MONTH FROM created_at) = 3 — Seq Scan, 8.3 ms;</text>
+  <text class="n" x="60" y="402">• фильтр выбирает слишком большую долю строк — дешевле прочитать всё;</text>
+  <text class="n" x="60" y="422">• маленькая таблица: планировщик честно предпочтёт Seq Scan.</text>
+  <text class="n" x="60" y="442">Смотреть не «есть ли индекс», а план: EXPLAIN ANALYZE.</text>
+</svg>

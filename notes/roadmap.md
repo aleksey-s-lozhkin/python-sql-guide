@@ -155,3 +155,12 @@ service worker недоступен. Поэтому страница на Pages 
 - Факты: выручка Anna 76950, Olga 76500, Ivan 23800; HAVING COUNT(*)>1 оставляет трёх;
   NULL в user_id — отдельная группа; CTE monthly: 78150/25750/98500; NOT EXISTS находит заказ 8.
 - Дальше: 23 (оконные функции), 24 (индексы/EXPLAIN), затем проверочная по SQL.
+
+## SQL закрыт: окна и EXPLAIN
+
+- Готовы главы 23 (оконные функции) и 24 (индексы/EXPLAIN).
+- Схемы: `window-functions.svg`, `index-explain.svg`; лаборатории 23–24, таблица orders_big (100k строк).
+- Факты: ROW_NUMBER/RANK/DENSE_RANK при равенстве 1,1,3 против 1,1,2; running/LAG/pct на заказах;
+  топ-1 на группу; Seq Scan 3.48 мс против Index Scan 0.11 мс; функция на колонке — Seq Scan 8.3 мс;
+  план join: Hash Join + Nested Loop + Index Scan products_pkey.
+- Дальше: 25 (SQL против pandas), 26 (проект), проверочная по SQL, часть V.
