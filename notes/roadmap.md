@@ -68,3 +68,10 @@ service worker недоступен. Поэтому страница на Pages 
 - Публикация: репозиторий `aleksey-s-lozhkin/python-sql-guide`, Pages из `guide/` через Actions,
   адрес https://aleksey-s-lozhkin.github.io/python-sql-guide/
 - LAN-просмотр на телефоне: `python3 -m http.server 8899 --bind 0.0.0.0` → `http://<ip>:8899/guide/`.
+
+## Часть I закрыта
+
+- Готовы главы 01–06: карта коллекций, dict, list/tuple, set, comprehensions/генераторы,
+  Counter/defaultdict/deque.
+- Диагностика на 10 задач, две схемы к каждой теме (всего 8 SVG).
+- Следующая часть — NumPy (07–11): ndarray, индексация и маски, axis, broadcasting, view/copy.

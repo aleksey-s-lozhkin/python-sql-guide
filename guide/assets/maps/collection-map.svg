@@ -1,0 +1,78 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 540" role="img" aria-labelledby="t1 d1">
+  <title id="t1">Карта коллекций: семь вопросов и структура, которая на них отвечает</title>
+  <desc id="d1">Вопрос «нужен доступ по ключу» ведёт к dict, уникальность — к set, частоты — к Counter, группы — к defaultdict, оба конца — к deque, неизменяемость — к tuple, порядок и срезы — к list.</desc>
+  <defs>
+    <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#b9ad9d"/>
+    </marker>
+    <style>
+      .h { font: 700 11.5px system-ui, -apple-system, "Segoe UI", sans-serif; fill: #8a7f73; letter-spacing: .14em; }
+      .q { font: 400 14.5px system-ui, -apple-system, "Segoe UI", sans-serif; fill: #1d1b26; }
+      .s { font: 700 14px ui-monospace, "SF Mono", Menlo, monospace; fill: #1d1b26; }
+      .ch { font: 400 11.5px system-ui, -apple-system, "Segoe UI", sans-serif; fill: #7a7285; }
+      .n { font: 400 13px system-ui, -apple-system, "Segoe UI", sans-serif; fill: #4a4458; }
+    </style>
+  </defs>
+
+  <text class="h" x="40" y="36">ВОПРОС</text>
+  <text class="h" x="640" y="36">СТРУКТУРА</text>
+
+  <!-- 1 -->
+  <rect x="40" y="64" width="470" height="44" rx="10" fill="#fff" stroke="#e6dfd3"/>
+  <text class="q" x="58" y="92">Нужен быстрый доступ по ключу?</text>
+  <path d="M514,86 L632,86" fill="none" stroke="#b9ad9d" stroke-width="1.6" marker-end="url(#ar)"/>
+  <rect x="640" y="64" width="300" height="44" rx="10" fill="#eef4fb" stroke="#b9cfe6"/>
+  <text class="s" x="658" y="92">dict</text>
+  <text class="ch" x="922" y="92" text-anchor="end">гл. 02</text>
+
+  <!-- 2 -->
+  <rect x="40" y="122" width="470" height="44" rx="10" fill="#fff" stroke="#e6dfd3"/>
+  <text class="q" x="58" y="150">Нужны только уникальные значения?</text>
+  <path d="M514,144 L632,144" fill="none" stroke="#b9ad9d" stroke-width="1.6" marker-end="url(#ar)"/>
+  <rect x="640" y="122" width="300" height="44" rx="10" fill="#f3eefb" stroke="#c9b8e0"/>
+  <text class="s" x="658" y="150">set</text>
+  <text class="ch" x="922" y="150" text-anchor="end">гл. 04</text>
+
+  <!-- 3 -->
+  <rect x="40" y="180" width="470" height="44" rx="10" fill="#fff" stroke="#e6dfd3"/>
+  <text class="q" x="58" y="208">Нужны частоты элементов?</text>
+  <path d="M514,202 L632,202" fill="none" stroke="#b9ad9d" stroke-width="1.6" marker-end="url(#ar)"/>
+  <rect x="640" y="180" width="300" height="44" rx="10" fill="#fdf0e6" stroke="#e8b48c"/>
+  <text class="s" x="658" y="208">Counter</text>
+  <text class="ch" x="922" y="208" text-anchor="end">гл. 06</text>
+
+  <!-- 4 -->
+  <rect x="40" y="238" width="470" height="44" rx="10" fill="#fff" stroke="#e6dfd3"/>
+  <text class="q" x="58" y="266">Нужны группы по ключу?</text>
+  <path d="M514,260 L632,260" fill="none" stroke="#b9ad9d" stroke-width="1.6" marker-end="url(#ar)"/>
+  <rect x="640" y="238" width="300" height="44" rx="10" fill="#e9f2ec" stroke="#9cc0a8"/>
+  <text class="s" x="658" y="266">defaultdict(list)</text>
+  <text class="ch" x="922" y="266" text-anchor="end">гл. 06</text>
+
+  <!-- 5 -->
+  <rect x="40" y="296" width="470" height="44" rx="10" fill="#fff" stroke="#e6dfd3"/>
+  <text class="q" x="58" y="324">Важны оба конца очереди?</text>
+  <path d="M514,318 L632,318" fill="none" stroke="#b9ad9d" stroke-width="1.6" marker-end="url(#ar)"/>
+  <rect x="640" y="296" width="300" height="44" rx="10" fill="#fbf3dd" stroke="#e3c98a"/>
+  <text class="s" x="658" y="324">deque</text>
+  <text class="ch" x="922" y="324" text-anchor="end">гл. 06</text>
+
+  <!-- 6 -->
+  <rect x="40" y="354" width="470" height="44" rx="10" fill="#fff" stroke="#e6dfd3"/>
+  <text class="q" x="58" y="382">Нужна неизменяемая запись?</text>
+  <path d="M514,376 L632,376" fill="none" stroke="#b9ad9d" stroke-width="1.6" marker-end="url(#ar)"/>
+  <rect x="640" y="354" width="300" height="44" rx="10" fill="#e9f2ec" stroke="#9cc0a8"/>
+  <text class="s" x="658" y="382">tuple</text>
+  <text class="ch" x="922" y="382" text-anchor="end">гл. 03</text>
+
+  <!-- 7 -->
+  <rect x="40" y="412" width="470" height="44" rx="10" fill="#fff" stroke="#e6dfd3"/>
+  <text class="q" x="58" y="440">Нужен порядок, срезы, индексы?</text>
+  <path d="M514,434 L632,434" fill="none" stroke="#b9ad9d" stroke-width="1.6" marker-end="url(#ar)"/>
+  <rect x="640" y="412" width="300" height="44" rx="10" fill="#eef4fb" stroke="#b9cfe6"/>
+  <text class="s" x="658" y="440">list</text>
+  <text class="ch" x="922" y="440" text-anchor="end">гл. 03</text>
+
+  <rect x="40" y="482" width="900" height="44" rx="10" fill="#f4f1ea" stroke="#e0d9cd"/>
+  <text class="n" x="60" y="510">Семь структур — пять вопросов. Если ни один не подошёл, скорее всего, нужен обычный список.</text>
+</svg>

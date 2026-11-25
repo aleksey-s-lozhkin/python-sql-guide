@@ -3,7 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>01 · Списки и словари: как думать коллекциями — Ассоциативный гайд</title>
+<title>01 · Карта коллекций: что выбрать и почему — Ассоциативный гайд</title>
+<meta name="description" content="Вводная глава недели 1: пять вопросов, которые ведут к нужной структуре данных Python, и маршрут по главам 02–06.">
 <link rel="stylesheet" href="assets/style.css">
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#fbf8f2" media="(prefers-color-scheme: light)">
@@ -20,37 +21,216 @@
   <aside class="sidebar" id="sidebar"></aside>
   <main>
     <div class="wrap">
+
       <header class="chapter-head">
         <div class="eyebrow">
-          <span class="part">Часть I · Фундамент Python</span><span class="dot"></span><span>Неделя 1 · дни 1–2</span><span class="dot"></span><span>в работе</span>
+          <span class="part">Часть I · Фундамент Python</span>
+          <span class="dot"></span>
+          <span>Неделя 1 · вводная</span>
+          <span class="dot"></span>
+          <span>готово</span>
         </div>
-        <h1>Списки и словари: как думать коллекциями<span class="sub">Глава ещё не написана — сейчас она в очереди по программе</span></h1>
-        <p class="lead">Здесь появится тот же формат, что в главе 02: ассоциация-якорь, схема, запускаемый код, разбор типичных ошибок, вопросы с собеседования и задачи с решениями.</p>
+        <h1>Карта коллекций: что выбрать и почему
+          <span class="sub">Пять вопросов, которые заменяют запоминание семи структур</span>
+        </h1>
+        <p class="lead">
+          Не нужно держать в голове все методы всех коллекций. Достаточно задать пять вопросов о задаче —
+          и карта сама покажет структуру. Эта глава — оглавление недели и инструмент выбора, к которому
+          вы будете возвращаться.
+        </p>
         <div class="meta">
-          <span class="chip">📐 <b>1 схема</b></span>
-          <span class="chip">💻 <b>лаборатория</b></span>
-          <span class="chip">🎤 <b>6–8 вопросов</b></span>
-          <span class="chip">✍️ <b>3 задачи</b></span>
+          <span class="chip">⏱ <b>20 минут</b></span>
+          <span class="chip">🎯 уровень <b>1–2</b></span>
+          <span class="chip">🐍 Python <b>3.12</b></span>
+          <span class="chip">📚 <b>Tutorial 5</b></span>
         </div>
       </header>
 
       <section>
-        <h2><span class="num">01</span>Что войдёт в главу</h2>
-        <ol class="chain">
-          <li><b>список как «поезд»</b><span>индексы, срезы, распаковка</span></li>
-          <li><b>словарь как «шкаф с номерками»</b><span>вход и выход</span></li>
-          <li><b>первая практика</b><span>5 задач на список словарей без pandas</span></li>
-        </ol>
+        <h2><span class="num">01</span>Зачем эта глава</h2>
+        <p>
+          В Python семь основных структур, и почти все они — вариации двух идей: массив и хеш-таблица.
+          Разница между «работает» и «работает быстро» — это выбор структуры под задачу, а не знание всех методов.
+        </p>
+        <ul>
+          <li><strong>Выбор структуры задаёт сложность.</strong> Проверка входа по списку — O(n), по множеству — O(1). На миллионе элементов это разница в тысячи раз.</li>
+          <li><strong>Это первый вопрос на собеседовании.</strong> «Как бы вы это решили?» — и ожидается не код, а выбор структуры и объяснение цены.</li>
+          <li><strong>Это карта курса.</strong> Главы 02–06 — подробности про каждую структуру; здесь — связи между ними и порядок чтения.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2><span class="num">02</span>Ассоциация-якорь: карта, а не список дорог</h2>
+
+        <div class="anchor">
+          <div class="glyph">🗺️</div>
+          <div>
+            <div class="t">Держите эту картинку в голове</div>
+            <p class="kick"><strong>Вы не запоминаете все улицы — вы пользуетесь картой.</strong> Навигатору
+            достаточно знать, куда вы хотите попасть: «нужен доступ по ключу» — и он показывает структуру.</p>
+            <p>Пять вопросов — это пять развилок карты. Пройдя их, вы почти всегда попадаете в нужную структуру
+            без перебора вариантов.</p>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h2><span class="num">03</span>Карта выбора</h2>
+
+        <figure>
+          <div class="frame">
+            <img src="assets/maps/collection-map.svg" alt="Семь вопросов о задаче и структуры, которые на них отвечают: dict, set, Counter, defaultdict, deque, tuple, list.">
+          </div>
+          <figcaption>
+            <b>Рис. 1.</b> Читайте сверху вниз: найдите вопрос, который описывает вашу задачу, — и структуру.
+            Справа указана глава, где эта структура разобрана.
+          </figcaption>
+        </figure>
+
+        <p>
+          Важно: карта не заменяет понимание. Она отвечает на вопрос «что взять», но не «почему это работает».
+          Ответы на «почему» — в главах 02–06, и они построены так, что каждая следующая опирается на предыдущую.
+        </p>
+      </section>
+
+      <section>
+        <h2><span class="num">04</span>Пять вопросов с примерами</h2>
+
+        <h3>1. Нужен доступ по ключу?</h3>
+        <p>Если данные — это пары «имя → значение», берите <code class="inl">dict</code>. Поиск, проверка наличия и обновление — всё O(1).</p>
+        <div class="code">
+          <div class="bar"><span class="file">dict</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">prices = {"apple": 120, "pear": 90}
+prices.get("apple")        # 120
+"pear" in prices           # True, без исключения</pre>
+        </div>
+
+        <h3>2. Нужны только уникальные значения?</h3>
+        <p>Если важен сам факт «есть или нет», а порядок не нужен, — <code class="inl">set</code>. Дедупликация и пересечения за один шаг.</p>
+        <div class="code">
+          <div class="bar"><span class="file">set</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">tags = {"python", "sql", "python"}       # {'python', 'sql'}
+u1, u2 = {"python", "sql"}, {"sql", "dbt"}
+u1 &amp; u2                                  # {'sql'}</pre>
+        </div>
+
+        <h3>3. Нужен порядок, срезы и индексы?</h3>
+        <p>Если данные — это последовательность, берите <code class="inl">list</code>. Если последовательность не должна меняться — <code class="inl">tuple</code>: он компактнее и может быть ключом.</p>
+        <div class="code">
+          <div class="bar"><span class="file">list и tuple</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">rows = [10, 20, 30]
+rows[:2]          # [10, 20] — копия
+point = (10, 20)  # неизменяемо, годится в ключ</pre>
+        </div>
+
+        <h3>4. Нужны частоты или группы?</h3>
+        <p>Считать вхождения — <code class="inl">Counter</code>. Раскладывать по ключам — <code class="inl">defaultdict(list)</code>. Оба — надстройки над dict, обе экономят по пять строк на задачу.</p>
+        <div class="code">
+          <div class="bar"><span class="file">Counter и defaultdict</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">from collections import Counter, defaultdict
+
+Counter("abracadabra").most_common(2)   # [('a', 5), ('b', 2)]
+groups = defaultdict(list)
+groups["Anna"].append(1200)</pre>
+        </div>
+
+        <h3>5. Важны оба конца очереди?</h3>
+        <p>Если добавляете и забираете с двух сторон — <code class="inl">deque</code>. У списка левый край O(n), у deque — O(1).</p>
+        <div class="code">
+          <div class="bar"><span class="file">deque</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">from collections import deque
+
+queue = deque([1, 2, 3])
+queue.appendleft(0)     # O(1), в отличие от list.insert(0)
+queue.popleft()         # 0</pre>
+        </div>
+
+        <h2><span class="num">05</span>Сводная таблица</h2>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Структура</th><th>Отвечает на вопрос</th><th>Вход</th><th>Порядок</th><th>Глава</th></tr></thead>
+            <tbody>
+              <tr><td class="mono">list</td><td>последовательность, срезы</td><td>O(1) по индексу</td><td>вставки</td><td>03</td></tr>
+              <tr><td class="mono">tuple</td><td>неизменяемая запись</td><td>O(1) по индексу</td><td>вставки</td><td>03</td></tr>
+              <tr><td class="mono">dict</td><td>ключ → значение</td><td>O(1) в среднем</td><td>вставки</td><td>02</td></tr>
+              <tr><td class="mono">set</td><td>уникальность</td><td>O(1) в среднем</td><td>не гарантирован</td><td>04</td></tr>
+              <tr><td class="mono">Counter</td><td>частоты</td><td>O(1) в среднем</td><td>вставки</td><td>06</td></tr>
+              <tr><td class="mono">defaultdict</td><td>группы по ключу</td><td>O(1) в среднем</td><td>вставки</td><td>06</td></tr>
+              <tr><td class="mono">deque</td><td>очередь с двух концов</td><td>O(1) с краёв, O(n) в середине</td><td>вставки</td><td>06</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section>
+        <h2><span class="num">06</span>Как пройти неделю</h2>
+        <p>
+          Пять занятий по 40 минут — по одному на главу 02–06, плюс диагностика на входе. Если тема не
+          укладывается, добавляйте занятие, а не переходите дальше.
+        </p>
+        <div class="bridges">
+          <a class="bridge" href="diagnostic.html"><span class="to">00 · 20 мин</span><span>Диагностика коллекций</span><span class="what">→ понять, с чего начать</span></a>
+          <a class="bridge" href="ch-03-list-tuple.html"><span class="to">01 · 40 мин</span><span>list и tuple</span><span class="what">→ порядок, копии, изменяемость</span></a>
+          <a class="bridge" href="ch-02-dict.html"><span class="to">02 · 40 мин</span><span>dict</span><span class="what">→ ключи, хеш, O(1)</span></a>
+          <a class="bridge" href="ch-04-set.html"><span class="to">03 · 40 мин</span><span>set</span><span class="what">→ уникальность и операции</span></a>
+          <a class="bridge" href="ch-05-comprehensions.html"><span class="to">04 · 40 мин</span><span>comprehensions и генераторы</span><span class="what">→ конвейер данных</span></a>
+          <a class="bridge" href="ch-06-collections.html"><span class="to">05 · 40 мин</span><span>Counter, defaultdict, deque</span><span class="what">→ готовые инструменты</span></a>
+        </div>
         <div class="note">
-          <span class="t">Пока это заглушка</span>
-          <p>Заглушка нужна, чтобы оглавление и мостики работали как карта: видно, куда ведёт каждая тема. Начните с готовой главы 02 — она задаёт шаблон для всех остальных.</p>
+          <span class="t">Критерий прохождения недели</span>
+          <p>Самостоятельно решить 5 задач на список словарей — найти дорогие заказы, уникальных пользователей,
+          количество и сумму по каждому, пользователя с максимальной суммой, — не используя pandas.
+          Разбор этой практики есть в главах 02 и 06, а проверить себя можно диагностикой.</p>
+        </div>
+      </section>
+
+      <section>
+        <h2><span class="num">07</span>Пять ошибок выбора</h2>
+        <div class="errors">
+          <div class="err">
+            <div class="h">list для проверки входа в цикле</div>
+            <p><code class="inl">if x in users_list</code> внутри цикла — O(n²). На 10 000 элементов это уже больно.</p>
+            <div class="fix">Один раз построить <code class="inl">set</code> и проверять по нему.</div>
+          </div>
+          <div class="err">
+            <div class="h">dict там, где нужен set</div>
+            <p>Хранить <code class="inl">{"python": True, "sql": True}</code> ради уникальности — лишняя память и лишние значения.</p>
+            <div class="fix">Если значения не нужны — <code class="inl">set</code>.</div>
+          </div>
+          <div class="err">
+            <div class="h">Ручной счётчик вместо Counter</div>
+            <p>Пять строк с <code class="inl">get</code> и <code class="inl">+1</code> там, где хватает одной.</p>
+            <div class="fix"><code class="inl">Counter(iterable)</code>, <code class="inl">most_common(n)</code>.</div>
+          </div>
+          <div class="err">
+            <div class="h">list как очередь</div>
+            <p><code class="inl">pop(0)</code> и <code class="inl">insert(0, x)</code> сдвигают весь массив — O(n) на операцию.</p>
+            <div class="fix"><code class="inl">deque</code>: <code class="inl">appendleft</code>/<code class="inl">popleft</code> за O(1).</div>
+          </div>
+          <div class="err">
+            <div class="h">tuple для изменяемой записи</div>
+            <p>Если поля будут меняться, tuple заставит пересоздавать объект на каждое изменение.</p>
+            <div class="fix">Список, словарь или <code class="inl">dataclass</code>; tuple — для фиксированных записей.</div>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h2><span class="num">08</span>Чек-лист недели</h2>
+        <div class="check">
+          <label><input type="checkbox"><span class="box"></span><span class="txt">По описанию задачи выбрать структуру и объяснить цену выбора</span></label>
+          <label><input type="checkbox"><span class="box"></span><span class="txt">Решить 5 задач на список словарей без pandas</span></label>
+          <label><input type="checkbox"><span class="box"></span><span class="txt">Объяснить, почему проверка входа по set быстрее, чем по list</span></label>
+          <label><input type="checkbox"><span class="box"></span><span class="txt">Показать, где та же структура живёт в pandas и SQL</span></label>
+          <label><input type="checkbox"><span class="box"></span><span class="txt">Пройти диагностику повторно и сравнить результат</span></label>
         </div>
       </section>
 
       <div class="pager">
-        <a class="prev" href="index.html"><span class="dir">← Назад</span><span class="ttl">Обложка</span></a>
-        <a class="next" href="ch-02-dict.html"><span class="dir">Дальше →</span><span class="ttl">02 · dict: шкаф с номерками</span></a>
+        <a class="prev" href="index.html"><span class="dir">← Назад</span><span class="ttl">Обложка и оглавление</span></a>
+        <a class="next" href="ch-02-dict.html"><span class="dir">Начать неделю →</span><span class="ttl">02 · dict: шкаф с номерками</span></a>
       </div>
+
     </div>
   </main>
 </div>
