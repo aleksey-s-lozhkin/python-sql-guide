@@ -1,0 +1,108 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 580" role="img" aria-labelledby="t1 d1">
+  <title id="t1">Список как поезд: append прицепляет вагон, insert(0) сдвигает весь состав</title>
+  <desc id="d1">Сверху список из трёх элементов и новый элемент в конце. Снизу вставка в начало сдвигает все элементы вправо.</desc>
+  <defs>
+    <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#8a7f73"/>
+    </marker>
+    <marker id="ar2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#c2410c"/>
+    </marker>
+    <style>
+      .lbl { font: 700 12px system-ui, -apple-system, "Segoe UI", sans-serif; fill: #8a7f73; letter-spacing: .14em; }
+      .idx { font: 600 11px ui-monospace, "SF Mono", Menlo, monospace; fill: #8a7f73; }
+      .val { font: 600 22px ui-monospace, "SF Mono", Menlo, monospace; fill: #1d1b26; }
+      .cap { font: 400 13.5px system-ui, -apple-system, "Segoe UI", sans-serif; fill: #4a4458; }
+      .big { font: 700 15px system-ui, -apple-system, "Segoe UI", sans-serif; fill: #1d1b26; }
+      .note { font: 400 13px system-ui, -apple-system, "Segoe UI", sans-serif; fill: #7a7285; }
+    </style>
+  </defs>
+
+  <!-- ── append ── -->
+  <text class="lbl" x="40" y="34">APPEND: ПРИЦЕПИТЬ ВАГОН В КОНЕЦ</text>
+
+  <g>
+    <rect x="40" y="70" width="140" height="84" rx="14" fill="#eef4fb" stroke="#b9cfe6"/>
+    <text class="idx" x="40" y="60">0</text>
+    <text class="val" x="97" y="121">10</text>
+    <circle cx="75" cy="164" r="7" fill="#fff" stroke="#b9cfe6"/>
+    <circle cx="145" cy="164" r="7" fill="#fff" stroke="#b9cfe6"/>
+  </g>
+  <g>
+    <rect x="190" y="70" width="140" height="84" rx="14" fill="#eef4fb" stroke="#b9cfe6"/>
+    <text class="idx" x="190" y="60">1</text>
+    <text class="val" x="247" y="121">20</text>
+    <circle cx="225" cy="164" r="7" fill="#fff" stroke="#b9cfe6"/>
+    <circle cx="295" cy="164" r="7" fill="#fff" stroke="#b9cfe6"/>
+  </g>
+  <g>
+    <rect x="340" y="70" width="140" height="84" rx="14" fill="#eef4fb" stroke="#b9cfe6"/>
+    <text class="idx" x="340" y="60">2</text>
+    <text class="val" x="397" y="121">30</text>
+    <circle cx="375" cy="164" r="7" fill="#fff" stroke="#b9cfe6"/>
+    <circle cx="445" cy="164" r="7" fill="#fff" stroke="#b9cfe6"/>
+  </g>
+
+  <path d="M492,112 L520,112" fill="none" stroke="#c2410c" stroke-width="2" marker-end="url(#ar2)"/>
+  <g>
+    <rect x="530" y="70" width="140" height="84" rx="14" fill="#e9f2ec" stroke="#9cc0a8" stroke-dasharray="6 5"/>
+    <text class="idx" x="530" y="60">3</text>
+    <text class="val" x="587" y="121">40</text>
+    <circle cx="565" cy="164" r="7" fill="#fff" stroke="#9cc0a8"/>
+    <circle cx="635" cy="164" r="7" fill="#fff" stroke="#9cc0a8"/>
+    <text class="note" x="548" y="186">новый</text>
+  </g>
+
+  <text class="big" x="700" y="98">append(40)</text>
+  <text class="cap" x="700" y="122">старые индексы</text>
+  <text class="cap" x="700" y="142">не изменились</text>
+  <text class="note" x="700" y="168">амортизированно O(1)</text>
+
+  <line x1="40" y1="216" x2="940" y2="216" stroke="#e6dfd3" stroke-dasharray="4 5"/>
+
+  <!-- ── insert ── -->
+  <text class="lbl" x="40" y="252">INSERT(0, 5): ВСЕМ ПРИДЁТСЯ СДВИНУТЬСЯ</text>
+
+  <text class="note" x="40" y="300">было</text>
+  <g opacity=".55">
+    <rect x="190" y="280" width="140" height="78" rx="12" fill="#fff" stroke="#c9c2b6" stroke-dasharray="5 5"/>
+    <text class="val" x="247" y="327">10</text>
+    <rect x="340" y="280" width="140" height="78" rx="12" fill="#fff" stroke="#c9c2b6" stroke-dasharray="5 5"/>
+    <text class="val" x="397" y="327">20</text>
+    <rect x="490" y="280" width="140" height="78" rx="12" fill="#fff" stroke="#c9c2b6" stroke-dasharray="5 5"/>
+    <text class="val" x="547" y="327">30</text>
+  </g>
+
+  <path d="M260,358 L260,392" fill="none" stroke="#8a7f73" stroke-width="1.6" marker-end="url(#ar)"/>
+  <path d="M410,358 L410,392" fill="none" stroke="#8a7f73" stroke-width="1.6" marker-end="url(#ar)"/>
+  <path d="M560,358 L560,392" fill="none" stroke="#8a7f73" stroke-width="1.6" marker-end="url(#ar)"/>
+
+  <g>
+    <rect x="40" y="400" width="140" height="78" rx="12" fill="#e9f2ec" stroke="#9cc0a8"/>
+    <text class="idx" x="40" y="392">0</text>
+    <text class="val" x="97" y="447">5</text>
+    <text class="note" x="52" y="498">новый</text>
+  </g>
+  <g>
+    <rect x="190" y="400" width="140" height="78" rx="12" fill="#eef4fb" stroke="#b9cfe6"/>
+    <text class="idx" x="190" y="392">1</text>
+    <text class="val" x="247" y="447">10</text>
+  </g>
+  <g>
+    <rect x="340" y="400" width="140" height="78" rx="12" fill="#eef4fb" stroke="#b9cfe6"/>
+    <text class="idx" x="340" y="392">2</text>
+    <text class="val" x="397" y="447">20</text>
+  </g>
+  <g>
+    <rect x="490" y="400" width="140" height="78" rx="12" fill="#eef4fb" stroke="#b9cfe6"/>
+    <text class="idx" x="490" y="392">3</text>
+    <text class="val" x="547" y="447">30</text>
+  </g>
+
+  <text class="note" x="40" y="530">стало</text>
+
+  <text class="big" x="700" y="410">insert(0, 5)</text>
+  <text class="cap" x="700" y="436">сдвигается весь состав</text>
+  <text class="note" x="700" y="462">O(n): на 100 000 элементов</text>
+  <text class="note" x="700" y="480">в 330 раз медленнее append</text>
+</svg>

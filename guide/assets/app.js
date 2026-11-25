@@ -55,6 +55,12 @@
       <div class="nav-wrap">
         <div class="reader-bar"><span>Размер текста</span><button data-rs="-0.05" title="Мельче">А−</button><button data-rs="0.05" title="Крупнее">А+</button></div>
         ${parts}
+        <div class="nav-part">
+          <div class="t"><span>◆</span>Инструменты</div>
+          <a class="nav-ch${slug === "diagnostic" ? " active" : ""}" href="diagnostic.html">
+            <span class="n">20′</span><span>Диагностика коллекций</span>
+          </a>
+        </div>
       </div>
       <div class="side-foot">
         Демо-выпуск: готовы обложка и глава 02.<br>

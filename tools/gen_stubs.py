@@ -66,6 +66,15 @@ TEMPLATE = """<!doctype html>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{n} · {title} — Ассоциативный гайд</title>
 <link rel="stylesheet" href="assets/style.css">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#fbf8f2" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#14131a" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="assets/icons/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="assets/icons/icon-180.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Гайд Py/SQL">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 </head>
 <body data-slug="{slug}">
 <div class="app">
@@ -111,8 +120,14 @@ TEMPLATE = """<!doctype html>
 """
 
 os.makedirs("guide", exist_ok=True)
+
+# не перезаписываем готовые главы: они помечены ready: true в toc.js
+import re
+toc = open("guide/assets/toc.js", encoding="utf-8").read()
+READY = set(re.findall(r'slug:\s*"([^"]+)"[^}]*?ready:\s*true', toc))
+
 for i, (n, slug, title, part, week, bullets) in enumerate(FULL):
-    if slug == "ch-02-dict":
+    if slug in READY:
         continue
     prev_n, prev_slug, prev_title = ("—", "index.html", "Обложка") if i == 0 else (FULL[i-1][0], FULL[i-1][1] + ".html", FULL[i-1][2])
     if i + 1 < len(FULL):

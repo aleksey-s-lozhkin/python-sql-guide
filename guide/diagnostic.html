@@ -1,0 +1,380 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Диагностика: Python-коллекции — Ассоциативный гайд</title>
+<meta name="description" content="10 задач на 20 минут: проверьте, с какой главы начинать неделю 1 курса Python.">
+<link rel="stylesheet" href="assets/style.css">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#fbf8f2" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#14131a" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="assets/icons/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="assets/icons/icon-180.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Гайд Py/SQL">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+</head>
+<body data-slug="diagnostic">
+<div class="app">
+  <aside class="sidebar" id="sidebar"></aside>
+  <main>
+    <div class="wrap">
+
+      <header class="chapter-head">
+        <div class="eyebrow">
+          <span class="part">Инструмент</span>
+          <span class="dot"></span>
+          <span>20 минут</span>
+          <span class="dot"></span>
+          <span>10 задач</span>
+        </div>
+        <h1>Диагностика: Python-коллекции
+          <span class="sub">Проверьте, с какой главы начинать неделю 1</span>
+        </h1>
+        <p class="lead">
+          Десять коротких задач на списки, кортежи, словари и множества. Это не экзамен: цель — понять,
+          какие главы можно быстро просмотреть, а какие нужно читать внимательно и с практикой.
+        </p>
+        <div class="meta">
+          <span class="chip">✍️ <b>10 задач</b></span>
+          <span class="chip">⏱ <b>20 минут</b></span>
+          <span class="chip">✅ <b>ответы под спойлером</b></span>
+          <span class="chip">📵 <b>не нужен интернет</b></span>
+        </div>
+      </header>
+
+      <section>
+        <h2><span class="num">01</span>Как это работает</h2>
+        <ul>
+          <li>Сначала пишите свой код или формулируйте ответ — <strong>не открывая</strong> решение. На бумаге, в блокноте, в REPL — как удобно.</li>
+          <li>Открыли ответ, сверили — и отметили «решил сам», только если ваш результат совпал <em>и</em> вы понимаете почему.</li>
+          <li>Время — ориентир, а не дедлайн. Если задача занимает 5 минут — это сигнал не о том, что вы медленный, а о том, какую главу читать внимательнее.</li>
+        </ul>
+
+        <div class="diag-panel">
+          <div class="col"><span class="cap">таймер</span><span class="diag-timer" id="timer">20:00</span></div>
+          <button id="start">Старт</button>
+          <div class="col" style="margin-left:auto"><span class="cap">прогресс</span><span class="score" id="score">решил <b>0</b> из 10</span></div>
+        </div>
+
+        <h2><span class="num">02</span>Задачи</h2>
+
+        <!-- 01 -->
+        <div class="task">
+          <div class="task-h"><span class="qn">01</span> Что выведет код?</div>
+          <div class="code">
+            <div class="bar"><span class="file">задача 01</span><span class="lang">python</span><button class="copy">копировать</button></div>
+            <pre data-lang="python">a = [1, 2, 3]
+b = a
+b.append(4)
+print(a)</pre>
+          </div>
+          <div class="qa">
+            <details>
+              <summary>Показать ответ</summary>
+              <div class="a">
+                <p><code class="inl">[1, 2, 3, 4]</code>. Присваивание не копирует список: <code class="inl">b</code> и <code class="inl">a</code> — два имени одного объекта.</p>
+                <p>Тема: <a href="ch-03-list-tuple.html">глава 03</a>, «второе имя или копия».</p>
+              </div>
+            </details>
+          </div>
+          <label class="self"><input type="checkbox"><span class="box"></span><span class="lbl">решил сам</span></label>
+        </div>
+
+        <!-- 02 -->
+        <div class="task">
+          <div class="task-h"><span class="qn">02</span> Что произойдёт?</div>
+          <div class="code">
+            <div class="bar"><span class="file">задача 02</span><span class="lang">python</span><button class="copy">копировать</button></div>
+            <pre data-lang="python">t = (1, 2, 3)
+t[0] = 10</pre>
+          </div>
+          <div class="qa">
+            <details>
+              <summary>Показать ответ</summary>
+              <div class="a">
+                <p><code class="inl">TypeError: 'tuple' object does not support item assignment</code>. Tuple неизменяем: нельзя заменить элемент после создания.</p>
+                <p>Если элементы нужно менять — это список. Тема: <a href="ch-03-list-tuple.html">глава 03</a>.</p>
+              </div>
+            </details>
+          </div>
+          <label class="self"><input type="checkbox"><span class="box"></span><span class="lbl">решил сам</span></label>
+        </div>
+
+        <!-- 03 -->
+        <div class="task">
+          <div class="task-h"><span class="qn">03</span> Почему падает?</div>
+          <div class="code">
+            <div class="bar"><span class="file">задача 03</span><span class="lang">python</span><button class="copy">копировать</button></div>
+            <pre data-lang="python">prices = {["apple", "fruit"]: 120}</pre>
+          </div>
+          <div class="qa">
+            <details>
+              <summary>Показать ответ</summary>
+              <div class="a">
+                <p><code class="inl">TypeError: unhashable type: 'list'</code>. Список изменяем, у него нет стабильного хеша, поэтому он не может быть ключом.</p>
+                <p>Исправление: <code class="inl">{("apple", "fruit"): 120}</code>. Тема: <a href="ch-02-dict.html">глава 02</a> и <a href="ch-03-list-tuple.html">глава 03</a>.</p>
+              </div>
+            </details>
+          </div>
+          <label class="self"><input type="checkbox"><span class="box"></span><span class="lbl">решил сам</span></label>
+        </div>
+
+        <!-- 04 -->
+        <div class="task">
+          <div class="task-h"><span class="qn">04</span> Что выведет код?</div>
+          <div class="code">
+            <div class="bar"><span class="file">задача 04</span><span class="lang">python</span><button class="copy">копировать</button></div>
+            <pre data-lang="python">grid = [[0]] * 2
+grid[0].append(1)
+print(grid)</pre>
+          </div>
+          <div class="qa">
+            <details>
+              <summary>Показать ответ</summary>
+              <div class="a">
+                <p><code class="inl">[[0, 1], [0, 1]]</code>. Умножение повторяет ссылку на один и тот же внутренний список.</p>
+                <p>Правильно: <code class="inl">[[0] for _ in range(2)]</code>. Тема: <a href="ch-03-list-tuple.html">глава 03</a>.</p>
+              </div>
+            </details>
+          </div>
+          <label class="self"><input type="checkbox"><span class="box"></span><span class="lbl">решил сам</span></label>
+        </div>
+
+        <!-- 05 -->
+        <div class="task">
+          <div class="task-h"><span class="qn">05</span> Что выведет код?</div>
+          <div class="code">
+            <div class="bar"><span class="file">задача 05</span><span class="lang">python</span><button class="copy">копировать</button></div>
+            <pre data-lang="python">def f(x, acc=[]):
+    acc.append(x)
+    return acc
+
+print(f(1), f(2))</pre>
+          </div>
+          <div class="qa">
+            <details>
+              <summary>Показать ответ</summary>
+              <div class="a">
+                <p><code class="inl">[1] [1, 2]</code>. Значение по умолчанию вычисляется один раз при определении функции и живёт между вызовами.</p>
+                <p>Исправление: <code class="inl">acc=None</code> и создание списка внутри. Тема: <a href="ch-03-list-tuple.html">глава 03</a>, ошибки.</p>
+              </div>
+            </details>
+          </div>
+          <label class="self"><input type="checkbox"><span class="box"></span><span class="lbl">решил сам</span></label>
+        </div>
+
+        <!-- 06 -->
+        <div class="task">
+          <div class="task-h"><span class="qn">06</span> Напишите: сумма заказов по пользователям</div>
+          <p>Для каждого пользователя посчитайте сумму заказов. Только стандартная библиотека Python.</p>
+          <div class="code">
+            <div class="bar"><span class="file">задача 06</span><span class="lang">python</span><button class="copy">копировать</button></div>
+            <pre data-lang="python">orders = [
+    {"user": "Anna", "amount": 1200},
+    {"user": "Ivan", "amount": 800},
+    {"user": "Anna", "amount": 500},
+]
+# ожидается: {'Anna': 1700, 'Ivan': 800}</pre>
+          </div>
+          <div class="qa">
+            <details>
+              <summary>Показать ответ</summary>
+              <div class="a">
+                <div class="code" style="margin-top:0">
+                  <div class="bar"><span class="file">решение</span><span class="lang">python</span><button class="copy">копировать</button></div>
+                  <pre data-lang="python">totals = {}
+for order in orders:
+    user = order["user"]
+    totals[user] = totals.get(user, 0) + order["amount"]
+
+# или короче:
+from collections import defaultdict
+totals = defaultdict(int)
+for order in orders:
+    totals[order["user"]] += order["amount"]</pre>
+                </div>
+                <p>Тема: <a href="ch-02-dict.html">глава 02</a> и <a href="ch-06-collections.html">глава 06</a>.</p>
+              </div>
+            </details>
+          </div>
+          <label class="self"><input type="checkbox"><span class="box"></span><span class="lbl">решил сам</span></label>
+        </div>
+
+        <!-- 07 -->
+        <div class="task">
+          <div class="task-h"><span class="qn">07</span> Удалите дубликаты, сохранив порядок</div>
+          <div class="code">
+            <div class="bar"><span class="file">задача 07</span><span class="lang">python</span><button class="copy">копировать</button></div>
+            <pre data-lang="python">tags = ["sql", "python", "sql", "pandas", "python"]
+# ожидается: ['sql', 'python', 'pandas']</pre>
+          </div>
+          <div class="qa">
+            <details>
+              <summary>Показать ответ</summary>
+              <div class="a">
+                <p><code class="inl">list(dict.fromkeys(tags))</code>. Словарь помнит порядок вставки, а повторный ключ не создаёт новую запись.</p>
+                <p>Если порядок не важен — <code class="inl">list(set(tags))</code>. Тема: <a href="ch-02-dict.html">глава 02</a>, <a href="ch-04-set.html">глава 04</a>.</p>
+              </div>
+            </details>
+          </div>
+          <label class="self"><input type="checkbox"><span class="box"></span><span class="lbl">решил сам</span></label>
+        </div>
+
+        <!-- 08 -->
+        <div class="task">
+          <div class="task-h"><span class="qn">08</span> Что вернёт sort() и как получить копию?</div>
+          <div class="code">
+            <div class="bar"><span class="file">задача 08</span><span class="lang">python</span><button class="copy">копировать</button></div>
+            <pre data-lang="python">nums = [3, 1, 2]
+result = nums.sort()
+print(result, nums)</pre>
+          </div>
+          <div class="qa">
+            <details>
+              <summary>Показать ответ</summary>
+              <div class="a">
+                <p><code class="inl">None [1, 2, 3]</code>. <code class="inl">sort()</code> сортирует на месте и возвращает <code class="inl">None</code>. Отсортированная копия — <code class="inl">sorted(nums)</code>.</p>
+                <p>Тема: <a href="ch-03-list-tuple.html">глава 03</a>.</p>
+              </div>
+            </details>
+          </div>
+          <label class="self"><input type="checkbox"><span class="box"></span><span class="lbl">решил сам</span></label>
+        </div>
+
+        <!-- 09 -->
+        <div class="task">
+          <div class="task-h"><span class="qn">09</span> Объясните разницу в скорости</div>
+          <p>Почему <code class="inl">"anna" in users_set</code> работает быстрее, чем <code class="inl">"anna" in users_list</code>, и от чего зависит эта разница?</p>
+          <div class="qa">
+            <details>
+              <summary>Показать ответ</summary>
+              <div class="a">
+                <p>Множество — хеш-таблица: элемент ищется по вычисленному адресу, в среднем O(1). Список просматривает элементы по порядку — O(n). На 10 элементах разница незаметна, на миллионе — тысячи раз.</p>
+                <p>Ограничение: множество тратит память и требует hashable-элементов. Тема: <a href="ch-02-dict.html">глава 02</a>, <a href="ch-04-set.html">глава 04</a>.</p>
+              </div>
+            </details>
+          </div>
+          <label class="self"><input type="checkbox"><span class="box"></span><span class="lbl">решил сам</span></label>
+        </div>
+
+        <!-- 10 -->
+        <div class="task">
+          <div class="task-h"><span class="qn">10</span> Что выведет код?</div>
+          <div class="code">
+            <div class="bar"><span class="file">задача 10</span><span class="lang">python</span><button class="copy">копировать</button></div>
+            <pre data-lang="python">box = (1, [2, 3])
+box[1].append(4)
+print(box)</pre>
+          </div>
+          <div class="qa">
+            <details>
+              <summary>Показать ответ</summary>
+              <div class="a">
+                <p><code class="inl">(1, [2, 3, 4])</code>. Tuple защищает ссылки, а не содержимое: заменить элемент нельзя, но вложенный список менять можно.</p>
+                <p>Тема: <a href="ch-03-list-tuple.html">глава 03</a>, <a href="ch-02-dict.html">глава 02</a> — почему такой tuple нельзя сделать ключом.</p>
+              </div>
+            </details>
+          </div>
+          <label class="self"><input type="checkbox"><span class="box"></span><span class="lbl">решил сам</span></label>
+        </div>
+
+        <h2><span class="num">03</span>Результат и что делать дальше</h2>
+
+        <div class="rec" data-min="9-10" hidden>
+          <h3>9–10: база на месте</h3>
+          <p>Можно быстро просмотреть главы 02 и 03 по диагонали, проверив только разделы про копирование и ошибки, и переходить к части II (NumPy). Но сначала — <a href="ch-04-set.html">глава 04</a> и <a href="ch-05-comprehensions.html">глава 05</a>: на собеседованиях их спрашивают чаще, чем кажется.</p>
+        </div>
+
+        <div class="rec" data-min="6-8" hidden>
+          <h3>6–8: фундамент есть, есть пробелы</h3>
+          <p>Внимательно читайте <a href="ch-02-dict.html">главу 02</a> и <a href="ch-04-set.html">главу 04</a>, главу 03 — по диагонали. Главное — добить темы, где ответ был «примерно помню»: именно они всплывут на собеседовании.</p>
+        </div>
+
+        <div class="rec" data-min="3-5" hidden>
+          <h3>3–5: начинать с основ</h3>
+          <p>Начните с <a href="ch-02-dict.html">главы 02</a> и <a href="ch-03-list-tuple.html">главы 03</a>. Решайте по 3 задачи в день, а не читайте подряд: на этом уровне прогресс даёт практика, а не чтение.</p>
+        </div>
+
+        <div class="rec" data-min="0-2" hidden>
+          <h3>0–2: это не приговор</h3>
+          <p>Диагностика показывает стартовую точку, а не способности. Откройте <a href="ch-02-dict.html">главу 02</a> и идите медленно: одна тема — один вечер. Через неделю перепройдите диагностику, разница будет заметна.</p>
+        </div>
+
+        <div class="rec" id="rec-default">
+          <h3>Пока не решено ни одной задачи</h3>
+          <p>Отмечайте «решил сам» по ходу — здесь появится рекомендация: с каких глав начинать и что читать внимательнее.</p>
+        </div>
+      </section>
+
+      <div class="pager">
+        <a class="prev" href="index.html"><span class="dir">← Назад</span><span class="ttl">Обложка и оглавление</span></a>
+        <a class="next" href="ch-02-dict.html"><span class="dir">Дальше →</span><span class="ttl">02 · dict: шкаф с номерками</span></a>
+      </div>
+
+    </div>
+  </main>
+</div>
+<script src="assets/toc.js"></script>
+<script src="assets/app.js"></script>
+<script>
+(function () {
+  const total = 20 * 60;
+  let left = total, id = null, running = false;
+  const timer = document.getElementById("timer");
+  const startBtn = document.getElementById("start");
+
+  const fmt = (s) => String(Math.floor(s / 60)).padStart(2, "0") + ":" + String(s % 60).padStart(2, "0");
+  timer.textContent = fmt(left);
+
+  startBtn.addEventListener("click", () => {
+    if (running) return;
+    running = true;
+    startBtn.disabled = true;
+    startBtn.textContent = "идёт";
+    id = setInterval(() => {
+      left -= 1;
+      timer.textContent = fmt(Math.max(0, left));
+      if (left <= 0) {
+        clearInterval(id);
+        running = false;
+        timer.classList.add("out");
+        timer.textContent = "00:00";
+        startBtn.textContent = "время вышло";
+        startBtn.disabled = true;
+      }
+    }, 1000);
+  });
+
+  const boxes = [...document.querySelectorAll(".task input[type=checkbox]")];
+  const score = document.getElementById("score");
+  const recs = [...document.querySelectorAll(".rec[data-min]")];
+  const fallback = document.getElementById("rec-default");
+
+  const update = () => {
+    const n = boxes.filter((b) => b.checked).length;
+    score.innerHTML = "решил <b>" + n + "</b> из " + boxes.length;
+    let match = false;
+    recs.forEach((r) => {
+      const [a, b] = r.dataset.min.split("-").map(Number);
+      const on = n >= a && n <= b;
+      r.hidden = !on;
+      if (on) match = true;
+    });
+    fallback.hidden = match;
+    try { localStorage.setItem("assoc-diag", JSON.stringify(boxes.map((b) => b.checked))); } catch {}
+  };
+
+  try {
+    const saved = JSON.parse(localStorage.getItem("assoc-diag") || "null");
+    if (Array.isArray(saved)) saved.forEach((v, i) => { if (boxes[i]) boxes[i].checked = !!v; });
+  } catch {}
+
+  boxes.forEach((b) => b.addEventListener("change", update));
+  update();
+})();
+</script>
+</body>
+</html>

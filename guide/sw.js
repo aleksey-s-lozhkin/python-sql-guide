@@ -1,5 +1,5 @@
 // Сгенерировано tools/gen_sw.cjs — не править руками.
-const CACHE = "assoc-guide-vfe10696e";
+const CACHE = "assoc-guide-v899342ad";
 const PRECACHE = [
   "./assets/app.js",
   "./assets/icons/favicon.svg",
@@ -7,7 +7,9 @@ const PRECACHE = [
   "./assets/icons/icon-192.png",
   "./assets/icons/icon-512.png",
   "./assets/icons/icon.svg",
+  "./assets/maps/alias-vs-copy.svg",
   "./assets/maps/dict-hash.svg",
+  "./assets/maps/list-as-train.svg",
   "./assets/maps/one-model-three-worlds.svg",
   "./assets/style.css",
   "./assets/toc.js",
@@ -37,9 +39,11 @@ const PRECACHE = [
   "./ch-24-indexes-explain.html",
   "./ch-25-sql-vs-pandas.html",
   "./ch-26-project.html",
+  "./diagnostic.html",
   "./index.html",
   "./manifest.webmanifest",
-  "./snippets/01_dict_lab.py"
+  "./snippets/01_dict_lab.py",
+  "./snippets/03_list_tuple_lab.py"
 ];
 
 self.addEventListener("install", (e) => {
