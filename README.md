@@ -72,13 +72,15 @@ BACKLOG.md              «желания»: сервис, песочница, д
 
 ## Публикация на GitHub Pages
 
-1. Создайте репозиторий и запушьте ветку `main`.
-2. В репозитории: **Settings → Pages → Build and deployment → Source: GitHub Actions**.
-3. Workflow `.github/workflows/pages.yml` сам опубликует папку `guide/`.
+1. Репозиторий запушен в `main`.
+2. **Settings → Pages → Build and deployment → Source: Deploy from a branch → `gh-pages` / (root)**.
+3. Workflow `.github/workflows/pages.yml` при каждом пуше в `main` заново собирает ветку `gh-pages`
+   из папки `guide/`.
 4. Адрес: `https://<user>.github.io/<repo>/` — он же для телефона.
 
-Если хочется без Actions: переименуйте `guide/` в `docs/` и выберите
-**Source: Deploy from a branch → main /docs**.
+Публикация идёт через ветку `gh-pages`, а не через artifact-деплой: artifact-вариант
+иногда падает с ошибкой «No artifacts named github-pages», а ветку можно собрать локально
+тем же скриптом — `tools/publish.sh`.
 
 ## Локальный сервер (проверка PWA)
 
@@ -107,7 +109,8 @@ node tools/check-links.cjs       # все 275 ссылок и 28 страниц 
 node tools/pwa-check.cjs         # SW, кэш из 39 файлов, открытие главы офлайн
 node tools/reader-check.cjs      # «продолжить чтение», размер текста, мобильное меню
 node tools/verify.cjs light      # скриншоты: десктоп, планшет, мобильный, тёмная тема
-node tools/gen_sw.cjs            # пересобрать sw.js после правок контента (47 файлов)
+node tools/gen_sw.cjs            # пересобрать sw.js после правок контента (50 файлов)
+tools/publish.sh                 # опубликовать guide/ в ветку gh-pages вручную
 node tools/render.cjs guide/assets/maps/*.svg
 python3 guide/snippets/01_dict_lab.py
 ```
