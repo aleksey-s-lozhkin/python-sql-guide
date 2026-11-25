@@ -657,3 +657,73 @@ td b { font-weight: 700; }
 .rec h3 { margin: 0 0 8px; font-family: var(--sans); font-size: .95rem; }
 .rec p { font-size: .95rem; color: var(--ink-2); }
 .rec ul { margin-bottom: 0; }
+
+/* ── проверочная работа ─────────────────────────────────────── */
+
+.q-item { border-top: 1px solid var(--line); padding: 20px 0 8px; }
+.q-item:first-of-type { border-top: 0; }
+.q-h {
+  font-family: var(--sans); font-weight: 600; font-size: .98rem;
+  display: flex; gap: 10px; align-items: baseline; margin-bottom: 10px;
+}
+.q-h .qn { font-family: var(--mono); font-size: 11px; color: var(--accent); }
+.q-h .pt { margin-left: auto; font-family: var(--mono); font-size: 10.5px; color: var(--gold); white-space: nowrap; }
+
+.options { display: grid; gap: 7px; margin: 10px 0 6px; }
+.options label {
+  display: flex; gap: 10px; align-items: flex-start;
+  padding: 10px 13px; border: 1px solid var(--line); border-radius: 9px;
+  background: var(--card); cursor: pointer;
+  font-family: var(--sans); font-size: .93rem; line-height: 1.45; color: var(--ink-2);
+}
+.options label:hover { border-color: var(--accent); }
+.options input { margin-top: 2px; accent-color: var(--accent); flex: 0 0 auto; }
+.options label.ok { border-color: var(--green); background: color-mix(in srgb, var(--green-soft) 65%, var(--card)); color: var(--ink); }
+.options label.bad { border-color: var(--red); background: color-mix(in srgb, var(--red-soft) 60%, var(--card)); }
+.verdict { font-family: var(--sans); font-size: 13px; font-weight: 600; margin-top: 4px; }
+.verdict.ok { color: var(--green); }
+.verdict.bad { color: var(--red); }
+.explain {
+  font-size: .92rem; color: var(--ink-2);
+  border-left: 2px solid var(--line); padding-left: 12px; margin-top: 10px;
+}
+.explain a { border-bottom-color: transparent; }
+
+.rubric {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px;
+  font-family: var(--sans); font-size: 12.5px; color: var(--muted);
+  margin: 8px 0 14px;
+}
+.rubric label { display: inline-flex; align-items: center; gap: 5px; cursor: pointer; }
+.rubric input { accent-color: var(--accent); }
+.rubric .h { font-weight: 600; color: var(--ink-2); }
+
+.result { border: 1px solid var(--line); border-radius: var(--radius); background: var(--card); padding: 20px 24px; margin: 26px 0; }
+.scoreline { display: flex; align-items: baseline; gap: 10px; font-family: var(--sans); }
+.scoreline .n { font-family: var(--mono); font-size: 2rem; color: var(--ink); font-variant-numeric: tabular-nums; }
+.scoreline .of { color: var(--muted); font-size: .95rem; }
+.band { margin-top: 10px; font-family: var(--sans); }
+.band b { display: block; font-size: 1.02rem; margin-bottom: 4px; }
+.band p { margin: 0; font-size: .93rem; color: var(--ink-2); }
+
+@media print {
+  [data-slug="checkpoint-1"] .sidebar,
+  [data-slug="checkpoint-1"] .diag-panel,
+  [data-slug="checkpoint-1"] .qa,
+  [data-slug="checkpoint-1"] .rubric,
+  [data-slug="checkpoint-1"] .explain,
+  [data-slug="checkpoint-1"] .verdict,
+  [data-slug="checkpoint-1"] .result,
+  [data-slug="checkpoint-1"] .pager,
+  [data-slug="checkpoint-1"] .print-hint { display: none !important; }
+  [data-slug="checkpoint-1"] .q-item, [data-slug="checkpoint-1"] .task { break-inside: avoid; }
+  [data-slug="checkpoint-1"] .options label { border-color: #ccc; }
+  [data-slug="checkpoint-1"] .options label::before {
+    content: "☐"; font-size: 13px; line-height: 1.2; margin-top: 1px;
+  }
+  [data-slug="checkpoint-1"] .options input { display: none; }
+}
+
+.resume + .resume { margin-top: 10px; }
+.task h3 { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+.task h3 .point { font-family: var(--mono); font-size: 10.5px; color: var(--gold); }
