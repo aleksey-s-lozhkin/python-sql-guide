@@ -17,8 +17,8 @@ window.BOOK = {
     { n: "10", slug: "ch-10-broadcasting", ready: true, title: "Broadcasting: штамп и тесто", desc: "Неделя 2", part: 2 },
     { n: "11", slug: "ch-11-views-copies", ready: true, title: "View и copy: стекло и ксерокс", desc: "Неделя 2", part: 2 },
     // ── III. pandas ────────────────────────────────────────────
-    { n: "12", slug: "ch-12-series-dataframe", title: "Series и DataFrame: таблица с оглавлением", desc: "Неделя 3", part: 3 },
-    { n: "13", slug: "ch-13-loc-iloc", title: "loc и iloc: имя против номера", desc: "Неделя 3", part: 3 },
+    { n: "12", slug: "ch-12-series-dataframe", title: "Series и DataFrame: таблица с оглавлением", desc: "Неделя 3", part: 3, ready: true },
+    { n: "13", slug: "ch-13-loc-iloc", title: "loc и iloc: имя против номера", desc: "Неделя 3", part: 3, ready: true },
     { n: "14", slug: "ch-14-filtering", title: "Фильтрация: булева маска как сито", desc: "Неделя 3", part: 3 },
     { n: "15", slug: "ch-15-groupby", title: "groupby: разложить — посчитать — собрать", desc: "Неделя 4", part: 3 },
     { n: "16", slug: "ch-16-merge", title: "merge: кардинальность важнее синтаксиса", desc: "Неделя 5", part: 3 },
