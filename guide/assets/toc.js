@@ -5,10 +5,10 @@ window.BOOK = {
   chapters: [
     // ── I. Фундамент Python ────────────────────────────────────
     { n: "01", slug: "ch-01-python-collections", title: "Списки и словари: как думать коллекциями", desc: "Неделя 1", part: 1 },
-    { n: "02", slug: "ch-02-dict", title: "dict: шкаф с номерками", desc: "Неделя 1 · демо", part: 1, ready: true },
+    { n: "02", slug: "ch-02-dict", title: "dict: шкаф с номерками", desc: "Неделя 1", part: 1, ready: true },
     { n: "03", slug: "ch-03-list-tuple", title: "list и tuple: поезд и опечатанный контейнер", desc: "Неделя 1", part: 1, ready: true },
-    { n: "04", slug: "ch-04-set", title: "set: пропускной пункт без дублей", desc: "Неделя 1", part: 1 },
-    { n: "05", slug: "ch-05-comprehensions", title: "Comprehensions и генераторы: конвейер против склада", desc: "Неделя 1", part: 1 },
+    { n: "04", slug: "ch-04-set", title: "set: пропускной пункт без дублей", desc: "Неделя 1", part: 1, ready: true },
+    { n: "05", slug: "ch-05-comprehensions", title: "Comprehensions и генераторы: конвейер против склада", desc: "Неделя 1", part: 1, ready: true },
     { n: "06", slug: "ch-06-collections", title: "Counter, defaultdict, deque: три специнструмента", desc: "Неделя 1", part: 1 },
     // ── II. NumPy ──────────────────────────────────────────────
     { n: "07", slug: "ch-07-ndarray", title: "ndarray: сетка вместо списка", desc: "Неделя 2", part: 2 },

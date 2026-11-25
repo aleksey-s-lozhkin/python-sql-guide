@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 400" role="img" aria-labelledby="t2 d2">
+  <title id="t2">Один конвейер и два приёмника: список складывает всё, генератор отдаёт по одному</title>
+  <desc id="d2">Источник range(6) проходит фильтр и преобразование, затем результат уходит либо в список, либо в генератор.</desc>
+  <defs>
+    <marker id="a1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#8a7f73"/>
+    </marker>
+    <marker id="a2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#c2410c"/>
+    </marker>
+    <style>
+      .lbl { font: 700 11px system-ui, -apple-system, "Segoe UI", sans-serif; fill: #8a7f73; letter-spacing: .13em; }
+      .mono { font: 600 13.5px ui-monospace, "SF Mono", Menlo, monospace; fill: #1d1b26; }
+      .b { font: 700 14px system-ui, -apple-system, "Segoe UI", sans-serif; fill: #1d1b26; }
+      .s { font: 400 12.5px system-ui, -apple-system, "Segoe UI", sans-serif; fill: #4a4458; }
+      .n { font: 400 12px system-ui, -apple-system, "Segoe UI", sans-serif; fill: #7a7285; }
+    </style>
+  </defs>
+
+  <text class="lbl" x="40" y="30">ОДИН КОНВЕЙЕР — ДВА ПРИЁМНИКА</text>
+
+  <text class="n" x="40" y="98">источник</text>
+  <rect x="40" y="108" width="120" height="66" rx="12" fill="#fff" stroke="#d8d1c6"/>
+  <text class="mono" x="62" y="148">range(6)</text>
+
+  <path d="M162,141 L196,141" fill="none" stroke="#8a7f73" stroke-width="1.8" marker-end="url(#a1)"/>
+
+  <text class="n" x="200" y="98">фильтр</text>
+  <rect x="200" y="108" width="180" height="66" rx="12" fill="#fff" stroke="#d8d1c6"/>
+  <text class="mono" x="218" y="148">if x % 2 == 0</text>
+
+  <path d="M382,141 L406,141" fill="none" stroke="#8a7f73" stroke-width="1.8" marker-end="url(#a1)"/>
+
+  <text class="n" x="410" y="98">преобразование</text>
+  <rect x="410" y="108" width="140" height="66" rx="12" fill="#fdf0e6" stroke="#e8b48c"/>
+  <text class="mono" x="452" y="148">x * x</text>
+
+  <path d="M552,141 C580,141 588,96 612,90" fill="none" stroke="#c2410c" stroke-width="2" marker-end="url(#a2)"/>
+  <path d="M552,141 C580,141 588,196 612,202" fill="none" stroke="#2f6b4f" stroke-width="2" marker-end="url(#a2)"/>
+
+  <!-- список -->
+  <rect x="618" y="56" width="330" height="80" rx="12" fill="#fdf0e6" stroke="#e8b48c"/>
+  <text class="b" x="636" y="82">СПИСОК: [0, 4, 16]</text>
+  <text class="s" x="636" y="104">склад целиком: память O(n)</text>
+  <text class="n" x="636" y="122">обходить можно много раз</text>
+
+  <!-- генератор -->
+  <rect x="618" y="168" width="330" height="80" rx="12" fill="#e9f2ec" stroke="#9cc0a8"/>
+  <text class="b" x="636" y="194">ГЕНЕРАТОР: 0 → 4 → 16</text>
+  <text class="s" x="636" y="216">по одному: память O(1)</text>
+  <text class="n" x="636" y="234">проход только один</text>
+
+  <text class="s" x="40" y="300">Запись одна и та же по смыслу:</text>
+  <text class="mono" x="40" y="326">[x * x for x in range(6) if x % 2 == 0]</text>
+  <text class="mono" x="40" y="350">(x * x for x in range(6) if x % 2 == 0)</text>
+
+  <rect x="40" y="366" width="908" height="2" fill="#e6dfd3"/>
+  <text class="n" x="40" y="392">Разница не в вычислении, а в приёмнике: круглые скобки не создают кортеж — они создают ленивый поток.</text>
+</svg>

@@ -60,3 +60,11 @@ service worker недоступен. Поэтому страница на Pages 
   `guide/snippets/03_list_tuple_lab.py`, 6 ошибок, 8 вопросов, 3 задачи.
 - Диагностика: таймер 20 минут, 10 задач с ответами, самопроверка, рекомендации по главам.
 - Следующие: 01 (вводная), 04 (set), 05 (comprehensions), 06 (collections).
+
+## Выпуск 2
+
+- Готовы главы 04 (set) и 05 (comprehensions/генераторы).
+- Схемы: `set-operations.svg`, `comprehension-vs-generator.svg`; лаборатории 04 и 05.
+- Публикация: репозиторий `aleksey-s-lozhkin/python-sql-guide`, Pages из `guide/` через Actions,
+  адрес https://aleksey-s-lozhkin.github.io/python-sql-guide/
+- LAN-просмотр на телефоне: `python3 -m http.server 8899 --bind 0.0.0.0` → `http://<ip>:8899/guide/`.

@@ -18,7 +18,7 @@ open guide/index.html
 | Часть | Главы | Статус |
 |---|---|---|
 | Обложка, «как читать», оглавление | — | готово |
-| I. Фундамент Python | 01–06 | **02 и 03 готовы**, 04–06 — заготовки; есть диагностика |
+| I. Фундамент Python | 01–06 | **02–05 готовы**, 01 и 06 — заготовки; есть диагностика |
 | II. NumPy | 07–11 | заготовки |
 | III. pandas | 12–18 | заготовки |
 | IV. SQL | 19–24 | заготовки |
@@ -103,11 +103,11 @@ npx puppeteer browsers install chrome
 Из корня проекта:
 
 ```
-node tools/check-links.cjs       # все 261 ссылка и 28 страниц на месте
+node tools/check-links.cjs       # все 275 ссылок и 28 страниц на месте
 node tools/pwa-check.cjs         # SW, кэш из 39 файлов, открытие главы офлайн
 node tools/reader-check.cjs      # «продолжить чтение», размер текста, мобильное меню
 node tools/verify.cjs light      # скриншоты: десктоп, планшет, мобильный, тёмная тема
-node tools/gen_sw.cjs            # пересобрать sw.js после правок контента (43 файла)
+node tools/gen_sw.cjs            # пересобрать sw.js после правок контента (47 файлов)
 node tools/render.cjs guide/assets/maps/*.svg
 python3 guide/snippets/01_dict_lab.py
 ```

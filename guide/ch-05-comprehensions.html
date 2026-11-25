@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>05 · Comprehensions и генераторы: конвейер против склада — Ассоциативный гайд</title>
+<meta name="description" content="List, dict и set comprehensions, генераторы и ленивые вычисления: память, скорость и типичные ошибки.">
 <link rel="stylesheet" href="assets/style.css">
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#fbf8f2" media="(prefers-color-scheme: light)">
@@ -20,37 +21,518 @@
   <aside class="sidebar" id="sidebar"></aside>
   <main>
     <div class="wrap">
+
       <header class="chapter-head">
         <div class="eyebrow">
-          <span class="part">Часть I · Фундамент Python</span><span class="dot"></span><span>Неделя 1 · день 4</span><span class="dot"></span><span>в работе</span>
+          <span class="part">Часть I · Фундамент Python</span>
+          <span class="dot"></span>
+          <span>Неделя 1 · день 4</span>
+          <span class="dot"></span>
+          <span>готово</span>
         </div>
-        <h1>Comprehensions и генераторы: конвейер против склада<span class="sub">Глава ещё не написана — сейчас она в очереди по программе</span></h1>
-        <p class="lead">Здесь появится тот же формат, что в главе 02: ассоциация-якорь, схема, запускаемый код, разбор типичных ошибок, вопросы с собеседования и задачи с решениями.</p>
+        <h1>Comprehensions и генераторы: конвейер против склада
+          <span class="sub">Одна и та же обработка данных — но разный приёмник результата</span>
+        </h1>
+        <p class="lead">
+          Comprehension — это конвейер с ящиком на выходе: всё готовое сразу складывается в список.
+          Генератор — тот же конвейер без склада: деталь приходит по требованию, память не растёт,
+          но пройти конвейер можно только один раз.
+        </p>
         <div class="meta">
-          <span class="chip">📐 <b>1 схема</b></span>
-          <span class="chip">💻 <b>лаборатория</b></span>
-          <span class="chip">🎤 <b>6–8 вопросов</b></span>
-          <span class="chip">✍️ <b>3 задачи</b></span>
+          <span class="chip">⏱ <b>40 минут</b></span>
+          <span class="chip">🎯 уровень <b>2 — применить</b></span>
+          <span class="chip">🐍 Python <b>3.12</b></span>
+          <span class="chip">📚 <b>Tutorial 5.1.3, 5.6</b></span>
         </div>
       </header>
 
       <section>
-        <h2><span class="num">01</span>Что войдёт в главу</h2>
-        <ol class="chain">
-          <li><b>list/dict/set comprehension</b><span>три формы одной идеи</span></li>
-          <li><b>генератор</b><span>ленивый конвейер и цена повторного обхода</span></li>
-          <li><b>когда comprehension вредит читаемости</b></li>
-        </ol>
+        <h2><span class="num">01</span>Зачем это backend-разработчику</h2>
+        <p>
+          Почти любая обработка данных — это фильтр плюс преобразование. Comprehension записывает её одной строкой,
+          а генератор позволяет делать то же самое, не загружая в память миллион объектов.
+        </p>
+        <ul>
+          <li><strong>Читаемость.</strong> <code class="inl">[f(x) for x in items if cond(x)]</code> читается сверху вниз, как SQL: что взять, откуда, при каком условии. Цикл с <code class="inl">append</code> — это три строки и лишняя переменная.</li>
+          <li><strong>Память.</strong> Список из миллиона чисел занимает 8,4 МБ, генератор — 200 байт. На больших выгрузках это разница между «работает» и «упало по памяти».</li>
+          <li><strong>Ленивость.</strong> Первый элемент генератора появляется за микросекунды, а <code class="inl">any()</code>/<code class="inl">all()</code> останавливаются на первом ответе, не проходя весь диапазон.</li>
+          <li><strong>Собеседование:</strong> «чем генератор отличается от списка», «что такое ленивость», «почему генератор одноразовый» — проверяют понимание модели вычислений.</li>
+        </ul>
         <div class="note">
-          <span class="t">Пока это заглушка</span>
-          <p>Заглушка нужна, чтобы оглавление и мостики работали как карта: видно, куда ведёт каждая тема. Начните с готовой главы 02 — она задаёт шаблон для всех остальных.</p>
+          <span class="t">Связь с SQL</span>
+          <p><code class="inl">[x * x for x in items if x % 2 == 0]</code> — это <code class="inl">SELECT x * x FROM items WHERE x % 2 = 0</code>,
+          только в Python. Одна привычка мышления — два синтаксиса.</p>
+        </div>
+      </section>
+
+      <section>
+        <h2><span class="num">02</span>Ассоциация-якорь: конвейер и склад</h2>
+
+        <div class="anchor">
+          <div class="glyph">🏭</div>
+          <div>
+            <div class="t">Держите эту картинку в голове</div>
+            <p class="kick"><strong>Comprehension — это завод со складом.</strong> Детали проходят по конвейеру,
+            и каждая готовая сразу складывается в ящик. Когда конвейер остановился, склад полон: можно брать детали
+            сколько угодно раз.</p>
+            <p><strong>Генератор — тот же конвейер без склада.</strong> Деталь выдаётся, когда её просят, и никуда
+            не складируется. Память не растёт, но конвейер одноразовый: второй раз пройти его нельзя — он уже
+            отработал.</p>
+          </div>
+        </div>
+
+        <p>
+          Метафора объясняет выбор. Нужно обойти данные дважды, отсортировать или узнать длину — нужен склад, то есть
+          список. Нужно прочитать большой файл, просуммировать, найти первый подходящий — хватит конвейера:
+          склад только мешает.
+        </p>
+      </section>
+
+      <section>
+        <h2><span class="num">03</span>Ассоциативный ряд: восемь звеньев</h2>
+        <ol class="chain">
+          <li><b>for-цикл</b><span>базовая форма: взять, проверить, положить</span></li>
+          <li><b>comprehension</b><span>та же форма одной строкой</span></li>
+          <li><b>if</b><span>фильтр внутри выражения</span></li>
+          <li><b>вложенные циклы</b><span>порядок как в for: слева направо</span></li>
+          <li><b>dict / set comp</b><span>другой приёмник — другой тип</span></li>
+          <li><b>ленивость</b><span>вычисление по требованию</span></li>
+          <li><b>генератор</b><span>поток без склада, память O(1)</span></li>
+          <li><b>исчерпание</b><span>проход только один</span></li>
+        </ol>
+        <p class="small">
+          Обратите внимание: первые пять звеньев — про запись, последние три — про то, <em>когда</em> и <em>сколько раз</em>
+          вычисляется результат. Именно это и спрашивают на собеседовании.
+        </p>
+      </section>
+
+      <section>
+        <h2><span class="num">04</span>Схема: один конвейер, два приёмника</h2>
+
+        <figure>
+          <div class="frame">
+            <img src="assets/maps/comprehension-vs-generator.svg" alt="Конвейер: источник, фильтр, преобразование; результат уходит в список или в генератор.">
+          </div>
+          <figcaption>
+            <b>Рис. 1.</b> Вычисление одинаковое, различие — в приёмнике. Список строит всё сразу, генератор отдаёт
+            по одному. Круглые скобки в генераторном выражении не создают кортеж.
+          </figcaption>
+        </figure>
+
+        <p>
+          Отсюда практическое правило: сначала сформулируйте конвейер — «откуда, при каком условии, что получить»,
+          и только потом решайте, нужен склад или поток. Синтаксис отличается одной скобкой.
+        </p>
+      </section>
+
+      <section>
+        <h2><span class="num">05</span>Как это устроено на самом деле</h2>
+        <p>
+          Comprehension — это не «магия», а тот же цикл, скомпилированный в байткод: создать контейнер, пройти
+          итератор, проверить условие, добавить результат. Разница с ручным циклом — в компактности и в том, что
+          переменная цикла не утекает наружу.
+        </p>
+
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Запись</th><th>Что создаёт</th><th>Когда вычисляет</th></tr></thead>
+            <tbody>
+              <tr><td class="mono">[f(x) for x in it]</td><td>список</td><td>сразу, целиком</td></tr>
+              <tr><td class="mono">{f(x) for x in it}</td><td>множество</td><td>сразу, целиком</td></tr>
+              <tr><td class="mono">{k: v for x in it}</td><td>словарь</td><td>сразу, целиком</td></tr>
+              <tr><td class="mono">(f(x) for x in it)</td><td>генератор</td><td>по требованию, по одному</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>Что значит «лениво»</h3>
+        <p>
+          Генераторное выражение не выполняет ни одной итерации, пока его не начнут обходить: <code class="inl">next()</code>,
+          <code class="inl">for</code>, <code class="inl">sum()</code>, <code class="inl">any()</code>. Каждый запрос
+          прокручивает конвейер до следующего подходящего элемента и останавливается. Когда элементы кончились,
+          поднимается <code class="inl">StopIteration</code> — и генератор больше ничего не отдаст.
+        </p>
+
+        <h3>Почему генератор одноразовый</h3>
+        <p>
+          Генератор — это итератор, который помнит своё место в конвейере. Второй проход невозможен: источник уже
+          исчерпан. Если нужно обойти дважды — либо материализуйте в список, либо создайте новый генератор.
+        </p>
+
+        <h3>Когда что выбирать</h3>
+        <ul>
+          <li><strong>Список</strong> — если результат нужен несколько раз, нужен <code class="inl">len()</code>, сортировка или индексация.</li>
+          <li><strong>Генератор</strong> — если данных много, нужен один проход или ранний выход (<code class="inl">any</code>, <code class="inl">next</code>, чтение файла).</li>
+          <li><strong>Обычный цикл</strong> — если внутри несколько действий, сложные условия или побочные эффекты: читаемость важнее компактности.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2><span class="num">06</span>Лаборатория: запустить и увидеть</h2>
+        <p>
+          Фрагменты файла <a href="snippets/05_comprehensions_lab.py"><code class="inl">snippets/05_comprehensions_lab.py</code></a>.
+          Время и адреса объектов у вас будут другими, порядок величин — тот же.
+        </p>
+
+        <h3>Шаг 1. Три записи одной идеи</h3>
+        <div class="code">
+          <div class="bar"><span class="file">05_comprehensions_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">plain = []
+for x in range(6):
+    if x % 2 == 0:
+        plain.append(x * x)
+
+comp = [x * x for x in range(6) if x % 2 == 0]
+gen = (x * x for x in range(6) if x % 2 == 0)
+
+print(plain, comp, list(gen))</pre>
+          <div class="out">[0, 4, 16] [0, 4, 16] [0, 4, 16]</div>
+        </div>
+
+        <h3>Шаг 2. Память: склад против конвейера</h3>
+        <div class="code">
+          <div class="bar"><span class="file">05_comprehensions_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">import sys
+
+n = 1_000_000
+lst = [x * x for x in range(n)]
+gen = (x * x for x in range(n))
+
+print(sys.getsizeof(lst), sys.getsizeof(gen))</pre>
+          <div class="out">8448728 200</div>
+        </div>
+        <p>
+          8,4 МБ против 200 байт. Генератор не хранит результаты — он хранит только текущее состояние конвейера.
+        </p>
+
+        <h3>Шаг 3. Один проход</h3>
+        <div class="code">
+          <div class="bar"><span class="file">05_comprehensions_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">g = (x * x for x in range(5))
+print(sum(g))
+print(sum(g))</pre>
+          <div class="out">30
+0</div>
+        </div>
+        <p>
+          Второй вызов ничего не считает: генератор уже исчерпан. Это самая частая ошибка при отладке —
+          «почему сумма нулевая?» — потому что генератор уже прошли однажды.
+        </p>
+
+        <h3>Шаг 4. Время до первого элемента</h3>
+        <div class="code">
+          <div class="bar"><span class="file">05_comprehensions_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">n = 1_000_000
+
+first_from_list = [x * x for x in range(n)][0]   # построить всё
+first_from_gen = next(x * x for x in range(n))   # только первый</pre>
+          <div class="out">список:   21.55 ms (построить всё)
+генератор: 37.29 µs (только первый)</div>
+        </div>
+
+        <h3>Шаг 5. Ленивость останавливает работу</h3>
+        <div class="code">
+          <div class="bar"><span class="file">05_comprehensions_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">big = range(10_000_000)
+
+any(x &gt; 5 for x in big)    # True на седьмом элементе
+all(x &lt; 5 for x in big)    # False на шестом</pre>
+          <div class="out">any → True за 3.5 µs
+all → False за 1.9 µs</div>
+        </div>
+        <p>
+          Десять миллионов элементов не были пройдены: проверка остановилась на первом ответе. Это и есть
+          короткое замыкание — главная выгода от ленивости в реальном коде.
+        </p>
+
+        <h3>Шаг 6. Ловушка замыкания</h3>
+        <div class="code">
+          <div class="bar"><span class="file">05_comprehensions_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">funcs = [lambda: i for i in range(3)]
+print([f() for f in funcs])          # [2, 2, 2]
+
+funcs_fixed = [lambda i=i: i for i in range(3)]
+print([f() for f in funcs_fixed])    # [0, 1, 2]</pre>
+          <div class="out">[2, 2, 2]
+[0, 1, 2]</div>
+        </div>
+        <p>
+          Лямбда захватывает переменную, а не значение. К моменту вызова цикл закончился, и <code class="inl">i</code> равно 2.
+          Значение по умолчанию <code class="inl">i=i</code> фиксирует его в момент создания функции.
+        </p>
+      </section>
+
+      <section>
+        <h2><span class="num">07</span>Мост: где ленивость живёт в pandas, SQL и NumPy</h2>
+
+        <h3>pandas: векторизация вместо циклов</h3>
+        <div class="code">
+          <div class="bar"><span class="file">мост в pandas</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">import pandas as pd
+
+df = pd.DataFrame({"amount": [1200, 800, 2100]})
+
+df["amount"].map(lambda x: x * 1.1)   # comprehension-подобно, но медленно
+df["amount"] * 1.1                    # векторизованно: быстрее
+df[df["amount"] &gt; 1000]               # фильтр — это `if` из comprehension
+
+[x * 1.1 for x in df["amount"]]       # список Python, не Series</pre>
+        </div>
+        <p>
+          Comprehension и <code class="inl">map</code> с лямбдой — это построчный Python, а <code class="inl">df["amount"] * 1.1</code> —
+          одна векторная операция. Для больших таблиц разница в десятки раз; глава 12 объяснит, почему.
+        </p>
+
+        <h3>SQL: SELECT — это comprehension</h3>
+        <div class="code">
+          <div class="bar"><span class="file">мост в SQL</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">SELECT amount * 1.1        -- преобразование
+FROM orders
+WHERE amount &gt; 1000;       -- фильтр
+
+-- курсор базы — это генератор: строки приходят порциями
+-- и не загружаются все сразу</pre>
+        </div>
+        <p>
+          <code class="inl">SELECT</code> + <code class="inl">FROM</code> + <code class="inl">WHERE</code> — ровно
+          «выражение, источник, условие» из comprehension. А серверный курсор ведёт себя как генератор:
+          <code class="inl">fetchmany()</code> отдаёт следующую порцию, не материализуя всю таблицу.
+        </p>
+
+        <h3>Файлы и пагинация: генератор по природе</h3>
+        <div class="code">
+          <div class="bar"><span class="file">мост в реальный код</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">with open("big.csv") as f:
+    total = sum(int(line) for line in f)   # файл не читается целиком
+
+def pages(start=0, size=100):
+    while True:
+        chunk = fetch(start, size)          # одна страница за раз
+        if not chunk:
+            return
+        yield chunk
+        start += size</pre>
+        </div>
+        <p>
+          Это те же два приёма, что в главе 08 курса: читать потоково и отдавать порциями. Для выгрузок и отчётов
+          это разница между стабильной работой и OOM.
+        </p>
+      </section>
+
+      <section>
+        <h2><span class="num">08</span>Шесть ошибок, на которых спотыкаются</h2>
+
+        <div class="errors">
+          <div class="err">
+            <div class="h">Генератор уже исчерпан</div>
+            <p>Один и тот же генератор обошли дважды — второй результат пустой. <code class="inl">sum(g)</code>, потом <code class="inl">sum(g)</code> → 0.</p>
+            <div class="fix">Создавайте новый генератор или материализуйте в список, если нужен повторный проход.</div>
+          </div>
+
+          <div class="err">
+            <div class="h">len() у генератора</div>
+            <p><code class="inl">len(g)</code> → <code class="inl">TypeError: object of type 'generator' has no len()</code>. Длина заранее неизвестна.</p>
+            <div class="fix"><code class="inl">sum(1 for _ in g)</code>, но это исчерпает генератор; если длина нужна — список.</div>
+          </div>
+
+          <div class="err">
+            <div class="h">Comprehension ради побочных эффектов</div>
+            <p><code class="inl">[print(x) for x in items]</code> создаёт список <code class="inl">None</code> и путает читателя: comprehension — про построение значения.</p>
+            <div class="fix">Для действий — обычный <code class="inl">for</code>; для результата — comprehension.</div>
+          </div>
+
+          <div class="err">
+            <div class="h">Вложенный comprehension на три уровня</div>
+            <p><code class="inl">[[y for y in row] for row in matrix if ...]</code> — читается, а четыре уровня уже нет.</p>
+            <div class="fix">Промежуточные имена или обычные циклы. Понятность важнее однострочности.</div>
+          </div>
+
+          <div class="err">
+            <div class="h">Лямбда в comprehension</div>
+            <p>Все функции захватят последнее значение переменной: <code class="inl">[lambda: i for i in range(3)]</code> → <code class="inl">[2, 2, 2]</code>.</p>
+            <div class="fix">Фиксировать значение: <code class="inl">lambda i=i: i</code>.</div>
+          </div>
+
+          <div class="err">
+            <div class="h">Круглые скобки — это кортеж?</div>
+            <p><code class="inl">(x for x in it)</code> — генератор, а не кортеж. Кортеж — <code class="inl">tuple(...)</code>, и он сразу материализует всё.</p>
+            <div class="fix">Помнить: <code class="inl">()</code> с выражением внутри — ленивый поток; один элемент — <code class="inl">(x,)</code>.</div>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h2><span class="num">09</span>Вопросы с собеседования</h2>
+        <div class="qa">
+          <details>
+            <summary>Чем генератор отличается от списка?</summary>
+            <div class="a">
+              <p>Список хранит все элементы в памяти и позволяет обходить их много раз. Генератор хранит только состояние конвейера, выдаёт элементы по одному и проходится один раз. Для миллиона чисел — 8,4 МБ против 200 байт.</p>
+              <div class="verdict">Резюме: склад против конвейера.</div>
+            </div>
+          </details>
+          <details>
+            <summary>Что такое ленивые вычисления?</summary>
+            <div class="a">
+              <p>Значение вычисляется только тогда, когда его запросили. Генератор не выполняет ни одной итерации, пока его не начнут обходить, а <code class="inl">any()</code>/<code class="inl">all()</code> останавливаются на первом ответе.</p>
+              <div class="verdict">Резюме: работа по требованию, а не заранее.</div>
+            </div>
+          </details>
+          <details>
+            <summary>Почему генератор одноразовый?</summary>
+            <div class="a">
+              <p>Он итератор и помнит позицию в конвейере. Пройдя до конца, он поднимает StopIteration и больше ничего не отдаёт — источника уже нет.</p>
+              <div class="verdict">Резюме: генератор — это курсор, а не коллекция.</div>
+            </div>
+          </details>
+          <details>
+            <summary>Чем генераторное выражение отличается от генераторной функции?</summary>
+            <div class="a">
+              <p>Выражение записывается в одну строку: <code class="inl">(x * x for x in it)</code>. Функция использует <code class="inl">yield</code> и умеет несколько шагов, ветвления и бесконечные циклы. Обе возвращают генератор.</p>
+              <div class="verdict">Резюме: выражение — короткий конвейер, функция — полноценный поток.</div>
+            </div>
+          </details>
+          <details>
+            <summary>Когда comprehension хуже обычного цикла?</summary>
+            <div class="a">
+              <p>Когда внутри несколько действий, сложные условия, побочные эффекты или вложенные структуры. Тогда однострочник начинает требовать расшифровки.</p>
+              <div class="verdict">Резюме: comprehension — про «построить значение», а не про «сделать несколько дел».</div>
+            </div>
+          </details>
+          <details>
+            <summary>Как посчитать количество элементов генератора?</summary>
+            <div class="a">
+              <p><code class="inl">sum(1 for _ in gen)</code> — но это исчерпает генератор, и повторно его не обойти. Если длина нужна заранее, генератор — неподходящая структура.</p>
+              <div class="verdict">Резюме: длина у потока стоит прохода по нему.</div>
+            </div>
+          </details>
+          <details>
+            <summary>Что такое короткое замыкание в any и all?</summary>
+            <div class="a">
+              <p><code class="inl">any()</code> останавливается на первом истинном значении, <code class="inl">all()</code> — на первом ложном. Поэтому на генераторе они не проходят весь диапазон, если ответ уже известен.</p>
+              <div class="verdict">Резюме: ленивость даёт ранний выход.</div>
+            </div>
+          </details>
+          <details>
+            <summary>Как comprehension связан с SQL SELECT?</summary>
+            <div class="a">
+              <p><code class="inl">[f(x) for x in src if cond(x)]</code> — это <code class="inl">SELECT f(x) FROM src WHERE cond(x)</code>. Та же модель: источник, фильтр, преобразование, приёмник. В pandas приёмник — DataFrame, в SQL — результат запроса.</p>
+              <div class="verdict">Резюме: одна модель, три синтаксиса.</div>
+            </div>
+          </details>
+        </div>
+      </section>
+
+      <section>
+        <h2><span class="num">10</span>Три задачи: сначала своя попытка</h2>
+
+        <h3><span style="color:var(--muted);font-family:var(--mono);font-size:.8rem">01</span> Развернуть матрицу</h3>
+        <p>Из списка списков получите плоский список одной строкой.</p>
+        <div class="code">
+          <div class="bar"><span class="file">условие</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">matrix = [[1, 2], [3, 4], [5, 6]]
+# ожидается: [1, 2, 3, 4, 5, 6]</pre>
+        </div>
+        <div class="qa">
+          <details>
+            <summary>Показать решение и разбор</summary>
+            <div class="a">
+              <div class="code" style="margin-top:0">
+                <div class="bar"><span class="file">решение</span><span class="lang">python</span><button class="copy">копировать</button></div>
+                <pre data-lang="python">flat = [x for row in matrix for x in row]
+print(flat)   # [1, 2, 3, 4, 5, 6]</pre>
+                <div class="out">[1, 2, 3, 4, 5, 6]</div>
+              </div>
+              <p><strong>Что важно.</strong> Порядок циклов — как в обычном for: внешний слева, внутренний справа.
+              Если поменять местами, получится тот же результат для квадратной матрицы, но не для прямоугольной —
+              классическая ошибка.</p>
+            </div>
+          </details>
+        </div>
+
+        <h3><span style="color:var(--muted);font-family:var(--mono);font-size:.8rem">02</span> Сумма из потока</h3>
+        <p>
+          Строки «файла» — список строк с числами. Просуммируйте числа, не создавая список всех чисел.
+        </p>
+        <div class="code">
+          <div class="bar"><span class="file">условие</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">lines = ["10", "20", "", "30"]   # пустая строка — как пустая строка в файле</pre>
+        </div>
+        <div class="qa">
+          <details>
+            <summary>Показать решение и разбор</summary>
+            <div class="a">
+              <div class="code" style="margin-top:0">
+                <div class="bar"><span class="file">решение</span><span class="lang">python</span><button class="copy">копировать</button></div>
+                <pre data-lang="python">total = sum(int(line) for line in lines if line.strip())
+print(total)   # 60</pre>
+                <div class="out">60</div>
+              </div>
+              <p><strong>Что важно.</strong> Список чисел не создаётся: <code class="inl">sum</code> забирает значения
+              из генератора по одному. Именно так читают большие файлы: <code class="inl">sum(int(line) for line in f)</code>.
+              А <code class="inl">if line.strip()</code> отбрасывает пустые строки до преобразования.</p>
+            </div>
+          </details>
+        </div>
+
+        <h3><span style="color:var(--muted);font-family:var(--mono);font-size:.8rem">03</span> Первый подходящий заказ</h3>
+        <p>
+          Найдите первый заказ дороже 1000. Если такого нет — верните <code class="inl">None</code>.
+          Сделайте это лениво и объясните, почему это лучше списка.
+        </p>
+        <div class="code">
+          <div class="bar"><span class="file">условие</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">orders = [
+    {"id": 1, "amount": 800},
+    {"id": 2, "amount": 2100},
+    {"id": 3, "amount": 1200},
+]</pre>
+        </div>
+        <div class="qa">
+          <details>
+            <summary>Показать решение и разбор</summary>
+            <div class="a">
+              <div class="code" style="margin-top:0">
+                <div class="bar"><span class="file">решение</span><span class="lang">python</span><button class="copy">копировать</button></div>
+                <pre data-lang="python">first = next((o for o in orders if o["amount"] &gt; 1000), None)
+print(first)   # {'id': 2, 'amount': 2100}</pre>
+                <div class="out">{'id': 2, 'amount': 2100}</div>
+              </div>
+              <p><strong>Что важно.</strong> <code class="inl">next</code> останавливается на первом совпадении и не
+              доходит до конца. Список через comprehension построил бы все совпадения, даже если нужно одно.
+              Второй аргумент <code class="inl">None</code> защищает от StopIteration.</p>
+            </div>
+          </details>
+        </div>
+      </section>
+
+      <section>
+        <h2><span class="num">11</span>Чек-лист освоения</h2>
+        <div class="check">
+          <label><input type="checkbox"><span class="box"></span><span class="txt">Записать одну и ту же обработку циклом, comprehension и генератором</span></label>
+          <label><input type="checkbox"><span class="box"></span><span class="txt">Объяснить, когда нужен склад, а когда хватит конвейера</span></label>
+          <label><input type="checkbox"><span class="box"></span><span class="txt">Сказать, почему генератор одноразовый и как это обойти</span></label>
+          <label><input type="checkbox"><span class="box"></span><span class="txt">Показать, где ленивость даёт выигрыш: any, next, чтение файла</span></label>
+          <label><input type="checkbox"><span class="box"></span><span class="txt">Перевести comprehension в SQL SELECT и обратно</span></label>
+        </div>
+      </section>
+
+      <section>
+        <h2><span class="num">12</span>Куда ведут мостики</h2>
+        <div class="bridges">
+          <a class="bridge" href="ch-03-list-tuple.html"><span class="to">Глава 03</span><span>list и tuple</span><span class="what">→ почему генератор не список</span></a>
+          <a class="bridge" href="ch-04-set.html"><span class="to">Глава 04</span><span>set: пропускной пункт</span><span class="what">→ set comprehension</span></a>
+          <a class="bridge" href="ch-06-collections.html"><span class="to">Глава 06</span><span>Counter, defaultdict, deque</span><span class="what">→ Counter на генераторе</span></a>
+          <a class="bridge" href="ch-12-series-dataframe.html"><span class="to">Глава 12</span><span>Series и DataFrame</span><span class="what">→ векторизация вместо циклов</span></a>
+          <a class="bridge" href="ch-19-order-of-execution.html"><span class="to">Глава 19</span><span>Порядок выполнения SQL</span><span class="what">→ SELECT как comprehension</span></a>
         </div>
       </section>
 
       <div class="pager">
-        <a class="prev" href="ch-04-set.html"><span class="dir">← Назад</span><span class="ttl">set: пропускной пункт без дублей</span></a>
-        <a class="next" href="ch-06-collections.html"><span class="dir">Дальше →</span><span class="ttl">06 · Counter, defaultdict, deque: три специнструмента</span></a>
+        <a class="prev" href="ch-04-set.html"><span class="dir">← Назад</span><span class="ttl">04 · set: пропускной пункт</span></a>
+        <a class="next" href="ch-06-collections.html"><span class="dir">Дальше →</span><span class="ttl">06 · Counter, defaultdict, deque</span></a>
       </div>
+
     </div>
   </main>
 </div>
