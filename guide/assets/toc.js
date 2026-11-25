@@ -21,8 +21,8 @@ window.BOOK = {
     { n: "13", slug: "ch-13-loc-iloc", title: "loc и iloc: имя против номера", desc: "Неделя 3", part: 3, ready: true },
     { n: "14", slug: "ch-14-filtering", title: "Фильтрация: булева маска как сито", desc: "Неделя 3", part: 3, ready: true },
     { n: "15", slug: "ch-15-groupby", title: "groupby: разложить — посчитать — собрать", desc: "Неделя 4", part: 3, ready: true },
-    { n: "16", slug: "ch-16-merge", title: "merge: кардинальность важнее синтаксиса", desc: "Неделя 5", part: 3 },
-    { n: "17", slug: "ch-17-missing", title: "Пропуски: NaN, None и pd.NA", desc: "Неделя 4", part: 3 },
+    { n: "16", slug: "ch-16-merge", title: "merge: кардинальность важнее синтаксиса", desc: "Неделя 5", part: 3, ready: true },
+    { n: "17", slug: "ch-17-missing", title: "Пропуски: NaN, None и pd.NA", desc: "Неделя 4", part: 3, ready: true },
     { n: "18", slug: "ch-18-dates-reshape", title: "Даты, строки и форма таблицы", desc: "Неделя 5", part: 3 },
     // ── IV. SQL ────────────────────────────────────────────────
     { n: "19", slug: "ch-19-order-of-execution", title: "Порядок выполнения: как база читает запрос", desc: "Неделя 6", part: 4 },

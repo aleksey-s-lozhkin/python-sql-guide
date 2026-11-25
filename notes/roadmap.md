@@ -121,3 +121,12 @@ service worker недоступен. Поэтому страница на Pages 
 - Факты: маска — Series bool; NaN не проходит ни одно сравнение; agg схлопывает, transform
   возвращает длину исходника; size считает строки, count — непустые; filter = HAVING.
 - Дальше: 16 (merge), 17 (пропуски), 18 (даты/reshape), затем проверочная по части III.
+
+## pandas: merge и пропуски
+
+- Готовы главы 16 (merge) и 17 (пропуски).
+- Схемы: `merge-cardinality.svg`, `missing-strategies.svg`; лаборатории 16–17.
+- Факты: inner/left/right/outer дают 3/4/4/5 строк; many-to-many 2×2=4; validate ловит дубли;
+  int→str ключ даёт ValueError; NaN-ключ не соединяется; fillna(0) не возвращает int;
+  nullable Int64 хранит <NA>; groupby по умолчанию выбрасывает NaN-ключ.
+- Дальше: 18 (даты, строки, reshape), затем проверочная по части III.

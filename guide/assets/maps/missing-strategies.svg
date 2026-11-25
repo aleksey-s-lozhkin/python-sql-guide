@@ -1,0 +1,69 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 440" role="img" aria-labelledby="t2 d2">
+  <title id="t2">Три стратегии работы с пропусками: удалить, заполнить, отметить</title>
+  <desc id="d2">Таблица с двумя пропусками и три варианта: dropna, fillna средним и колонка-флаг isna.</desc>
+  <defs>
+    <marker id="a2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#8a7f73"/>
+    </marker>
+    <style>
+      .h { font: 700 13px system-ui, -apple-system, "Segoe UI", sans-serif; fill: #1d1b26; }
+      .lbl { font: 700 10.5px system-ui, -apple-system, "Segoe UI", sans-serif; fill: #8a7f73; letter-spacing: .12em; }
+      .v { font: 500 12px ui-monospace, "SF Mono", Menlo, monospace; fill: #1d1b26; }
+      .s { font: 400 12px system-ui, -apple-system, "Segoe UI", sans-serif; fill: #4a4458; }
+      .n { font: 400 11.5px system-ui, -apple-system, "Segoe UI", sans-serif; fill: #7a7285; }
+      .miss { font: 700 12px ui-monospace, "SF Mono", Menlo, monospace; fill: #a23b3b; }
+      .ok { font: 700 12px ui-monospace, "SF Mono", Menlo, monospace; fill: #2f6b4f; }
+    </style>
+  </defs>
+
+  <text class="lbl" x="30" y="34">ИСХОДНАЯ ТАБЛИЦА</text>
+  <rect x="30" y="52" width="90" height="34" fill="#f4f1ea" stroke="#d8d1c6"/>
+  <rect x="120" y="52" width="110" height="34" fill="#f4f1ea" stroke="#d8d1c6"/>
+  <rect x="230" y="52" width="110" height="34" fill="#f4f1ea" stroke="#d8d1c6"/>
+  <text class="h" x="44" y="74">user</text><text class="h" x="134" y="74">amount</text><text class="h" x="244" y="74">city</text>
+
+  <rect x="30" y="86" width="90" height="40" fill="#fff" stroke="#d8d1c6"/><text class="v" x="44" y="111">anna</text>
+  <rect x="120" y="86" width="110" height="40" fill="#fff" stroke="#d8d1c6"/><text class="v" x="134" y="111">1200</text>
+  <rect x="230" y="86" width="110" height="40" fill="#fff" stroke="#d8d1c6"/><text class="v" x="244" y="111">Москва</text>
+
+  <rect x="30" y="126" width="90" height="40" fill="#fff" stroke="#d8d1c6"/><text class="v" x="44" y="151">ivan</text>
+  <rect x="120" y="126" width="110" height="40" fill="#fbeeee" stroke="#e0b8b8"/><text class="miss" x="134" y="151">NaN</text>
+  <rect x="230" y="126" width="110" height="40" fill="#fbeeee" stroke="#e0b8b8"/><text class="miss" x="244" y="151">NaN</text>
+
+  <rect x="30" y="166" width="90" height="40" fill="#fff" stroke="#d8d1c6"/><text class="v" x="44" y="191">olga</text>
+  <rect x="120" y="166" width="110" height="40" fill="#fff" stroke="#d8d1c6"/><text class="v" x="134" y="191">500</text>
+  <rect x="230" y="166" width="110" height="40" fill="#fff" stroke="#d8d1c6"/><text class="v" x="244" y="191">Москва</text>
+
+  <rect x="30" y="206" width="90" height="40" fill="#fff" stroke="#d8d1c6"/><text class="v" x="44" y="231">petr</text>
+  <rect x="120" y="206" width="110" height="40" fill="#fbeeee" stroke="#e0b8b8"/><text class="miss" x="134" y="231">NaN</text>
+  <rect x="230" y="206" width="110" height="40" fill="#fff" stroke="#d8d1c6"/><text class="v" x="244" y="231">Казань</text>
+
+  <text class="n" x="30" y="276">isna().sum(): amount — 2, city — 1</text>
+
+  <!-- стрелки -->
+  <path d="M366,120 L404,96" fill="none" stroke="#8a7f73" stroke-width="1.6" marker-end="url(#a2)"/>
+  <path d="M366,170 L404,176" fill="none" stroke="#8a7f73" stroke-width="1.6" marker-end="url(#a2)"/>
+  <path d="M366,230 L404,256" fill="none" stroke="#8a7f73" stroke-width="1.6" marker-end="url(#a2)"/>
+
+  <!-- dropna -->
+  <rect x="410" y="52" width="520" height="86" rx="10" fill="#fff" stroke="#d8d1c6"/>
+  <text class="h" x="428" y="78">dropna() — удалить</text>
+  <text class="s" x="428" y="100">остаются только полные строки (anna, olga)</text>
+  <text class="n" x="428" y="122">минус: выборка уменьшается, можно потерять редкие данные</text>
+
+  <!-- fillna -->
+  <rect x="410" y="146" width="520" height="86" rx="10" fill="#fff" stroke="#9cc0a8"/>
+  <text class="h" x="428" y="172">fillna(mean) — заполнить</text>
+  <text class="s" x="428" y="194">пропуски получают 850.0 — среднее по известным</text>
+  <text class="n" x="428" y="216">минус: выдуманное значение искажает распределение</text>
+
+  <!-- flag -->
+  <rect x="410" y="240" width="520" height="86" rx="10" fill="#fff" stroke="#e8b48c"/>
+  <text class="h" x="428" y="266">isna() — отметить</text>
+  <text class="s" x="428" y="288">добавляем колонку-флаг amount_missing</text>
+  <text class="n" x="428" y="310">самый честный вариант: пропуск остаётся фактом</text>
+
+  <rect x="30" y="356" width="900" height="56" rx="10" fill="#f4f1ea" stroke="#e0d9cd"/>
+  <text class="s" x="50" y="382">Прежде чем заполнять, ответьте: пропуск значит «нет данных», «ноль» или «не применимо»?</text>
+  <text class="n" x="50" y="402">fillna(0) без понимания смысла — самый частый способ испортить отчёт.</text>
+</svg>
