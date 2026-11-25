@@ -1,0 +1,68 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 440" role="img" aria-labelledby="t2 d2">
+  <title id="t2">CTE разбивает запрос на именованные шаги; подзапрос делает то же без имени</title>
+  <desc id="d2">Конвейер: соединение заказов и товаров, CTE order_revenue, CTE user_totals, финальный SELECT с join users.</desc>
+  <defs>
+    <marker id="a2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#8a7f73"/>
+    </marker>
+    <style>
+      .h { font: 700 12px ui-monospace, "SF Mono", Menlo, monospace; fill: #1d1b26; }
+      .lbl { font: 700 10px system-ui, -apple-system, "Segoe UI", sans-serif; fill: #8a7f73; letter-spacing: .1em; }
+      .s { font: 400 12px system-ui, -apple-system, "Segoe UI", sans-serif; fill: #4a4458; }
+      .n { font: 400 11.5px system-ui, -apple-system, "Segoe UI", sans-serif; fill: #7a7285; }
+      .v { font: 500 11.5px ui-monospace, "SF Mono", Menlo, monospace; fill: #1d1b26; }
+    </style>
+  </defs>
+
+  <text class="lbl" x="30" y="34">ШАГ 1</text>
+  <text class="lbl" x="290" y="34">ШАГ 2: CTE</text>
+  <text class="lbl" x="550" y="34">ШАГ 3: CTE</text>
+  <text class="lbl" x="790" y="34">ФИНАЛ</text>
+
+  <rect x="30" y="56" width="210" height="86" rx="10" fill="#fff" stroke="#d8d1c6"/>
+  <text class="h" x="46" y="80">orders ⋈ products</text>
+  <text class="v" x="46" y="104">id, user_id,</text>
+  <text class="v" x="46" y="122">revenue</text>
+
+  <path d="M244,100 L282,100" stroke="#8a7f73" stroke-width="1.8" marker-end="url(#a2)"/>
+
+  <rect x="288" y="56" width="220" height="86" rx="10" fill="#fdf0e6" stroke="#e8b48c"/>
+  <text class="h" x="304" y="80">order_revenue</text>
+  <text class="v" x="304" y="104">id, user_id,</text>
+  <text class="v" x="304" y="122">qty * price</text>
+
+  <path d="M512,100 L548,100" stroke="#8a7f73" stroke-width="1.8" marker-end="url(#a2)"/>
+
+  <rect x="554" y="56" width="210" height="86" rx="10" fill="#e9f2ec" stroke="#9cc0a8"/>
+  <text class="h" x="570" y="80">user_totals</text>
+  <text class="v" x="570" y="104">user_id,</text>
+  <text class="v" x="570" y="122">SUM(revenue)</text>
+
+  <path d="M768,100 L804,100" stroke="#8a7f73" stroke-width="1.8" marker-end="url(#a2)"/>
+
+  <rect x="810" y="56" width="140" height="86" rx="10" fill="#fff" stroke="#b9cfe6"/>
+  <text class="h" x="824" y="80">JOIN users</text>
+  <text class="v" x="824" y="104">name,</text>
+  <text class="v" x="824" y="122">total</text>
+
+  <!-- result -->
+  <rect x="810" y="176" width="140" height="34" fill="#f4f1ea" stroke="#d8d1c6"/>
+  <text class="h" x="824" y="198">результат</text>
+  <rect x="810" y="210" width="140" height="30" fill="#fff" stroke="#d8d1c6"/>
+  <text class="v" x="824" y="230">Anna 76950</text>
+  <rect x="810" y="240" width="140" height="30" fill="#fff" stroke="#d8d1c6"/>
+  <text class="v" x="824" y="260">Olga 76500</text>
+
+  <!-- subquery comparison -->
+  <rect x="30" y="186" width="740" height="120" rx="12" fill="#fbeeee" stroke="#e0b8b8"/>
+  <text class="s" x="50" y="212" font-weight="600">То же самое подзапросом:</text>
+  <text class="v" x="50" y="236">SELECT u.name, t.total</text>
+  <text class="v" x="50" y="256">FROM (SELECT user_id, SUM(...) AS total FROM (...) GROUP BY user_id) t</text>
+  <text class="v" x="50" y="276">JOIN users u ON u.id = t.user_id;</text>
+  <text class="n" x="50" y="298">Работает так же, но читать сложнее: имя шага помогает понять, что происходит.</text>
+
+  <rect x="30" y="330" width="920" height="78" rx="10" fill="#f4f1ea" stroke="#e0d9cd"/>
+  <text class="s" x="50" y="356">CTE — это именованный шаг. Он не гарантирует ускорения и не «материализуется» автоматически.</text>
+  <text class="n" x="50" y="380">Плюс — читаемость и переиспользование; минус — можно спрятать дорогой шаг за красивым именем.</text>
+  <text class="n" x="50" y="400">Рекурсивный CTE (WITH RECURSIVE) — отдельный инструмент для иерархий и последовательностей.</text>
+</svg>

@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>22 · Подзапросы и CTE: как разложить вопрос — Ассоциативный гайд</title>
+<meta name="description" content="SQL подзапросы и CTE на живой базе: скалярные, IN/EXISTS, коррелированные, WITH, рекурсивный CTE и мост в pandas.">
 <link rel="stylesheet" href="assets/style.css">
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#fbf8f2" media="(prefers-color-scheme: light)">
@@ -20,37 +21,497 @@
   <aside class="sidebar" id="sidebar"></aside>
   <main>
     <div class="wrap">
+
       <header class="chapter-head">
         <div class="eyebrow">
-          <span class="part">Часть IV · SQL</span><span class="dot"></span><span>Неделя 7 · дни 1–2</span><span class="dot"></span><span>в работе</span>
+          <span class="part">Часть IV · SQL</span>
+          <span class="dot"></span>
+          <span>Неделя 7 · дни 1–2</span>
+          <span class="dot"></span>
+          <span>готово</span>
         </div>
-        <h1>Подзапросы и CTE: как разложить вопрос<span class="sub">Глава ещё не написана — сейчас она в очереди по программе</span></h1>
-        <p class="lead">Здесь появится тот же формат, что в главе 02: ассоциация-якорь, схема, запускаемый код, разбор типичных ошибок, вопросы с собеседования и задачи с решениями.</p>
+        <h1>Подзапросы и CTE: как разложить вопрос
+          <span class="sub">Один большой запрос или несколько именованных шагов</span>
+        </h1>
+        <p class="lead">
+          Сложный отчёт почти никогда не пишется одним куском. Его разбивают на шаги: сначала посчитать выручку
+          по заказам, потом собрать итоги, потом сравнить с порогом. CTE дают этим шагам имена.
+        </p>
         <div class="meta">
-          <span class="chip">📐 <b>1 схема</b></span>
-          <span class="chip">💻 <b>лаборатория</b></span>
-          <span class="chip">🎤 <b>6–8 вопросов</b></span>
-          <span class="chip">✍️ <b>3 задачи</b></span>
+          <span class="chip">⏱ <b>40 минут</b></span>
+          <span class="chip">🎯 уровень <b>2 — применить</b></span>
+          <span class="chip">🐘 <b>PostgreSQL 14</b></span>
+          <span class="chip">📚 <b>WITH Queries</b></span>
         </div>
       </header>
 
       <section>
-        <h2><span class="num">01</span>Что войдёт в главу</h2>
+        <h2><span class="num">01</span>Зачем это backend-разработчику</h2>
+        <ul>
+          <li><strong>Отчёты из нескольких шагов:</strong> «пользователи, чья выручка выше средней», «категории с максимальной выручкой», «заказы без пользователя».</li>
+          <li><strong>Читаемость:</strong> CTE превращает вложенный «матрёшечный» запрос в последовательность именованных шагов.</li>
+          <li><strong>Правильный инструмент для анти-соединения:</strong> <code class="inl">NOT EXISTS</code> надёжнее, чем <code class="inl">NOT IN</code> с NULL.</li>
+          <li><strong>Собеседование:</strong> «чем CTE отличается от подзапроса», «IN или EXISTS», «что такое рекурсивный CTE».</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2><span class="num">02</span>Ассоциация-якорь: черновик и чистовой вариант</h2>
+
+        <div class="anchor">
+          <div class="glyph">📝</div>
+          <div>
+            <div class="t">Держите эту картинку в голове</div>
+            <p class="kick"><strong>Подзапрос — это вычисление «внутри строки» запроса.</strong> Как пометка
+            на полях: работает, но если пометок много, читать становится тяжело.</p>
+            <p><strong>CTE — это черновик с заголовком.</strong> Вы выносите шаг, даёте ему имя
+            (<code class="inl">WITH order_revenue AS (...)</code>) и дальше ссылаетесь на него как на таблицу.
+            Логика та же, но видно, из каких частей состоит ответ.</p>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h2><span class="num">03</span>Ассоциативный ряд: восемь звеньев</h2>
         <ol class="chain">
-          <li><b>скалярный, коррелированный подзапрос, EXISTS</b></li>
-          <li><b>WITH</b><span>читаемость против производительности</span></li>
-          <li><b>как разбить сложный вопрос на шаги</b></li>
+          <li><b>скалярный</b><span>одно значение в сравнении</span></li>
+          <li><b>IN</b><span>список значений из подзапроса</span></li>
+          <li><b>EXISTS</b><span>проверка существования строки</span></li>
+          <li><b>NOT EXISTS</b><span>анти-соединение</span></li>
+          <li><b>коррелированный</b><span>зависит от внешней строки</span></li>
+          <li><b>WITH</b><span>именованный шаг</span></li>
+          <li><b>несколько CTE</b><span>шаги ссылаются друг на друга</span></li>
+          <li><b>RECURSIVE</b><span>повтор до условия остановки</span></li>
         </ol>
-        <div class="note">
-          <span class="t">Пока это заглушка</span>
-          <p>Заглушка нужна, чтобы оглавление и мостики работали как карта: видно, куда ведёт каждая тема. Начните с готовой главы 02 — она задаёт шаблон для всех остальных.</p>
+      </section>
+
+      <section>
+        <h2><span class="num">04</span>Схема: подзапрос против CTE</h2>
+
+        <figure>
+          <div class="frame">
+            <img src="assets/maps/subquery-cte.svg" alt="Конвейер: соединение заказов и товаров, CTE order_revenue, CTE user_totals, финальный join.">
+          </div>
+          <figcaption>
+            <b>Рис. 1.</b> Один и тот же расчёт: подзапросом «внутри» или цепочкой CTE. Смысл одинаковый,
+            читаемость — разная.
+          </figcaption>
+        </figure>
+      </section>
+
+      <section>
+        <h2><span class="num">05</span>Как это устроено на самом деле</h2>
+
+        <h3>Скалярный подзапрос</h3>
+        <p>
+          Возвращает одно значение и используется в сравнении: <code class="inl">WHERE revenue &gt; (SELECT AVG(...))</code>.
+          Если подзапрос вернёт больше одной строки, будет ошибка.
+        </p>
+
+        <h3>IN и EXISTS</h3>
+        <p>
+          <code class="inl">IN (SELECT ...)</code> сравнивает значение со списком. <code class="inl">EXISTS (SELECT 1 ...)</code>
+          проверяет, есть ли хотя бы одна строка. Для анти-соединения <code class="inl">NOT EXISTS</code>
+          безопаснее: он не ломается о NULL в подзапросе (глава 20).
+        </p>
+
+        <h3>Коррелированный подзапрос</h3>
+        <p>
+          Внутренний запрос ссылается на внешнюю строку: <code class="inl">WHERE o.user_id = u.id</code>.
+          Такой подзапрос выполняется для каждой строки внешнего запроса — на больших таблицах это дорого.
+          Часто его можно заменить соединением или оконной функцией (глава 23).
+        </p>
+
+        <h3>CTE не ускоряет автоматически</h3>
+        <p>
+          <code class="inl">WITH</code> — это про структуру, а не про производительность. В PostgreSQL 12+
+          CTE по умолчанию может «встраиваться» в основной запрос, как обычный подзапрос. Если нужна
+          принудительная материализация — <code class="inl">MATERIALIZED</code>, но это осознанное решение.
+        </p>
+      </section>
+
+      <section>
+        <h2><span class="num">06</span>Лаборатория: запустить и увидеть</h2>
+        <p>База <code class="inl">learning_shop</code>, выручка заказа — <code class="inl">quantity * price</code>.</p>
+
+        <h3>Шаг 1. Скалярный подзапрос: средняя выручка заказа</h3>
+        <div class="code">
+          <div class="bar"><span class="file">22_subqueries_cte.sql</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">SELECT ROUND(AVG(quantity * price), 2) AS avg_revenue
+FROM orders o JOIN products p ON p.id = o.product_id;</pre>
+          <div class="out"> avg_revenue
+-------------
+    20240.00</div>
+        </div>
+
+        <h3>Шаг 2. Заказы выше средней выручки</h3>
+        <div class="code">
+          <div class="bar"><span class="file">22_subqueries_cte.sql</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">SELECT o.id, (o.quantity * p.price) AS revenue
+FROM orders o JOIN products p ON p.id = o.product_id
+WHERE (o.quantity * p.price) &gt; (
+    SELECT AVG(o2.quantity * p2.price)
+    FROM orders o2 JOIN products p2 ON p2.id = o2.product_id
+)
+ORDER BY revenue DESC;</pre>
+          <div class="out"> id | revenue
+----+----------
+  1 | 75000.00
+  9 | 75000.00
+  5 | 22000.00
+ 10 | 22000.00
+(4 rows)</div>
+        </div>
+
+        <h3>Шаг 3. NOT EXISTS: заказы без пользователя</h3>
+        <div class="code">
+          <div class="bar"><span class="file">22_subqueries_cte.sql</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">SELECT o.id, o.created_at
+FROM orders o
+WHERE NOT EXISTS (SELECT 1 FROM users u WHERE u.id = o.user_id);</pre>
+          <div class="out"> id |     created_at
+----+---------------------
+  8 | 2024-03-07 19:30:00
+(1 row)</div>
+        </div>
+        <p>
+          <code class="inl">SELECT 1</code> внутри EXISTS — не «выбрать единицу», а «есть ли хоть одна строка».
+          Важен сам факт существования.
+        </p>
+
+        <h3>Шаг 4. CTE: выручка по пользователям</h3>
+        <div class="code">
+          <div class="bar"><span class="file">22_subqueries_cte.sql</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">WITH order_revenue AS (
+    SELECT o.id, o.user_id, o.quantity * p.price AS revenue
+    FROM orders o JOIN products p ON p.id = o.product_id
+),
+user_totals AS (
+    SELECT user_id, SUM(revenue) AS total
+    FROM order_revenue
+    GROUP BY user_id
+)
+SELECT u.name, t.total
+FROM user_totals t JOIN users u ON u.id = t.user_id
+ORDER BY t.total DESC;</pre>
+          <div class="out"> name  |  total
+-------+----------
+ Anna  | 76950.00
+ Olga  | 76500.00
+ Ivan  | 23800.00
+ Petr  | 22000.00
+ Maria |  2250.00
+(5 rows)</div>
+        </div>
+        <p>
+          Два шага вместо вложенных скобок: <code class="inl">order_revenue</code> — что такое выручка заказа,
+          <code class="inl">user_totals</code> — как её суммировать. Читается сверху вниз, как код.
+        </p>
+
+        <h3>Шаг 5. CTE по месяцам</h3>
+        <div class="code">
+          <div class="bar"><span class="file">22_subqueries_cte.sql</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">WITH monthly AS (
+    SELECT DATE_TRUNC('month', o.created_at)::date AS month,
+           SUM(o.quantity * p.price) AS revenue
+    FROM orders o JOIN products p ON p.id = o.product_id
+    GROUP BY 1
+)
+SELECT * FROM monthly ORDER BY month;</pre>
+          <div class="out">   month    | revenue
+------------+----------
+ 2024-01-01 | 78150.00
+ 2024-02-01 | 25750.00
+ 2024-03-01 | 98500.00
+(3 rows)</div>
+        </div>
+
+        <h3>Шаг 6. CTE: категория с максимальной выручкой</h3>
+        <div class="code">
+          <div class="bar"><span class="file">22_subqueries_cte.sql</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">WITH category_revenue AS (
+    SELECT p.category, SUM(o.quantity * p.price) AS revenue
+    FROM orders o JOIN products p ON p.id = o.product_id
+    GROUP BY p.category
+)
+SELECT category, revenue
+FROM category_revenue
+ORDER BY revenue DESC
+LIMIT 1;</pre>
+          <div class="out">  category   |  revenue
+-------------+-----------
+ electronics | 195500.00</div>
+        </div>
+
+        <h3>Шаг 7. Коррелированный подзапрос в SELECT</h3>
+        <div class="code">
+          <div class="bar"><span class="file">22_subqueries_cte.sql</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">SELECT u.name,
+       (SELECT COUNT(*) FROM orders o WHERE o.user_id = u.id) AS orders
+FROM users u
+ORDER BY u.id;</pre>
+          <div class="out"> name  | orders
+-------+--------
+ Anna  |      3
+ Ivan  |      2
+ Olga  |      2
+ Petr  |      1
+ Maria |      1
+(5 rows)</div>
+        </div>
+        <p>
+          Подзапрос выполняется для каждого пользователя. Для пяти строк это нормально; на большом
+          справочнике дешевле был бы <code class="inl">LEFT JOIN + GROUP BY</code>.
+        </p>
+
+        <h3>Шаг 8. Рекурсивный CTE: числа 1..5</h3>
+        <div class="code">
+          <div class="bar"><span class="file">22_subqueries_cte.sql</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">WITH RECURSIVE numbers AS (
+    SELECT 1 AS n
+    UNION ALL
+    SELECT n + 1 FROM numbers WHERE n &lt; 5
+)
+SELECT * FROM numbers;</pre>
+          <div class="out"> n
+---
+ 1
+ 2
+ 3
+ 4
+ 5
+(5 rows)</div>
+        </div>
+        <p>
+          Здесь только идея: базовый шаг, рекурсивный шаг и условие остановки. Так решают иерархии
+          (категории с родителями, оргструктуры) — подробнее в документации.
+        </p>
+      </section>
+
+      <section>
+        <h2><span class="num">07</span>Мост: CTE и промежуточные переменные в pandas</h2>
+        <div class="code">
+          <div class="bar"><span class="file">pandas</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">orders["revenue"] = orders["quantity"] * products["price"]   # order_revenue
+
+user_totals = orders.groupby("user_id")["revenue"].sum()     # user_totals
+
+report = user_totals.reset_index().merge(users, on="user_id")</pre>
+        </div>
+        <p>
+          В pandas шаг тоже лучше называть промежуточной переменной, чем вкладывать всё в одну строку.
+          CTE — это тот же принцип, только внутри одного SQL-запроса.
+        </p>
+      </section>
+
+      <section>
+        <h2><span class="num">08</span>Шесть ошибок, на которых спотыкаются</h2>
+
+        <div class="errors">
+          <div class="err">
+            <div class="h">Скалярный подзапрос возвращает много строк</div>
+            <p><code class="inl">WHERE x = (SELECT ...)</code> падает, если подзапрос вернул больше одного значения.</p>
+            <div class="fix">Ограничить подзапрос (<code class="inl">LIMIT 1</code>) или использовать IN/EXISTS.</div>
+          </div>
+          <div class="err">
+            <div class="h">NOT IN с NULL</div>
+            <p>Проверено в главе 20: результат пустой, хотя строки есть.</p>
+            <div class="fix"><code class="inl">NOT EXISTS</code> или отфильтровать NULL в подзапросе.</div>
+          </div>
+          <div class="err">
+            <div class="h">Коррелированный подзапрос на больших данных</div>
+            <p>Выполняется на каждую строку внешнего запроса.</p>
+            <div class="fix">LEFT JOIN + GROUP BY или оконная функция.</div>
+          </div>
+          <div class="err">
+            <div class="h">CTE «для ускорения»</div>
+            <p><code class="inl">WITH</code> не гарантирует, что шаг посчитается один раз; оптимизатор решает сам.</p>
+            <div class="fix">Смотреть EXPLAIN (глава 24), а не верить в магию структуры.</div>
+          </div>
+          <div class="err">
+            <div class="h">Рекурсия без остановки</div>
+            <p>Забыли условие <code class="inl">WHERE n &lt; 5</code> — запрос не завершится.</p>
+            <div class="fix">Всегда проверять базовый шаг и условие остановки.</div>
+          </div>
+          <div class="err">
+            <div class="h">Дублирование логики в шагах</div>
+            <p>Одно и то же вычисление повторяется в нескольких CTE — риск расхождения.</p>
+            <div class="fix">Выносить общее в отдельный CTE с понятным именем.</div>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h2><span class="num">09</span>Вопросы с собеседования</h2>
+        <div class="qa">
+          <details>
+            <summary>Чем подзапрос отличается от CTE?</summary>
+            <div class="a">
+              <p>Функционально часто ничем: это один и тот же расчёт. CTE вынесен в <code class="inl">WITH</code> и имеет имя, поэтому читается как шаг, а не как вложение.</p>
+              <div class="verdict">Резюме: то же вычисление, другая форма записи.</div>
+            </div>
+          </details>
+          <details>
+            <summary>Чем EXISTS отличается от IN?</summary>
+            <div class="a">
+              <p>EXISTS проверяет наличие строки и не зависит от NULL; IN сравнивает значение со списком и ломается о NULL в отрицании.</p>
+              <div class="verdict">Резюме: факт существования против сравнения.</div>
+            </div>
+          </details>
+          <details>
+            <summary>Что такое коррелированный подзапрос?</summary>
+            <div class="a">
+              <p>Подзапрос, который ссылается на колонки внешнего запроса и выполняется для каждой его строки. Мощно, но потенциально дорого.</p>
+              <div class="verdict">Резюме: зависимость от внешней строки.</div>
+            </div>
+          </details>
+          <details>
+            <summary>Ускоряет ли CTE запрос?</summary>
+            <div class="a">
+              <p>Само по себе — нет. Это инструмент структуры; PostgreSQL 12+ часто встраивает CTE в основной запрос. Для ускорения нужны индексы, планы и меньше данных.</p>
+              <div class="verdict">Резюме: читаемость — да, магия — нет.</div>
+            </div>
+          </details>
+          <details>
+            <summary>Как найти строки без пары?</summary>
+            <div class="a">
+              <p><code class="inl">NOT EXISTS</code> (надёжно) или <code class="inl">LEFT JOIN ... WHERE right.id IS NULL</code> (анти-соединение).</p>
+              <div class="verdict">Резюме: два способа, оба правильные.</div>
+            </div>
+          </details>
+          <details>
+            <summary>Что такое рекурсивный CTE?</summary>
+            <div class="a">
+              <p>CTE, который ссылается сам на себя: базовый шаг + рекурсивный шаг + условие остановки. Для иерархий и генерации последовательностей.</p>
+              <div class="verdict">Резюме: повтор до условия.</div>
+            </div>
+          </details>
+          <details>
+            <summary>Когда лучше несколько CTE, а когда один запрос?</summary>
+            <div class="a">
+              <p>Если шаги имеют смысл по отдельности и их хочется проверить по отдельности — CTE. Если запрос простой, лишние имена только мешают.</p>
+              <div class="verdict">Резюме: имена для сложности, не для красоты.</div>
+            </div>
+          </details>
+          <details>
+            <summary>Может ли CTE использоваться дважды?</summary>
+            <div class="a">
+              <p>Да, к одному CTE можно обращаться в нескольких местах основного запроса — это одно из преимуществ перед подзапросом.</p>
+              <div class="verdict">Резюме: именованный шаг можно переиспользовать.</div>
+            </div>
+          </details>
+        </div>
+      </section>
+
+      <section>
+        <h2><span class="num">10</span>Три задачи: сначала своя попытка</h2>
+
+        <h3><span style="color:var(--muted);font-family:var(--mono);font-size:.8rem">01</span> Пользователи выше среднего</h3>
+        <p>Найдите пользователей, чья суммарная выручка выше средней суммарной выручки по пользователям.</p>
+        <div class="qa">
+          <details>
+            <summary>Показать решение</summary>
+            <div class="a">
+              <div class="code" style="margin-top:0">
+                <div class="bar"><span class="file">решение</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+                <pre data-lang="sql">WITH totals AS (
+    SELECT o.user_id, SUM(o.quantity * p.price) AS total
+    FROM orders o JOIN products p ON p.id = o.product_id
+    WHERE o.user_id IS NOT NULL
+    GROUP BY o.user_id
+)
+SELECT u.name, t.total
+FROM totals t JOIN users u ON u.id = t.user_id
+WHERE t.total &gt; (SELECT AVG(total) FROM totals)
+ORDER BY t.total DESC;</pre>
+              </div>
+              <div class="out"> name |  total
+------+----------
+ Anna | 76950.00
+ Olga | 76500.00
+ Ivan | 23800.00
+ Petr | 22000.00</div>
+              <p><strong>Что важно.</strong> Среднее считается по агрегатам (<code class="inl">AVG(total)</code>),
+              а не по строкам заказов — это разные числа.</p>
+            </div>
+          </details>
+        </div>
+
+        <h3><span style="color:var(--muted);font-family:var(--mono);font-size:.8rem">02</span> Товары без заказов</h3>
+        <p>Найдите товары, которые ни разу не заказывали. Есть ли такие в базе?</p>
+        <div class="qa">
+          <details>
+            <summary>Показать решение</summary>
+            <div class="a">
+              <div class="code" style="margin-top:0">
+                <div class="bar"><span class="file">решение</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+                <pre data-lang="sql">SELECT p.id, p.name
+FROM products p
+WHERE NOT EXISTS (
+    SELECT 1 FROM orders o WHERE o.product_id = p.id
+);</pre>
+              </div>
+              <div class="out">(0 rows)</div>
+              <p><strong>Что важно.</strong> Пустой результат — тоже ответ: все товары продавались.
+              Проверка «нет строк» — обычная часть анализа.</p>
+            </div>
+          </details>
+        </div>
+
+        <h3><span style="color:var(--muted);font-family:var(--mono);font-size:.8rem">03</span> Две CTE: месяц и средний чек</h3>
+        <p>Посчитайте выручку по месяцам и покажите месяц с максимальной выручкой.</p>
+        <div class="qa">
+          <details>
+            <summary>Показать решение</summary>
+            <div class="a">
+              <div class="code" style="margin-top:0">
+                <div class="bar"><span class="file">решение</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+                <pre data-lang="sql">WITH monthly AS (
+    SELECT DATE_TRUNC('month', o.created_at)::date AS month,
+           SUM(o.quantity * p.price) AS revenue
+    FROM orders o JOIN products p ON p.id = o.product_id
+    GROUP BY 1
+)
+SELECT month, revenue
+FROM monthly
+ORDER BY revenue DESC
+LIMIT 1;</pre>
+              </div>
+              <div class="out">   month    | revenue
+------------+----------
+ 2024-03-01 | 98500.00</div>
+            </div>
+          </details>
+        </div>
+      </section>
+
+      <section>
+        <h2><span class="num">11</span>Чек-лист освоения</h2>
+        <div class="check">
+          <label><input type="checkbox"><span class="box"></span><span class="txt">Написать скалярный подзапрос и объяснить его ограничение</span></label>
+          <label><input type="checkbox"><span class="box"></span><span class="txt">Выбрать между IN и EXISTS</span></label>
+          <label><input type="checkbox"><span class="box"></span><span class="txt">Разложить отчёт на два-три CTE</span></label>
+          <label><input type="checkbox"><span class="box"></span><span class="txt">Объяснить, почему CTE не ускоряет запрос сам по себе</span></label>
+          <label><input type="checkbox"><span class="box"></span><span class="txt">Перевести CTE в промежуточные переменные pandas</span></label>
+        </div>
+      </section>
+
+      <section>
+        <h2><span class="num">12</span>Куда ведут мостики</h2>
+        <div class="bridges">
+          <a class="bridge" href="ch-21-group-by-having.html"><span class="to">Глава 21</span><span>GROUP BY и HAVING</span><span class="what">→ агрегаты внутри шагов</span></a>
+          <a class="bridge" href="ch-23-window-functions.html"><span class="to">Глава 23</span><span>Оконные функции</span><span class="what">→ альтернатива коррелированным подзапросам</span></a>
+          <a class="bridge" href="ch-24-indexes-explain.html"><span class="to">Глава 24</span><span>Индексы и EXPLAIN</span><span class="what">→ как шаги выполняются</span></a>
+          <a class="bridge" href="ch-20-select-where-null.html"><span class="to">Глава 20</span><span>WHERE и NULL</span><span class="what">→ NOT IN против NOT EXISTS</span></a>
+          <a class="bridge" href="ch-26-project.html"><span class="to">Глава 26</span><span>Проект</span><span class="what">→ отчёт на CTE</span></a>
         </div>
       </section>
 
       <div class="pager">
-        <a class="prev" href="ch-21-group-by-having.html"><span class="dir">← Назад</span><span class="ttl">GROUP BY и HAVING: тот же словарь-аккумулятор</span></a>
-        <a class="next" href="ch-23-window-functions.html"><span class="dir">Дальше →</span><span class="ttl">23 · Оконные функции: строка и её группа</span></a>
+        <a class="prev" href="ch-21-group-by-having.html"><span class="dir">← Назад</span><span class="ttl">21 · GROUP BY и HAVING</span></a>
+        <a class="next" href="ch-23-window-functions.html"><span class="dir">Дальше →</span><span class="ttl">23 · оконные функции</span></a>
       </div>
+
     </div>
   </main>
 </div>

@@ -1,5 +1,5 @@
 // Сгенерировано tools/gen_sw.cjs — не править руками.
-const CACHE = "assoc-guide-v793b3d62";
+const CACHE = "assoc-guide-v70ef64a1";
 const PRECACHE = [
   "./assets/app.js",
   "./assets/icons/favicon.svg",
@@ -16,6 +16,7 @@ const PRECACHE = [
   "./assets/maps/dataframe-anatomy.svg",
   "./assets/maps/dict-hash.svg",
   "./assets/maps/filter-sieve.svg",
+  "./assets/maps/group-by-having.svg",
   "./assets/maps/list-as-train.svg",
   "./assets/maps/loc-vs-iloc.svg",
   "./assets/maps/mask-trafaret.svg",
@@ -28,6 +29,7 @@ const PRECACHE = [
   "./assets/maps/reshape-wide-long.svg",
   "./assets/maps/set-operations.svg",
   "./assets/maps/split-apply-combine.svg",
+  "./assets/maps/subquery-cte.svg",
   "./assets/maps/view-copy.svg",
   "./assets/style.css",
   "./assets/toc.js",
@@ -82,6 +84,8 @@ const PRECACHE = [
   "./snippets/18_dates_reshape_lab.py",
   "./snippets/19_order_of_execution.sql",
   "./snippets/20_select_where.sql",
+  "./snippets/21_group_by_having.sql",
+  "./snippets/22_subqueries_cte.sql",
   "./snippets/learning_shop.sql"
 ];
 

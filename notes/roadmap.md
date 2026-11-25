@@ -147,3 +147,11 @@ service worker недоступен. Поэтому страница на Pages 
 - Факты: алиас не виден в WHERE, но виден в ORDER BY; `= NULL` → 0 строк; `<>` не включает NULL;
   NOT IN с NULL → пусто; COUNT(*) 5 против COUNT(city) 4.
 - Дальше: 21 (GROUP BY/HAVING), 22 (подзапросы/CTE), 23 (окна), 24 (индексы/EXPLAIN).
+
+## SQL: группировки и CTE
+
+- Готовы главы 21 (GROUP BY/HAVING) и 22 (подзапросы/CTE).
+- Схемы: `group-by-having.svg`, `subquery-cte.svg`; SQL-файлы лабораторий в guide/snippets.
+- Факты: выручка Anna 76950, Olga 76500, Ivan 23800; HAVING COUNT(*)>1 оставляет трёх;
+  NULL в user_id — отдельная группа; CTE monthly: 78150/25750/98500; NOT EXISTS находит заказ 8.
+- Дальше: 23 (оконные функции), 24 (индексы/EXPLAIN), затем проверочная по SQL.

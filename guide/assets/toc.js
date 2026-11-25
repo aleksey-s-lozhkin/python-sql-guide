@@ -27,8 +27,8 @@ window.BOOK = {
     // ── IV. SQL ────────────────────────────────────────────────
     { n: "19", slug: "ch-19-order-of-execution", title: "Порядок выполнения: как база читает запрос", desc: "Неделя 6", part: 4, ready: true },
     { n: "20", slug: "ch-20-select-where-null", title: "SELECT, WHERE и логика трёх значений", desc: "Неделя 6", part: 4, ready: true },
-    { n: "21", slug: "ch-21-group-by-having", title: "GROUP BY и HAVING: тот же словарь-аккумулятор", desc: "Неделя 6", part: 4 },
-    { n: "22", slug: "ch-22-subqueries-cte", title: "Подзапросы и CTE: как разложить вопрос", desc: "Неделя 7", part: 4 },
+    { n: "21", slug: "ch-21-group-by-having", title: "GROUP BY и HAVING: тот же словарь-аккумулятор", desc: "Неделя 6", part: 4, ready: true },
+    { n: "22", slug: "ch-22-subqueries-cte", title: "Подзапросы и CTE: как разложить вопрос", desc: "Неделя 7", part: 4, ready: true },
     { n: "23", slug: "ch-23-window-functions", title: "Оконные функции: строка и её группа", desc: "Неделя 7", part: 4 },
     { n: "24", slug: "ch-24-indexes-explain", title: "Индексы и EXPLAIN: верить плану, а не догадкам", desc: "Неделя 7", part: 4 },
     // ── V. Интеграция ──────────────────────────────────────────
