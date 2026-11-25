@@ -11,8 +11,8 @@ window.BOOK = {
     { n: "05", slug: "ch-05-comprehensions", title: "Comprehensions и генераторы: конвейер против склада", desc: "Неделя 1", part: 1, ready: true },
     { n: "06", slug: "ch-06-collections", title: "Counter, defaultdict, deque: три специнструмента", desc: "Неделя 1", part: 1, ready: true },
     // ── II. NumPy ──────────────────────────────────────────────
-    { n: "07", slug: "ch-07-ndarray", title: "ndarray: сетка вместо списка", desc: "Неделя 2", part: 2 },
-    { n: "08", slug: "ch-08-indexing", title: "Индексация и маски: трафарет поверх сетки", desc: "Неделя 2", part: 2 },
+    { n: "07", slug: "ch-07-ndarray", title: "ndarray: сетка вместо списка", desc: "Неделя 2", part: 2, ready: true },
+    { n: "08", slug: "ch-08-indexing", title: "Индексация и маски: трафарет поверх сетки", desc: "Неделя 2", part: 2, ready: true },
     { n: "09", slug: "ch-09-axis", title: "axis: вдоль какой стены считать", desc: "Неделя 2", part: 2 },
     { n: "10", slug: "ch-10-broadcasting", title: "Broadcasting: штамп и тесто", desc: "Неделя 2", part: 2 },
     { n: "11", slug: "ch-11-views-copies", title: "View и copy: стекло и ксерокс", desc: "Неделя 2", part: 2 },

@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 420" role="img" aria-labelledby="t2 d2">
+  <title id="t2">Булева маска — трафарет: значения, маска, выбранный результат</title>
+  <desc id="d2">Массив возраста, булева маска «старше 25» и результат из выбранных элементов.</desc>
+  <defs>
+    <marker id="a2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#2f6b4f"/>
+    </marker>
+    <style>
+      .lbl { font: 700 11px system-ui, -apple-system, "Segoe UI", sans-serif; fill: #8a7f73; letter-spacing: .13em; }
+      .v { font: 700 20px ui-monospace, "SF Mono", Menlo, monospace; fill: #1d1b26; }
+      .b { font: 700 13px ui-monospace, "SF Mono", Menlo, monospace; fill: #2f6b4f; }
+      .f { font: 700 13px ui-monospace, "SF Mono", Menlo, monospace; fill: #b9ad9d; }
+      .s { font: 400 13px system-ui, -apple-system, "Segoe UI", sans-serif; fill: #4a4458; }
+      .n { font: 400 12.5px system-ui, -apple-system, "Segoe UI", sans-serif; fill: #7a7285; }
+    </style>
+  </defs>
+
+  <text class="lbl" x="40" y="34">ЗНАЧЕНИЯ</text>
+  <rect x="40" y="48" width="110" height="62" rx="10" fill="#fff" stroke="#d8d1c6"/>
+  <text class="v" x="80" y="88">22</text>
+  <rect x="166" y="48" width="110" height="62" rx="10" fill="#fff" stroke="#d8d1c6"/>
+  <text class="v" x="206" y="88">31</text>
+  <rect x="292" y="48" width="110" height="62" rx="10" fill="#fff" stroke="#d8d1c6"/>
+  <text class="v" x="332" y="88">25</text>
+  <rect x="418" y="48" width="110" height="62" rx="10" fill="#fff" stroke="#d8d1c6"/>
+  <text class="v" x="458" y="88">40</text>
+  <rect x="544" y="48" width="110" height="62" rx="10" fill="#fff" stroke="#d8d1c6"/>
+  <text class="v" x="584" y="88">19</text>
+
+  <text class="lbl" x="40" y="152">МАСКА: AGES &gt; 25</text>
+  <rect x="40" y="166" width="110" height="56" rx="10" fill="#fbf8f2" stroke="#d8d1c6" stroke-dasharray="5 4"/>
+  <text class="f" x="78" y="201">False</text>
+  <rect x="166" y="166" width="110" height="56" rx="10" fill="#e9f2ec" stroke="#9cc0a8"/>
+  <text class="b" x="212" y="201">True</text>
+  <rect x="292" y="166" width="110" height="56" rx="10" fill="#fbf8f2" stroke="#d8d1c6" stroke-dasharray="5 4"/>
+  <text class="f" x="330" y="201">False</text>
+  <rect x="418" y="166" width="110" height="56" rx="10" fill="#e9f2ec" stroke="#9cc0a8"/>
+  <text class="b" x="464" y="201">True</text>
+  <rect x="544" y="166" width="110" height="56" rx="10" fill="#fbf8f2" stroke="#d8d1c6" stroke-dasharray="5 4"/>
+  <text class="f" x="582" y="201">False</text>
+
+  <!-- стрелки от true к результату: строго вниз, без пересечения подписей -->
+  <path d="M221,226 L221,306" fill="none" stroke="#2f6b4f" stroke-width="2" marker-end="url(#a2)"/>
+  <path d="M473,226 L473,306" fill="none" stroke="#2f6b4f" stroke-width="2" marker-end="url(#a2)"/>
+
+  <rect x="166" y="310" width="110" height="60" rx="10" fill="#e9f2ec" stroke="#9cc0a8"/>
+  <text class="v" x="206" y="349">31</text>
+  <rect x="418" y="310" width="110" height="60" rx="10" fill="#e9f2ec" stroke="#9cc0a8"/>
+  <text class="v" x="458" y="349">40</text>
+
+  <text class="lbl" x="600" y="302">РЕЗУЛЬТАТ: AGES[MASK]</text>
+  <text class="s" x="600" y="328">новый массив длины 2:</text>
+  <text class="n" x="600" y="350">маска длиной 5, результат — только True</text>
+  <text class="n" x="600" y="372">на 2D-массиве результат будет плоским</text>
+
+  <rect x="40" y="392" width="900" height="1.5" fill="#e6dfd3"/>
+  <text class="n" x="40" y="416">Маска — это не «фильтр» и не «где-то внутри»: это такой же массив, только из bool, той же формы.</text>
+</svg>
