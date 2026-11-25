@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>10 · Broadcasting: штамп и тесто — Ассоциативный гайд</title>
+<meta name="description" content="Broadcasting в NumPy: правила выравнивания форм, why keepdims, newaxis, ошибки форм и связь с pandas.">
 <link rel="stylesheet" href="assets/style.css">
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#fbf8f2" media="(prefers-color-scheme: light)">
@@ -20,37 +21,420 @@
   <aside class="sidebar" id="sidebar"></aside>
   <main>
     <div class="wrap">
+
       <header class="chapter-head">
         <div class="eyebrow">
-          <span class="part">Часть II · NumPy</span><span class="dot"></span><span>Неделя 2 · день 4</span><span class="dot"></span><span>в работе</span>
+          <span class="part">Часть II · NumPy</span>
+          <span class="dot"></span>
+          <span>Неделя 2 · день 4</span>
+          <span class="dot"></span>
+          <span>готово</span>
         </div>
-        <h1>Broadcasting: штамп и тесто<span class="sub">Глава ещё не написана — сейчас она в очереди по программе</span></h1>
-        <p class="lead">Здесь появится тот же формат, что в главе 02: ассоциация-якорь, схема, запускаемый код, разбор типичных ошибок, вопросы с собеседования и задачи с решениями.</p>
+        <h1>Broadcasting: штамп и тесто
+          <span class="sub">Как складывать массивы разной формы — и не удивляться результату</span>
+        </h1>
+        <p class="lead">
+          Broadcasting — это правило, по которому меньший массив «растягивается» до формы большего. Не копируя
+          данные и не спрашивая разрешения. Понять его — значит перестать бояться ошибок формы.
+        </p>
         <div class="meta">
-          <span class="chip">📐 <b>1 схема</b></span>
-          <span class="chip">💻 <b>лаборатория</b></span>
-          <span class="chip">🎤 <b>6–8 вопросов</b></span>
-          <span class="chip">✍️ <b>3 задачи</b></span>
+          <span class="chip">⏱ <b>40 минут</b></span>
+          <span class="chip">🎯 уровень <b>2 — применить</b></span>
+          <span class="chip">🧮 <b>numpy 2.3</b></span>
+          <span class="chip">📚 <b>Broadcasting</b></span>
         </div>
       </header>
 
       <section>
-        <h2><span class="num">01</span>Что войдёт в главу</h2>
+        <h2><span class="num">01</span>Зачем это backend-разработчику</h2>
+        <ul>
+          <li><strong>Нормализация данных.</strong> Вычесть среднее по каждому столбцу, разделить на стандартное отклонение — это broadcasting с <code class="inl">keepdims</code>.</li>
+          <li><strong>Матрица расстояний и сравнений.</strong> «Каждый с каждым» без двойного цикла — <code class="inl">x[:, None] - x[None, :]</code>.</li>
+          <li><strong>pandas.</strong> Арифметика DataFrame и Series выравнивается по индексам — родственная, но другая логика; путать их опасно.</li>
+          <li><strong>Собеседование:</strong> «что такое broadcasting», «почему (3,) и (3,4) не складываются», «зачем newaxis» — базовые вопросы по NumPy.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2><span class="num">02</span>Ассоциация-якорь: штамп и тесто</h2>
+
+        <div class="anchor">
+          <div class="glyph">🍪</div>
+          <div>
+            <div class="t">Держите эту картинку в голове</div>
+            <p class="kick"><strong>Большой массив — тесто, маленький — штамп.</strong> Штамп прикладывают к тесту:
+            он оставляет отпечаток в каждой точке, но сам не разрезается на куски.</p>
+            <p><strong>Размер 1 — это «пустая клетка штампа».</strong> Она растягивается до размера теста.
+            Если размеры не совпадают и ни один не равен 1 — штамп не подходит, и NumPy говорит об ошибке формы.</p>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h2><span class="num">03</span>Ассоциативный ряд: восемь звеньев</h2>
         <ol class="chain">
-          <li><b>правила выравнивания форм</b></li>
-          <li><b>почему (3,1) и (1,4) дают (3,4)</b></li>
-          <li><b>типичные ошибки формы и как их читать</b></li>
+          <li><b>Выравнивание</b><span>формы сравниваются справа налево</span></li>
+          <li><b>Совпадение</b><span>равные размеры — просто поэлементно</span></li>
+          <li><b>Единица</b><span>растягивается до размера соседа</span></li>
+          <li><b>Несовпадение</b><span>ValueError: нельзя</span></li>
+          <li><b>Результат</b><span>по максимуму размеров</span></li>
+          <li><b>Без копий</b><span>шаг по оси 0 (strides=0)</span></li>
+          <li><b>newaxis</b><span>добавить ось, чтобы формы сошлись</span></li>
+          <li><b>keepdims</b><span>не потерять ось при агрегате</span></li>
         </ol>
-        <div class="note">
-          <span class="t">Пока это заглушка</span>
-          <p>Заглушка нужна, чтобы оглавление и мостики работали как карта: видно, куда ведёт каждая тема. Начните с готовой главы 02 — она задаёт шаблон для всех остальных.</p>
+      </section>
+
+      <section>
+        <h2><span class="num">04</span>Схема: столбец плюс строка</h2>
+
+        <figure>
+          <div class="frame">
+            <img src="assets/maps/broadcasting-stamp.svg" alt="Столбец (3,1) и строка (1,4) дают матрицу (3,4) из сумм.">
+          </div>
+          <figcaption>
+            <b>Рис. 1.</b> Единичные размеры растягиваются: столбец становится матрицей из одинаковых строк,
+            строка — матрицей из одинаковых столбцов. Данные при этом не копируются.
+          </figcaption>
+        </figure>
+      </section>
+
+      <section>
+        <h2><span class="num">05</span>Как это устроено на самом деле</h2>
+        <p>Правило короткое: формы выравниваются по правому краю; по каждой оси размеры должны либо совпадать, либо один из них быть 1.</p>
+
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Формы</th><th>Результат</th><th>Почему</th></tr></thead>
+            <tbody>
+              <tr><td class="mono">(3, 4) + (4,)</td><td class="mono">(3, 4)</td><td>(4,) → (1, 4) → (3, 4)</td></tr>
+              <tr><td class="mono">(3, 4) + (3, 1)</td><td class="mono">(3, 4)</td><td>(3, 1) → (3, 4)</td></tr>
+              <tr><td class="mono">(3, 1) + (1, 4)</td><td class="mono">(3, 4)</td><td>обе оси растягиваются</td></tr>
+              <tr><td class="mono">(3, 4) + (3,)</td><td class="mono">ошибка</td><td>(3,) не совпадает по последней оси</td></tr>
+              <tr><td class="mono">(2, 1, 4) + (3, 1)</td><td class="mono">(2, 3, 4)</td><td>правое выравнивание</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>Почему это не копирование</h3>
+        <p>
+          У «растянутого» массива по оси растяжения stride равен 0: шаг в эту сторону не двигает указатель.
+          Поэтому <code class="inl">np.broadcast_to</code> возвращает view, а память не растёт. Но и запись в такое
+          представление запрещена — иначе одна ячейка означала бы много значений.
+        </p>
+
+        <h3>Зачем newaxis</h3>
+        <p>
+          Вектор <code class="inl">(3,)</code> выравнивается по последней оси, а нам часто нужен столбец.
+          <code class="inl">v[:, None]</code> делает <code class="inl">(3, 1)</code>, и дальше broadcasting работает
+          так, как задумано: <code class="inl">v[:, None] * v[None, :]</code> — таблица произведений.
+        </p>
+      </section>
+
+      <section>
+        <h2><span class="num">06</span>Лаборатория: запустить и увидеть</h2>
+        <p>
+          Фрагменты файла <a href="snippets/10_broadcasting_lab.py"><code class="inl">snippets/10_broadcasting_lab.py</code></a>.
+        </p>
+
+        <h3>Шаг 1. Строка прибавляется к каждой строке</h3>
+        <div class="code">
+          <div class="bar"><span class="file">10_broadcasting_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">a = np.arange(12).reshape(3, 4)
+row = np.array([10, 20, 30, 40])
+print((a + row).shape)
+print(a + row)</pre>
+          <div class="out">(3, 4)
+[[10 21 32 43]
+ [14 25 36 47]
+ [18 29 40 51]]</div>
+        </div>
+
+        <h3>Шаг 2. Столбец прибавляется к каждой строке</h3>
+        <div class="code">
+          <div class="bar"><span class="file">10_broadcasting_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">col = np.array([[100], [200], [300]])
+print(col.shape)
+print(a + col)</pre>
+          <div class="out">(3, 1)
+[[100 101 102 103]
+ [204 205 206 207]
+ [308 309 310 311]]</div>
+        </div>
+
+        <h3>Шаг 3. Столбец на строку — матрица</h3>
+        <div class="code">
+          <div class="bar"><span class="file">10_broadcasting_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">ones_col = np.ones((3, 1))
+ones_row = np.ones((1, 4))
+print((ones_col + ones_row).shape)
+print(ones_col + ones_row)</pre>
+          <div class="out">(3, 4)
+[[2. 2. 2. 2.]
+ [2. 2. 2. 2.]
+ [2. 2. 2. 2.]]</div>
+        </div>
+
+        <h3>Шаг 4. Несовместимые формы</h3>
+        <div class="code">
+          <div class="bar"><span class="file">10_broadcasting_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">a + np.array([1, 2, 3])
+# ValueError: operands could not be broadcast together with shapes (3,4) (3,)</pre>
+          <div class="out">ValueError: operands could not be broadcast together with shapes (3,4) (3,)</div>
+        </div>
+        <p>
+          Сообщение читается справа налево: последняя ось 4 против 3 — не совпало и ни одна не равна 1.
+          Исправление — превратить вектор в столбец: <code class="inl">np.array([1,2,3])[:, None]</code>.
+        </p>
+
+        <h3>Шаг 5. Центрирование через keepdims</h3>
+        <div class="code">
+          <div class="bar"><span class="file">10_broadcasting_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">means = a.mean(axis=0)                 # (4,)
+means_keep = a.mean(axis=0, keepdims=True)  # (1, 4)
+print(means.shape, means_keep.shape)
+print((a - means_keep).mean(axis=0))</pre>
+          <div class="out">(4,) (1, 4)
+[0. 0. 0. 0.]</div>
+        </div>
+        <p>
+          Оба вычитания дают визуально одинаковый результат, но с <code class="inl">keepdims</code> форма
+          результата однозначна: <code class="inl">(3, 4)</code> минус <code class="inl">(1, 4)</code> — это
+          «вычесть среднее по столбцу из каждого элемента столбца».
+        </p>
+
+        <h3>Шаг 6. View без копирования</h3>
+        <div class="code">
+          <div class="bar"><span class="file">10_broadcasting_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">big = np.broadcast_to(np.array([1, 2, 3]), (2, 3))
+print(big.shape, big.strides, big.flags.writeable)</pre>
+          <div class="out">(2, 3) (0, 8) False</div>
+        </div>
+        <p>
+          Stride <code class="inl">0</code> по первой оси — та самая «растяжка»: обе строки смотрят в одни и те же
+          три числа. Поэтому запись запрещена.
+        </p>
+      </section>
+
+      <section>
+        <h2><span class="num">07</span>Мост: чем это отличается от выравнивания в pandas</h2>
+
+        <h3>pandas выравнивает по индексам, NumPy — по позициям</h3>
+        <div class="code">
+          <div class="bar"><span class="file">мост в pandas</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">s = pd.Series([100, 200, 300], index=["a", "b", "c"])
+df = pd.DataFrame({"a": [1, 2], "b": [3, 4]})
+
+df + s            # выравнивание по именам колонок
+df.values + np.array([100, 200])[:, None]   # broadcasting по позициям</pre>
+        </div>
+        <p>
+          В pandas <code class="inl">df + series</code> сопоставляет по метке, а не по номеру столбца.
+          В NumPy — строго по позиции. Это две разные дисциплины, и смешивать их в голове — источник тихих ошибок.
+        </p>
+
+        <h3>SQL: арифметика по строкам и колонкам</h3>
+        <div class="code">
+          <div class="bar"><span class="file">мост в SQL</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">SELECT amount * 1.1 FROM orders;          -- скаляр «растягивается»
+SELECT amount + tax.rate FROM orders, tax; -- произведение таблиц: осторожно</pre>
+        </div>
+        <p>
+          В SQL нет broadcasting: скаляр применяется к каждой строке, а для «каждый с каждым» нужен
+          <code class="inl">CROSS JOIN</code> — и это уже осознанное декартово произведение.
+        </p>
+      </section>
+
+      <section>
+        <h2><span class="num">08</span>Пять ошибок, на которых спотыкаются</h2>
+
+        <div class="errors">
+          <div class="err">
+            <div class="h">Вектор (3,) вместо столбца (3, 1)</div>
+            <p>Ожидали вычитание по строкам, а получили ошибку или вычитание по столбцам — из-за правого выравнивания.</p>
+            <div class="fix"><code class="inl">v[:, None]</code> или <code class="inl">v.reshape(-1, 1)</code>.</div>
+          </div>
+          <div class="err">
+            <div class="h">Случайное broadcasting вместо ошибки</div>
+            <p>Форма <code class="inl">(3, 1)</code> и <code class="inl">(3,)</code> «сойдётся» в <code class="inl">(3, 3)</code>, хотя задумывалось поэлементное вычитание.</p>
+            <div class="fix">Проверять <code class="inl">shape</code> результата; явно приводить форму.</div>
+          </div>
+          <div class="err">
+            <div class="h">Запись в broadcast-представление</div>
+            <p><code class="inl">np.broadcast_to(...)[0, 0] = 5</code> → <code class="inl">ValueError: assignment destination is read-only</code>.</p>
+            <div class="fix">Нужна запись — сначала <code class="inl">.copy()</code>.</div>
+          </div>
+          <div class="err">
+            <div class="h">Путать с выравниванием pandas</div>
+            <p>В pandas метки решают, как совместить данные; в NumPy — только позиции.</p>
+            <div class="fix">Для позиционной логики — <code class="inl">.to_numpy()</code>, для меточной — pandas-операции.</div>
+          </div>
+          <div class="err">
+            <div class="h">Забытый keepdims</div>
+            <p>Среднее по оси без keepdims теряет ось, и последующая операция может дать неожиданную форму.</p>
+            <div class="fix"><code class="inl">keepdims=True</code>, когда результат участвует в арифметике с исходным массивом.</div>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h2><span class="num">09</span>Вопросы с собеседования</h2>
+        <div class="qa">
+          <details>
+            <summary>Что такое broadcasting?</summary>
+            <div class="a">
+              <p>Правило, по которому массивы разной формы приводятся к общей форме без копирования: размеры выравниваются справа, единицы растягиваются, результат — по максимуму.</p>
+              <div class="verdict">Резюме: штамп на тесте, а не разрезание на куски.</div>
+            </div>
+          </details>
+          <details>
+            <summary>Почему (3,4) и (3,) не складываются?</summary>
+            <div class="a">
+              <p>Правое выравнивание: 4 против 3 по последней оси. Ни одно из чисел не равно 1 — формы несовместимы.</p>
+              <div class="verdict">Резюме: сравнивайте хвосты форм.</div>
+            </div>
+          </details>
+          <details>
+            <summary>Почему (3,1) и (1,4) дают (3,4)?</summary>
+            <div class="a">
+              <p>По каждой оси один из размеров равен 1 и растягивается до размера другого: 3→3 и 1→4. Итоговая форма — максимум по каждой оси.</p>
+              <div class="verdict">Резюме: единица — универсальный размер.</div>
+            </div>
+          </details>
+          <details>
+            <summary>Копируются ли данные при broadcasting?</summary>
+            <div class="a">
+              <p>Нет. Растянутая ось имеет stride 0, поэтому представление смотрит в те же ячейки. Запись в такое представление запрещена.</p>
+              <div class="verdict">Резюме: экономия памяти и запрет на запись — две стороны одного приёма.</div>
+            </div>
+          </details>
+          <details>
+            <summary>Зачем нужен newaxis?</summary>
+            <div class="a">
+              <p>Чтобы добавить ось и изменить выравнивание: вектор (3,) превращается в (3,1) и начинает вести себя как столбец.</p>
+              <div class="verdict">Резюме: управление формой до операции.</div>
+            </div>
+          </details>
+          <details>
+            <summary>Чем broadcasting в NumPy отличается от pandas?</summary>
+            <div class="a">
+              <p>NumPy выравнивает по позициям формы, pandas — по меткам индекса и колонок. Результат может совпасть, а смысл — нет.</p>
+              <div class="verdict">Резюме: позиция против метки.</div>
+            </div>
+          </details>
+          <details>
+            <summary>Как вычесть среднее по столбцам из матрицы?</summary>
+            <div class="a">
+              <p><code class="inl">m - m.mean(axis=0, keepdims=True)</code>. Без keepdims форма <code class="inl">(4,)</code> тоже сработает, но смысл легче потерять.</p>
+              <div class="verdict">Резюме: keepdims делает намерение явным.</div>
+            </div>
+          </details>
+          <details>
+            <summary>Как построить матрицу попарных разностей без циклов?</summary>
+            <div class="a">
+              <p><code class="inl">x[:, None] - x[None, :]</code>: столбец минус строка, broadcasting даёт матрицу <code class="inl">(n, n)</code>.</p>
+              <div class="verdict">Резюме: две новые оси — и цикл не нужен.</div>
+            </div>
+          </details>
+        </div>
+      </section>
+
+      <section>
+        <h2><span class="num">10</span>Три задачи: сначала своя попытка</h2>
+
+        <h3><span style="color:var(--muted);font-family:var(--mono);font-size:.8rem">01</span> Нормализация столбцов</h3>
+        <p>Для матрицы 3×4 вычтите среднее по столбцу и разделите на стандартное отклонение по столбцу.</p>
+        <div class="qa">
+          <details>
+            <summary>Показать решение</summary>
+            <div class="a">
+              <div class="code" style="margin-top:0">
+                <div class="bar"><span class="file">решение</span><span class="lang">python</span><button class="copy">копировать</button></div>
+                <pre data-lang="python">a = np.arange(12, dtype=float).reshape(3, 4)
+normed = (a - a.mean(axis=0, keepdims=True)) / a.std(axis=0, keepdims=True)
+print(normed.round(2))</pre>
+                <div class="out">[[-1.22 -1.22 -1.22 -1.22]
+ [ 0.    0.    0.    0.  ]
+ [ 1.22  1.22  1.22  1.22]]</div>
+              </div>
+              <p><strong>Что важно.</strong> Оба агрегата с <code class="inl">keepdims=True</code>, иначе вычитание
+              и деление пойдут по другой оси.</p>
+            </div>
+          </details>
+        </div>
+
+        <h3><span style="color:var(--muted);font-family:var(--mono);font-size:.8rem">02</span> Матрица разностей</h3>
+        <p>Для вектора из пяти чисел постройте матрицу попарных разностей без циклов.</p>
+        <div class="qa">
+          <details>
+            <summary>Показать решение</summary>
+            <div class="a">
+              <div class="code" style="margin-top:0">
+                <div class="bar"><span class="file">решение</span><span class="lang">python</span><button class="copy">копировать</button></div>
+                <pre data-lang="python">x = np.array([10, 20, 35, 50, 80])
+diff = x[:, None] - x[None, :]
+print(diff.shape)
+print(diff[1])   # разности для второго элемента</pre>
+                <div class="out">(5, 5)
+[ 10   0 -15 -30 -60]</div>
+              </div>
+              <p><strong>Что важно.</strong> <code class="inl">x[:, None]</code> — столбец (5,1), <code class="inl">x[None, :]</code> —
+              строка (1,5), результат (5,5).</p>
+            </div>
+          </details>
+        </div>
+
+        <h3><span style="color:var(--muted);font-family:var(--mono);font-size:.8rem">03</span> Исправить форму</h3>
+        <p>Код <code class="inl">m + v</code> падает, потому что <code class="inl">v</code> — вектор длины 4, а нужен столбец. Исправьте двумя способами.</p>
+        <div class="qa">
+          <details>
+            <summary>Показать решение</summary>
+            <div class="a">
+              <div class="code" style="margin-top:0">
+                <div class="bar"><span class="file">решение</span><span class="lang">python</span><button class="copy">копировать</button></div>
+                <pre data-lang="python">v = np.array([1, 2, 3, 4])
+m = np.zeros((3, 4))
+
+print((m + v).shape)           # (3, 4): v как строка
+print((m + v[:, None]).shape)  # (3, 4): v как столбец
+print((m + v.reshape(-1, 1)).shape)</pre>
+                <div class="out">(3, 4)
+(3, 4)
+(3, 4)</div>
+              </div>
+              <p><strong>Что важно.</strong> Форма результата одна, а смысл разный: в первом случае v прибавляется
+              к каждой строке, во втором — к каждому столбцу своего ряда.</p>
+            </div>
+          </details>
+        </div>
+      </section>
+
+      <section>
+        <h2><span class="num">11</span>Чек-лист освоения</h2>
+        <div class="check">
+          <label><input type="checkbox"><span class="box"></span><span class="txt">Сформулировать правила broadcasting за 20 секунд</span></label>
+          <label><input type="checkbox"><span class="box"></span><span class="txt">Предсказать форму результата для пары форм</span></label>
+          <label><input type="checkbox"><span class="box"></span><span class="txt">Использовать newaxis, когда вектор должен стать столбцом</span></label>
+          <label><input type="checkbox"><span class="box"></span><span class="txt">Объяснить, почему broadcast-представление только для чтения</span></label>
+          <label><input type="checkbox"><span class="box"></span><span class="txt">Отличить позиционное выравнивание NumPy от меточного в pandas</span></label>
+        </div>
+      </section>
+
+      <section>
+        <h2><span class="num">12</span>Куда ведут мостики</h2>
+        <div class="bridges">
+          <a class="bridge" href="ch-09-axis.html"><span class="to">Глава 09</span><span>axis</span><span class="what">→ keepdims как подготовка к broadcasting</span></a>
+          <a class="bridge" href="ch-11-views-copies.html"><span class="to">Глава 11</span><span>View и copy</span><span class="what">→ почему растяжка не копирует</span></a>
+          <a class="bridge" href="ch-12-series-dataframe.html"><span class="to">Глава 12</span><span>Series и DataFrame</span><span class="what">→ выравнивание по меткам</span></a>
+          <a class="bridge" href="ch-13-loc-iloc.html"><span class="to">Глава 13</span><span>loc и iloc</span><span class="what">→ метка против позиции</span></a>
+          <a class="bridge" href="ch-24-indexes-explain.html"><span class="to">Глава 24</span><span>Индексы и EXPLAIN</span><span class="what">→ декартово произведение в SQL</span></a>
         </div>
       </section>
 
       <div class="pager">
-        <a class="prev" href="ch-09-axis.html"><span class="dir">← Назад</span><span class="ttl">axis: вдоль какой стены считать</span></a>
-        <a class="next" href="ch-11-views-copies.html"><span class="dir">Дальше →</span><span class="ttl">11 · View и copy: стекло и ксерокс</span></a>
+        <a class="prev" href="ch-09-axis.html"><span class="dir">← Назад</span><span class="ttl">09 · axis</span></a>
+        <a class="next" href="ch-11-views-copies.html"><span class="dir">Дальше →</span><span class="ttl">11 · view и copy</span></a>
       </div>
+
     </div>
   </main>
 </div>

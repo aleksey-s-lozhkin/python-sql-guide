@@ -89,3 +89,11 @@ service worker недоступен. Поэтому страница на Pages 
 - Схемы: `ndarray-vs-list.svg`, `mask-trafaret.svg`; лаборатории 07 и 08.
 - Ключевые факты из лабораторий: list 1M — 8 МБ указателей + 28 байт/int; ndarray — 8 МБ;
   создание 29.4 мс против 0.9 мс; int8 127+1 → −128; arange(1, 1.3, 0.1) даёт 4 элемента.
+
+## Часть II закрыта
+
+- Готовы главы 09 (axis), 10 (broadcasting), 11 (view/copy).
+- Схемы: `axis-flatten.svg`, `broadcasting-stamp.svg`, `view-copy.svg`; лаборатории 09–11.
+- Ключевые факты: `sum(axis=0)` из (3,4) даёт (4,); `broadcast_to` даёт strides (0,8) и read-only;
+  slice/resize/T — view, маска/fancy — копия; pandas 3 CoW не даёт менять df через Series.
+- Дальше: часть III, pandas (12–18).

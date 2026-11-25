@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>11 · View и copy: стекло и ксерокс — Ассоциативный гайд</title>
+<meta name="description" content="View и copy в NumPy и pandas: срезы-окна, копии продвинутой индексации, Copy-on-Write и типичные баги.">
 <link rel="stylesheet" href="assets/style.css">
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#fbf8f2" media="(prefers-color-scheme: light)">
@@ -20,37 +21,434 @@
   <aside class="sidebar" id="sidebar"></aside>
   <main>
     <div class="wrap">
+
       <header class="chapter-head">
         <div class="eyebrow">
-          <span class="part">Часть II · NumPy</span><span class="dot"></span><span>Неделя 2 · день 5</span><span class="dot"></span><span>в работе</span>
+          <span class="part">Часть II · NumPy</span>
+          <span class="dot"></span>
+          <span>Неделя 2 · день 5</span>
+          <span class="dot"></span>
+          <span>готово</span>
         </div>
-        <h1>View и copy: стекло и ксерокс<span class="sub">Глава ещё не написана — сейчас она в очереди по программе</span></h1>
-        <p class="lead">Здесь появится тот же формат, что в главе 02: ассоциация-якорь, схема, запускаемый код, разбор типичных ошибок, вопросы с собеседования и задачи с решениями.</p>
+        <h1>View и copy: стекло и ксерокс
+          <span class="sub">Где вы смотрите на те же данные, а где держите копию</span>
+        </h1>
+        <p class="lead">
+          Срез массива — не копия. Изменение «окна» меняет исходные данные, и это самая незаметная категория
+          багов в NumPy и pandas. Зато когда копия действительно нужна, её делают явно.
+        </p>
         <div class="meta">
-          <span class="chip">📐 <b>1 схема</b></span>
-          <span class="chip">💻 <b>лаборатория</b></span>
-          <span class="chip">🎤 <b>6–8 вопросов</b></span>
-          <span class="chip">✍️ <b>3 задачи</b></span>
+          <span class="chip">⏱ <b>40 минут</b></span>
+          <span class="chip">🎯 уровень <b>2 — применить</b></span>
+          <span class="chip">🧮 <b>numpy 2.3</b></span>
+          <span class="chip">📚 <b>Copies and views</b></span>
         </div>
       </header>
 
       <section>
-        <h2><span class="num">01</span>Что войдёт в главу</h2>
+        <h2><span class="num">01</span>Зачем это backend-разработчику</h2>
+        <ul>
+          <li><strong>Тихие баги.</strong> «Поправил локальную копию, а изменился отчёт» — классика. Причина — view.</li>
+          <li><strong>pandas Copy-on-Write.</strong> С третьей версии pandas это поведение по умолчанию: цепочки присваиваний больше не меняют исходную таблицу.</li>
+          <li><strong>Память.</strong> Копия миллиона чисел — 8 МБ; view — почти ноль. На больших данных это разница между работой и падением.</li>
+          <li><strong>Собеседование:</strong> «срез — это копия?», «что делает .copy()», «почему изменение фильтра не меняет массив» — проверяют модель памяти.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2><span class="num">02</span>Ассоциация-якорь: стекло и ксерокс</h2>
+
+        <div class="anchor">
+          <div class="glyph">🪞</div>
+          <div>
+            <div class="t">Держите эту картинку в голове</div>
+            <p class="kick"><strong>View — стеклянная витрина.</strong> Через стекло видно тот же товар, и если
+            поправить его рукой, изменение увидят все, кто смотрит в витрину.</p>
+            <p><strong>Copy — ксерокс.</strong> На копии можно рисовать что угодно: оригинал в витрине не изменится.
+            Вопрос «view или copy?» — это вопрос «смотрю через стекло или держу ксерокопию».</p>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h2><span class="num">03</span>Ассоциативный ряд: восемь звеньев</h2>
         <ol class="chain">
-          <li><b>когда срез</b><span>это окно, а когда копия</span></li>
-          <li><b>изменение через view и неожиданные эффекты</b></li>
-          <li><b>np.array против np.asarray</b></li>
+          <li><b>Срез</b><span>окно: обычно view</span></li>
+          <li><b>reshape</b><span>чаще view, но не всегда</span></li>
+          <li><b>Транспонирование</b><span>view с другими strides</span></li>
+          <li><b>Маска и fancy</b><span>всегда копия</span></li>
+          <li><b>.copy()</b><span>явная независимость</span></li>
+          <li><b>.base</b><span>на кого смотрит окно</span></li>
+          <li><b>owndata</b><span>владеет ли массив буфером</span></li>
+          <li><b>shares_memory</b><span>проверка общего буфера</span></li>
         </ol>
-        <div class="note">
-          <span class="t">Пока это заглушка</span>
-          <p>Заглушка нужна, чтобы оглавление и мостики работали как карта: видно, куда ведёт каждая тема. Начните с готовой главы 02 — она задаёт шаблон для всех остальных.</p>
+      </section>
+
+      <section>
+        <h2><span class="num">04</span>Схема: один буфер против двух</h2>
+
+        <figure>
+          <div class="frame">
+            <img src="assets/maps/view-copy.svg" alt="Слева view смотрит в тот же буфер, справа копия занимает отдельную память.">
+          </div>
+          <figcaption>
+            <b>Рис. 1.</b> У view другой shape и strides, но тот же буфер. У копии — своя память, поэтому
+            изменения независимы.
+          </figcaption>
+        </figure>
+      </section>
+
+      <section>
+        <h2><span class="num">05</span>Как это устроено на самом деле</h2>
+        <p>
+          Массив NumPy — это буфер плюс описание: shape, dtype, strides. View — новый объект-описание, который
+          смотрит в <em>тот же буфер</em> со своим смещением и шагами. Именно поэтому срез «бесплатный»: данные
+          не копируются.
+        </p>
+
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Операция</th><th>View или копия</th><th>Почему</th></tr></thead>
+            <tbody>
+              <tr><td class="mono">a[1:3]</td><td>view</td><td>непрерывный диапазон того же буфера</td></tr>
+              <tr><td class="mono">a.T</td><td>view</td><td>те же данные, другие strides</td></tr>
+              <tr><td class="mono">a.reshape(...)</td><td>обычно view</td><td>если данные непрерывны</td></tr>
+              <tr><td class="mono">a[mask]</td><td>копия</td><td>нельзя описать окном</td></tr>
+              <tr><td class="mono">a[[0, 2]]</td><td>копия</td><td>продвинутая индексация</td></tr>
+              <tr><td class="mono">a.copy()</td><td>копия</td><td>явный запрос</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>Когда reshape копирует</h3>
+        <p>
+          Если данные в памяти лежат не подряд (например, после транспонирования), <code class="inl">reshape</code>
+          не может описать их новыми strides — и делает копию. Правило простое: «reshape — обычно view»,
+          но не «всегда».
+        </p>
+
+        <h3>pandas и Copy-on-Write</h3>
+        <p>
+          В pandas 3 поведение Copy-on-Write включено по умолчанию: любая производная таблица (срез, выборка
+          колонки) при первом изменении получает свою копию, а исходная не меняется. Поэтому
+          <code class="inl">df["a"][0] = 5</code> больше не работает как «запись в таблицу» — нужно явное
+          <code class="inl">df.loc[0, "a"] = 5</code>.
+        </p>
+      </section>
+
+      <section>
+        <h2><span class="num">06</span>Лаборатория: запустить и увидеть</h2>
+        <p>
+          Фрагменты файла <a href="snippets/11_views_copies_lab.py"><code class="inl">snippets/11_views_copies_lab.py</code></a>.
+        </p>
+
+        <h3>Шаг 1. Срез — окно: правка видна в исходнике</h3>
+        <div class="code">
+          <div class="bar"><span class="file">11_views_copies_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">base = np.array([[0, 1, 2, 3], [4, 5, 6, 7], [8, 9, 10, 11]])
+view = base[1:, 2:]
+
+print(view.base is base, view.flags.owndata)
+view[:] = -1
+print(base)</pre>
+          <div class="out">True False
+[[ 0  1  2  3]
+ [ 4  5 -1 -1]
+ [ 8  9 -1 -1]]</div>
+        </div>
+        <p>
+          <code class="inl">owndata=False</code> — массив не владеет буфером. Изменение окна изменило исходник
+          ровно там, куда окно смотрит.
+        </p>
+
+        <h3>Шаг 2. Копия независима</h3>
+        <div class="code">
+          <div class="bar"><span class="file">11_views_copies_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">safe = base[[0, 1]].copy()
+safe[:] = 0
+print(base)
+print(np.shares_memory(base, safe))</pre>
+          <div class="out">[[ 0  1  2  3]
+ [ 4  5 -1 -1]
+ [ 8  9 -1 -1]]
+False</div>
+        </div>
+
+        <h3>Шаг 3. Маска и fancy — всегда копия</h3>
+        <div class="code">
+          <div class="bar"><span class="file">11_views_copies_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">fancy = base[[0, 2]]
+print(fancy.base, fancy.flags.owndata)
+
+masked = base[base &gt; 2]
+print(masked.base)</pre>
+          <div class="out">None True
+None</div>
+        </div>
+        <p>
+          <code class="inl">base=None</code> означает «владею своим буфером»: это копия. Правка такой выборки
+          исходный массив не меняет.
+        </p>
+
+        <h3>Шаг 4. reshape и транспонирование: обычно view</h3>
+        <div class="code">
+          <div class="bar"><span class="file">11_views_copies_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">fresh = np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]])
+
+print(fresh.reshape(1, 9).base is fresh)
+print(fresh.T.base is fresh)
+print(fresh.T.strides, fresh.strides)</pre>
+          <div class="out">True
+True
+(8, 24) (24, 8)</div>
+        </div>
+        <p>
+          Транспонирование не копирует: меняются только strides. Именно поэтому <code class="inl">a.T</code> мгновенный
+          даже для больших матриц.
+        </p>
+
+        <h3>Шаг 5. Когда reshape вынужден копировать</h3>
+        <div class="code">
+          <div class="bar"><span class="file">11_views_copies_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">strided = fresh.T              # view
+flat = strided.reshape(9)      # данные не подряд — нужна копия
+print(strided.flags.c_contiguous)
+print(np.shares_memory(strided, flat))</pre>
+          <div class="out">False
+False</div>
+        </div>
+
+        <h3>Шаг 6. pandas: Copy-on-Write</h3>
+        <div class="code">
+          <div class="bar"><span class="file">11_views_copies_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">df = pd.DataFrame({"a": [1, 2, 3], "b": [10, 20, 30]})
+series = df["a"]
+series.iloc[0] = 99
+print(df["a"].tolist())      # исходник не изменился
+
+df.loc[0, "a"] = 99
+print(df["a"].tolist())      # явное присваивание работает</pre>
+          <div class="out">[1, 2, 3]
+[99, 2, 3]</div>
+        </div>
+        <p>
+          Это не баг, а гарантия: производные объекты не могут тайно менять исходную таблицу. Запись — только
+          через явные методы pandas.
+        </p>
+      </section>
+
+      <section>
+        <h2><span class="num">07</span>Мост: где это важно в pandas и SQL</h2>
+
+        <h3>pandas: методы, которые возвращают копию или view</h3>
+        <div class="code">
+          <div class="bar"><span class="file">мост в pandas</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">df["a"]             # Series-представление (CoW)
+df.copy()           # явная копия
+df.sort_values("a") # новая таблица, исходник прежний
+df.drop(columns=["b"], inplace=True)   # меняет df</pre>
+        </div>
+        <p>
+          Общее правило pandas: по умолчанию операции возвращают новый объект; <code class="inl">inplace=True</code>
+          и <code class="inl">.loc[...] = ...</code> меняют исходный. После CoW это стало предсказуемее.
+        </p>
+
+        <h3>SQL: VIEW — тоже окно, но только для чтения</h3>
+        <div class="code">
+          <div class="bar"><span class="file">мост в SQL</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">CREATE VIEW active_users AS
+SELECT * FROM users WHERE deleted_at IS NULL;
+
+SELECT * FROM active_users;   -- окно в данные, а не копия таблицы</pre>
+        </div>
+        <p>
+          Аналогия неполная, но полезная: SQL-представление тоже не хранит данные, а описывает, как их прочитать.
+          В отличие от массива, оно не даёт менять данные «через себя» без дополнительных условий.
+        </p>
+      </section>
+
+      <section>
+        <h2><span class="num">08</span>Пять ошибок, на которых спотыкаются</h2>
+
+        <div class="errors">
+          <div class="err">
+            <div class="h">Правка «копии», которая оказалась view</div>
+            <p><code class="inl">patch = arr[:10]; patch[:] = 0</code> обнулило первые 10 элементов исходного массива.</p>
+            <div class="fix">Явно <code class="inl">arr[:10].copy()</code>, если нужна независимость.</div>
+          </div>
+          <div class="err">
+            <div class="h">Ожидание, что reshape всегда view</div>
+            <p>После транспонирования <code class="inl">reshape</code> копирует — и правки «переставшего» массива не видны в исходном.</p>
+            <div class="fix">Проверять <code class="inl">np.shares_memory(a, b)</code>.</div>
+          </div>
+          <div class="err">
+            <div class="h">Цепочка присваиваний в pandas</div>
+            <p><code class="inl">df["a"][0] = 5</code> в pandas 3 не меняет таблицу (и раньше работало ненадёжно).</p>
+            <div class="fix"><code class="inl">df.loc[0, "a"] = 5</code> — явная индексация.</div>
+          </div>
+          <div class="err">
+            <div class="h">Копия через asarray</div>
+            <p><code class="inl">np.asarray(arr)</code> не копирует, если тип совпадает. Правки «копии» видны в исходнике.</p>
+            <div class="fix"><code class="inl">np.array(arr, copy=True)</code> или <code class="inl">arr.copy()</code>.</div>
+          </div>
+          <div class="err">
+            <div class="h">Запись в broadcast-представление</div>
+            <p><code class="inl">np.broadcast_to(...)</code> — view только для чтения, писать нельзя.</p>
+            <div class="fix">Сначала <code class="inl">.copy()</code>, потом менять.</div>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h2><span class="num">09</span>Вопросы с собеседования</h2>
+        <div class="qa">
+          <details>
+            <summary>Что такое view? Что такое copy?</summary>
+            <div class="a">
+              <p>View — новый объект-описание, смотрящий в тот же буфер. Copy — независимый буфер с копией данных. Изменения через view видны в исходнике, через copy — нет.</p>
+              <div class="verdict">Резюме: стекло против ксерокса.</div>
+            </div>
+          </details>
+          <details>
+            <summary>Срез массива — это копия?</summary>
+            <div class="a">
+              <p>Нет, это view. В отличие от списка Python, где срез копирует. Срез массива позволяет читать и писать в исходные данные.</p>
+              <div class="verdict">Резюме: список копирует, массив смотрит.</div>
+            </div>
+          </details>
+          <details>
+            <summary>Какие операции возвращают копию?</summary>
+            <div class="a">
+              <p>Продвинутая индексация: булева маска, список индексов, а также явный <code class="inl">.copy()</code>. Ещё иногда <code class="inl">reshape</code>, если данные не непрерывны.</p>
+              <div class="verdict">Резюме: всё, что нельзя описать окном, копируется.</div>
+            </div>
+          </details>
+          <details>
+            <summary>Как проверить, делят ли массивы память?</summary>
+            <div class="a">
+              <p><code class="inl">np.shares_memory(a, b)</code> — точная проверка; <code class="inl">np.may_share_memory</code> — быстрая, но может давать ложные срабатывания.</p>
+              <div class="verdict">Резюме: проверяйте, а не угадывайте.</div>
+            </div>
+          </details>
+          <details>
+            <summary>Зачем нужен .base?</summary>
+            <div class="a">
+              <p>Он показывает, на кого смотрит view. Если <code class="inl">base is None</code>, массив владеет своим буфером; иначе это представление.</p>
+              <div class="verdict">Резюме: ссылка на источник окна.</div>
+            </div>
+          </details>
+          <details>
+            <summary>Что такое Copy-on-Write в pandas?</summary>
+            <div class="a">
+              <p>Режим, при котором производные объекты не меняют исходный: копия создаётся при первой записи. С pandas 3 это поведение по умолчанию.</p>
+              <div class="verdict">Резюме: безопасность вместо скрытого влияния.</div>
+            </div>
+          </details>
+          <details>
+            <summary>Почему view экономит память?</summary>
+            <div class="a">
+              <p>Он не выделяет новый буфер: данные общие, отличается только описание — смещение и шаги. Копия миллиона чисел стоит 8 МБ, view — почти ничего.</p>
+              <div class="verdict">Резюме: описание вместо данных.</div>
+            </div>
+          </details>
+          <details>
+            <summary>Когда копия всё-таки нужна?</summary>
+            <div class="a">
+              <p>Когда массив передаётся в код, который может его менять, или когда результат должен жить независимо. Тогда <code class="inl">.copy()</code> — часть контракта, а не перестраховка.</p>
+              <div class="verdict">Резюме: явная независимость там, где она нужна.</div>
+            </div>
+          </details>
+        </div>
+      </section>
+
+      <section>
+        <h2><span class="num">10</span>Три задачи: сначала своя попытка</h2>
+
+        <h3><span style="color:var(--muted);font-family:var(--mono);font-size:.8rem">01</span> Найдите баг</h3>
+        <p>Функция должна возвращать массив без отрицательных значений, не меняя исходный. Что не так?</p>
+        <div class="code">
+          <div class="bar"><span class="file">условие</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">def clean(data):
+    data[data &lt; 0] = 0
+    return data</pre>
+        </div>
+        <div class="qa">
+          <details>
+            <summary>Показать решение</summary>
+            <div class="a">
+              <div class="code" style="margin-top:0">
+                <div class="bar"><span class="file">решение</span><span class="lang">python</span><button class="copy">копировать</button></div>
+                <pre data-lang="python">def clean(data):
+    out = data.copy()
+    out[out &lt; 0] = 0
+    return out</pre>
+              </div>
+              <p><strong>Что важно.</strong> Маска в присваивании меняет массив на месте, а не создаёт новый.
+              Копия перед записью — явный контракт «я не трогаю чужие данные».</p>
+            </div>
+          </details>
+        </div>
+
+        <h3><span style="color:var(--muted);font-family:var(--mono);font-size:.8rem">02</span> Окно или копия</h3>
+        <p>Для каждой операции скажите, view это или копия: <code class="inl">a[2:5]</code>, <code class="inl">a[[1,3]]</code>, <code class="inl">a.T</code>, <code class="inl">a[a &gt; 0]</code>.</p>
+        <div class="qa">
+          <details>
+            <summary>Показать ответ</summary>
+            <div class="a">
+              <p><code class="inl">a[2:5]</code> — view (непрерывный диапазон). <code class="inl">a[[1,3]]</code> — копия (fancy).
+              <code class="inl">a.T</code> — view (меняются strides). <code class="inl">a[a &gt; 0]</code> — копия (маска).</p>
+              <div class="verdict">Проверка на практике: <code class="inl">np.shares_memory(a, result)</code>.</div>
+            </div>
+          </details>
+        </div>
+
+        <h3><span style="color:var(--muted);font-family:var(--mono);font-size:.8rem">03</span> Безопасная правка pandas</h3>
+        <p>В таблице нужно обнулить значения колонки там, где возраст меньше 18. Напишите корректный код для pandas 3.</p>
+        <div class="qa">
+          <details>
+            <summary>Показать решение</summary>
+            <div class="a">
+              <div class="code" style="margin-top:0">
+                <div class="bar"><span class="file">решение</span><span class="lang">python</span><button class="copy">копировать</button></div>
+                <pre data-lang="python">df.loc[df["age"] &lt; 18, "amount"] = 0
+
+# или без изменения исходной таблицы:
+df2 = df.assign(amount=df["amount"].mask(df["age"] &lt; 18, 0))</pre>
+              </div>
+              <p><strong>Что важно.</strong> Явный <code class="inl">.loc</code> — единственный надёжный способ
+              писать в таблицу. <code class="inl">assign</code> возвращает новую таблицу.</p>
+            </div>
+          </details>
+        </div>
+      </section>
+
+      <section>
+        <h2><span class="num">11</span>Чек-лист освоения</h2>
+        <div class="check">
+          <label><input type="checkbox"><span class="box"></span><span class="txt">Сказать, какие операции дают view, а какие копию</span></label>
+          <label><input type="checkbox"><span class="box"></span><span class="txt">Проверить общий буфер через shares_memory</span></label>
+          <label><input type="checkbox"><span class="box"></span><span class="txt">Объяснить, почему reshape иногда копирует</span></label>
+          <label><input type="checkbox"><span class="box"></span><span class="txt">Писать в pandas через .loc, а не через цепочку</span></label>
+          <label><input type="checkbox"><span class="box"></span><span class="txt">Найти баг «изменил копию, поменялся оригинал»</span></label>
+        </div>
+      </section>
+
+      <section>
+        <h2><span class="num">12</span>Куда ведут мостики</h2>
+        <div class="bridges">
+          <a class="bridge" href="ch-08-indexing.html"><span class="to">Глава 08</span><span>Индексация и маски</span><span class="what">→ почему фильтр — копия</span></a>
+          <a class="bridge" href="ch-10-broadcasting.html"><span class="to">Глава 10</span><span>Broadcasting</span><span class="what">→ растяжка без копии</span></a>
+          <a class="bridge" href="ch-12-series-dataframe.html"><span class="to">Глава 12</span><span>Series и DataFrame</span><span class="what">→ CoW на таблицах</span></a>
+          <a class="bridge" href="ch-03-list-tuple.html"><span class="to">Глава 03</span><span>list и tuple</span><span class="what">→ срез списка — копия</span></a>
+          <a class="bridge" href="ch-16-merge.html"><span class="to">Глава 16</span><span>merge</span><span class="what">→ merge возвращает новую таблицу</span></a>
         </div>
       </section>
 
       <div class="pager">
-        <a class="prev" href="ch-10-broadcasting.html"><span class="dir">← Назад</span><span class="ttl">Broadcasting: штамп и тесто</span></a>
-        <a class="next" href="ch-12-series-dataframe.html"><span class="dir">Дальше →</span><span class="ttl">12 · Series и DataFrame: таблица с оглавлением</span></a>
+        <a class="prev" href="ch-10-broadcasting.html"><span class="dir">← Назад</span><span class="ttl">10 · broadcasting</span></a>
+        <a class="next" href="ch-12-series-dataframe.html"><span class="dir">Часть III →</span><span class="ttl">12 · Series и DataFrame</span></a>
       </div>
+
     </div>
   </main>
 </div>

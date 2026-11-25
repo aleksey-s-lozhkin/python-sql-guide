@@ -1,5 +1,5 @@
 // Сгенерировано tools/gen_sw.cjs — не править руками.
-const CACHE = "assoc-guide-vd0789189";
+const CACHE = "assoc-guide-vedbf1505";
 const PRECACHE = [
   "./assets/app.js",
   "./assets/icons/favicon.svg",
@@ -8,6 +8,8 @@ const PRECACHE = [
   "./assets/icons/icon-512.png",
   "./assets/icons/icon.svg",
   "./assets/maps/alias-vs-copy.svg",
+  "./assets/maps/axis-flatten.svg",
+  "./assets/maps/broadcasting-stamp.svg",
   "./assets/maps/collection-map.svg",
   "./assets/maps/collections-tools.svg",
   "./assets/maps/comprehension-vs-generator.svg",
@@ -17,6 +19,7 @@ const PRECACHE = [
   "./assets/maps/ndarray-vs-list.svg",
   "./assets/maps/one-model-three-worlds.svg",
   "./assets/maps/set-operations.svg",
+  "./assets/maps/view-copy.svg",
   "./assets/style.css",
   "./assets/toc.js",
   "./ch-01-python-collections.html",
@@ -55,7 +58,10 @@ const PRECACHE = [
   "./snippets/05_comprehensions_lab.py",
   "./snippets/06_collections_lab.py",
   "./snippets/07_ndarray_lab.py",
-  "./snippets/08_indexing_lab.py"
+  "./snippets/08_indexing_lab.py",
+  "./snippets/09_axis_lab.py",
+  "./snippets/10_broadcasting_lab.py",
+  "./snippets/11_views_copies_lab.py"
 ];
 
 self.addEventListener("install", (e) => {
