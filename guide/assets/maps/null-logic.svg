@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 460" role="img" aria-labelledby="t2 d2">
+  <title id="t2">Логика трёх значений: таблицы AND и OR, и как WHERE обрабатывает UNKNOWN</title>
+  <desc id="d2">Таблица истинности для AND и OR с TRUE, FALSE, UNKNOWN; WHERE пропускает только TRUE.</desc>
+  <defs>
+    <style>
+      .h { font: 700 11.5px system-ui, -apple-system, "Segoe UI", sans-serif; fill: #8a7f73; letter-spacing: .1em; }
+      .c { font: 700 11px ui-monospace, "SF Mono", Menlo, monospace; fill: #1d1b26; text-anchor: middle; }
+      .v { font: 500 11.5px ui-monospace, "SF Mono", Menlo, monospace; fill: #1d1b26; }
+      .s { font: 400 12.5px system-ui, -apple-system, "Segoe UI", sans-serif; fill: #4a4458; }
+      .n { font: 400 12px system-ui, -apple-system, "Segoe UI", sans-serif; fill: #7a7285; }
+      .lbl { font: 700 10.5px system-ui, -apple-system, "Segoe UI", sans-serif; fill: #8a7f73; letter-spacing: .12em; }
+      .t { font: 700 11px ui-monospace, "SF Mono", Menlo, monospace; fill: #2f6b4f; }
+      .f { font: 700 11px ui-monospace, "SF Mono", Menlo, monospace; fill: #a23b3b; }
+      .u { font: 700 11px ui-monospace, "SF Mono", Menlo, monospace; fill: #8a6400; }
+    </style>
+  </defs>
+
+  <text class="lbl" x="40" y="34">AND</text>
+  <g stroke="#d8d1c6">
+    <rect x="40" y="48" width="120" height="34" fill="#f4f1ea"/><rect x="160" y="48" width="80" height="34" fill="#f4f1ea"/>
+    <rect x="240" y="48" width="80" height="34" fill="#f4f1ea"/><rect x="320" y="48" width="80" height="34" fill="#f4f1ea"/>
+    <rect x="40" y="82" width="120" height="40" fill="#fff"/><rect x="160" y="82" width="80" height="40" fill="#fff"/>
+    <rect x="240" y="82" width="80" height="40" fill="#fff"/><rect x="320" y="82" width="80" height="40" fill="#fff"/>
+    <rect x="40" y="122" width="120" height="40" fill="#fff"/><rect x="160" y="122" width="80" height="40" fill="#fff"/>
+    <rect x="240" y="122" width="80" height="40" fill="#fff"/><rect x="320" y="122" width="80" height="40" fill="#fff"/>
+    <rect x="40" y="162" width="120" height="40" fill="#fff"/><rect x="160" y="162" width="80" height="40" fill="#fff"/>
+    <rect x="240" y="162" width="80" height="40" fill="#fff"/><rect x="320" y="162" width="80" height="40" fill="#fff"/>
+  </g>
+  <text class="c" x="200" y="70">TRUE</text><text class="c" x="280" y="70">FALSE</text><text class="c" x="360" y="70">UNKNOWN</text>
+  <text class="v" x="56" y="108">TRUE</text><text class="t" x="196" y="108">T</text><text class="f" x="276" y="108">F</text><text class="u" x="356" y="108">U</text>
+  <text class="v" x="56" y="148">FALSE</text><text class="f" x="196" y="148">F</text><text class="f" x="276" y="148">F</text><text class="f" x="356" y="148">F</text>
+  <text class="v" x="56" y="188">UNKNOWN</text><text class="u" x="196" y="188">U</text><text class="f" x="276" y="188">F</text><text class="u" x="356" y="188">U</text>
+
+  <text class="lbl" x="520" y="34">OR</text>
+  <g stroke="#d8d1c6">
+    <rect x="520" y="48" width="120" height="34" fill="#f4f1ea"/><rect x="640" y="48" width="80" height="34" fill="#f4f1ea"/>
+    <rect x="720" y="48" width="80" height="34" fill="#f4f1ea"/><rect x="800" y="48" width="80" height="34" fill="#f4f1ea"/>
+    <rect x="520" y="82" width="120" height="40" fill="#fff"/><rect x="640" y="82" width="80" height="40" fill="#fff"/>
+    <rect x="720" y="82" width="80" height="40" fill="#fff"/><rect x="800" y="82" width="80" height="40" fill="#fff"/>
+    <rect x="520" y="122" width="120" height="40" fill="#fff"/><rect x="640" y="122" width="80" height="40" fill="#fff"/>
+    <rect x="720" y="122" width="80" height="40" fill="#fff"/><rect x="800" y="122" width="80" height="40" fill="#fff"/>
+    <rect x="520" y="162" width="120" height="40" fill="#fff"/><rect x="640" y="162" width="80" height="40" fill="#fff"/>
+    <rect x="720" y="162" width="80" height="40" fill="#fff"/><rect x="800" y="162" width="80" height="40" fill="#fff"/>
+  </g>
+  <text class="c" x="680" y="70">TRUE</text><text class="c" x="760" y="70">FALSE</text><text class="c" x="840" y="70">UNKNOWN</text>
+  <text class="v" x="536" y="108">TRUE</text><text class="t" x="676" y="108">T</text><text class="t" x="756" y="108">T</text><text class="t" x="836" y="108">T</text>
+  <text class="v" x="536" y="148">FALSE</text><text class="t" x="676" y="148">T</text><text class="f" x="756" y="148">F</text><text class="u" x="836" y="148">U</text>
+  <text class="v" x="536" y="188">UNKNOWN</text><text class="t" x="676" y="188">T</text><text class="u" x="756" y="188">U</text><text class="u" x="836" y="188">U</text>
+
+  <rect x="40" y="236" width="900" height="96" rx="10" fill="#f4f1ea" stroke="#e0d9cd"/>
+  <text class="s" x="60" y="262">WHERE пропускает только TRUE. FALSE и UNKNOWN строка не проходит.</text>
+  <text class="n" x="60" y="286">Поэтому city = NULL и city &lt;&gt; 'Москва' не находят строку с пропуском:</text>
+  <text class="n" x="60" y="308">сравнение с NULL даёт UNKNOWN, а не TRUE. Для пропуска — только IS NULL.</text>
+
+  <rect x="40" y="352" width="900" height="80" rx="10" fill="#fff" stroke="#d8d1c6"/>
+  <text class="s" x="60" y="378">NOT IN (подзапрос с NULL) — ловушка: NOT (x = NULL) даёт UNKNOWN, и результата нет.</text>
+  <text class="n" x="60" y="402">Надёжнее NOT EXISTS или отфильтровать NULL: WHERE city IS NOT NULL.</text>
+  <text class="n" x="60" y="420">COUNT(*) считает строки, COUNT(city) — только непустые значения.</text>
+</svg>

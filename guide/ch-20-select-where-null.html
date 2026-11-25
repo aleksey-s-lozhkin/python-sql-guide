@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>20 · SELECT, WHERE и логика трёх значений — Ассоциативный гайд</title>
+<meta name="description" content="SQL SELECT и WHERE: DISTINCT, NULL, IS NULL, IN, BETWEEN, LIKE, COUNT(*) против COUNT(col) — на учебной базе.">
 <link rel="stylesheet" href="assets/style.css">
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#fbf8f2" media="(prefers-color-scheme: light)">
@@ -20,37 +21,473 @@
   <aside class="sidebar" id="sidebar"></aside>
   <main>
     <div class="wrap">
+
       <header class="chapter-head">
         <div class="eyebrow">
-          <span class="part">Часть IV · SQL</span><span class="dot"></span><span>Неделя 6 · дни 2–3</span><span class="dot"></span><span>в работе</span>
+          <span class="part">Часть IV · SQL</span>
+          <span class="dot"></span>
+          <span>Неделя 6 · дни 2–3</span>
+          <span class="dot"></span>
+          <span>готово</span>
         </div>
-        <h1>SELECT, WHERE и логика трёх значений<span class="sub">Глава ещё не написана — сейчас она в очереди по программе</span></h1>
-        <p class="lead">Здесь появится тот же формат, что в главе 02: ассоциация-якорь, схема, запускаемый код, разбор типичных ошибок, вопросы с собеседования и задачи с решениями.</p>
+        <h1>SELECT, WHERE и логика трёх значений
+          <span class="sub">NULL — это не значение, а отсутствие значения</span>
+        </h1>
+        <p class="lead">
+          WHERE кажется простым: «оставить строки, где условие истинно». Но в SQL истинности три —
+          TRUE, FALSE и UNKNOWN, — и именно UNKNOWN объясняет, почему строка с пропуском не находится
+          ни одним «обычным» сравнением.
+        </p>
         <div class="meta">
-          <span class="chip">📐 <b>1 схема</b></span>
-          <span class="chip">💻 <b>лаборатория</b></span>
-          <span class="chip">🎤 <b>6–8 вопросов</b></span>
-          <span class="chip">✍️ <b>3 задачи</b></span>
+          <span class="chip">⏱ <b>40 минут</b></span>
+          <span class="chip">🎯 уровень <b>2 — применить</b></span>
+          <span class="chip">🐘 <b>PostgreSQL 14</b></span>
+          <span class="chip">📚 <b>Functions and Operators</b></span>
         </div>
       </header>
 
       <section>
-        <h2><span class="num">01</span>Что войдёт в главу</h2>
+        <h2><span class="num">01</span>Зачем это backend-разработчику</h2>
+        <ul>
+          <li><strong>Почти каждый запрос</strong> в backend — это SELECT с WHERE и сортировкой. Здесь формируется база для JOIN и GROUP BY.</li>
+          <li><strong>NULL ломает отчёты:</strong> «почему пользователь не попал в выборку», «почему NOT IN вернул пусто», «почему COUNT меньше числа строк».</li>
+          <li><strong>Прямой мост в pandas:</strong> <code class="inl">IS NULL</code> — <code class="inl">isna()</code>, <code class="inl">IN</code> — <code class="inl">isin()</code>, <code class="inl">LIKE</code> — <code class="inl">str.contains()</code>.</li>
+          <li><strong>Собеседование:</strong> «чем NULL отличается от пустой строки», «почему NULL = NULL не TRUE», «COUNT(*) или COUNT(col)».</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2><span class="num">02</span>Ассоциация-якорь: три значения истины</h2>
+
+        <div class="anchor">
+          <div class="glyph">⚖️</div>
+          <div>
+            <div class="t">Держите эту картинку в голове</div>
+            <p class="kick"><strong>У условия в SQL не два исхода, а три:</strong> TRUE, FALSE и UNKNOWN.
+            TRUE — строка проходит; FALSE и UNKNOWN — нет.</p>
+            <p><strong>Любое сравнение с NULL даёт UNKNOWN</strong> — даже <code class="inl">NULL = NULL</code>.
+            Поэтому «найти пропуск» можно только через <code class="inl">IS NULL</code>: это проверка
+            факта отсутствия, а не сравнение значений.</p>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h2><span class="num">03</span>Ассоциативный ряд: восемь звеньев</h2>
         <ol class="chain">
-          <li><b>TRUE, FALSE и UNKNOWN</b><span>почему NULL = NULL не TRUE</span></li>
-          <li><b>IN, BETWEEN, LIKE и их ловушки</b></li>
-          <li><b>COUNT(*) против COUNT(column)</b></li>
+          <li><b>SELECT</b><span>какие колонки вернуть</span></li>
+          <li><b>DISTINCT</b><span>убрать дубли результата</span></li>
+          <li><b>WHERE</b><span>оставить строки</span></li>
+          <li><b>AND / OR</b><span>комбинировать условия</span></li>
+          <li><b>NULL</b><span>отсутствие значения</span></li>
+          <li><b>IS NULL</b><span>проверка пропуска</span></li>
+          <li><b>IN / BETWEEN / LIKE</b><span>списки, диапазоны, текст</span></li>
+          <li><b>COUNT</b><span>строки против непустых</span></li>
         </ol>
-        <div class="note">
-          <span class="t">Пока это заглушка</span>
-          <p>Заглушка нужна, чтобы оглавление и мостики работали как карта: видно, куда ведёт каждая тема. Начните с готовой главы 02 — она задаёт шаблон для всех остальных.</p>
+      </section>
+
+      <section>
+        <h2><span class="num">04</span>Схема: таблицы истинности</h2>
+
+        <figure>
+          <div class="frame">
+            <img src="assets/maps/null-logic.svg" alt="Таблицы истинности AND и OR с TRUE, FALSE, UNKNOWN; WHERE пропускает только TRUE.">
+          </div>
+          <figcaption>
+            <b>Рис. 1.</b> UNKNOWN — полноценное третье значение. WHERE пропускает только TRUE, поэтому
+            строка с NULL не проходит ни условие «равно», ни «не равно».
+          </figcaption>
+        </figure>
+      </section>
+
+      <section>
+        <h2><span class="num">05</span>Как это устроено на самом деле</h2>
+
+        <h3>NULL — не ноль и не пустая строка</h3>
+        <p>
+          <code class="inl">NULL</code> означает «значение неизвестно». Ноль — известное число, пустая строка — известная
+          строка. Поэтому <code class="inl">NULL = 0</code> и <code class="inl">NULL = ''</code> — не TRUE,
+          а UNKNOWN.
+        </p>
+
+        <h3>Сравнения дают UNKNOWN</h3>
+        <p>
+          <code class="inl">city = 'Москва'</code> для строки с NULL — UNKNOWN; <code class="inl">city &lt;&gt; 'Москва'</code> —
+          тоже UNKNOWN. Строка не проходит ни прямое, ни обратное условие. Это не баг, а семантика.
+        </p>
+
+        <h3>COUNT(*) и COUNT(col)</h3>
+        <p>
+          <code class="inl">COUNT(*)</code> считает строки, <code class="inl">COUNT(city)</code> — только непустые
+          значения. Разница — ровно число пропусков.
+        </p>
+      </section>
+
+      <section>
+        <h2><span class="num">06</span>Лаборатория: запустить и увидеть</h2>
+        <p>
+          База <code class="inl">learning_shop</code>: у Petr нет города, у Maria нет email. Этого достаточно,
+          чтобы увидеть все ловушки.
+        </p>
+
+        <h3>Шаг 1. SELECT и DISTINCT</h3>
+        <div class="code">
+          <div class="bar"><span class="file">20_select_where.sql</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">SELECT DISTINCT city FROM users ORDER BY city;</pre>
+          <div class="out">      city
+-----------------
+ Казань
+ Москва
+ Санкт-Петербург
+
+(4 rows)</div>
+        </div>
+        <p>
+          Четыре строки — потому что NULL тоже считается отдельным значением DISTINCT. В выводе это
+          пустая строка.
+        </p>
+
+        <h3>Шаг 2. Сравнение с NULL не работает</h3>
+        <div class="code">
+          <div class="bar"><span class="file">20_select_where.sql</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">SELECT id, name FROM users WHERE city = NULL;
+SELECT id, name, city FROM users WHERE city IS NULL;</pre>
+          <div class="out"> id | name
+----+------
+(0 rows)
+
+ id | name | city
+----+------+------
+  4 | Petr |
+(1 row)</div>
+        </div>
+        <p>
+          <code class="inl">= NULL</code> даёт UNKNOWN и не находит ничего. <code class="inl">IS NULL</code> проверяет
+          отсутствие значения и находит строку.
+        </p>
+
+        <h3>Шаг 3. Неравенство тоже не находит NULL</h3>
+        <div class="code">
+          <div class="bar"><span class="file">20_select_where.sql</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">SELECT id, name, city FROM users WHERE city &lt;&gt; 'Москва';</pre>
+          <div class="out"> id | name  |      city
+----+-------+-----------------
+  2 | Ivan  | Казань
+  5 | Maria | Санкт-Петербург
+(2 rows)</div>
+        </div>
+        <p>
+          Petr не попал: <code class="inl">NULL &lt;&gt; 'Москва'</code> — UNKNOWN. Если нужно «все, кроме Москвы,
+          включая неизвестных», условие пишут явно: <code class="inl">city &lt;&gt; 'Москва' OR city IS NULL</code>.
+        </p>
+
+        <h3>Шаг 4. Три значения на практике</h3>
+        <div class="code">
+          <div class="bar"><span class="file">20_select_where.sql</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">SELECT NULL = NULL AS eq, NULL &lt;&gt; NULL AS neq,
+       NULL AND true AS a, NULL OR false AS o;</pre>
+          <div class="out"> eq | neq | a | o
+----+-----+---+---
+    |     |   |
+(1 row)</div>
+        </div>
+        <p>
+          Все четыре выражения — UNKNOWN; psql показывает их как пустые ячейки. Это и есть третье значение.
+        </p>
+
+        <h3>Шаг 5. IN с NULL и NOT IN с подзапросом</h3>
+        <div class="code">
+          <div class="bar"><span class="file">20_select_where.sql</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">SELECT id, name, city FROM users WHERE city IN ('Москва', NULL);
+SELECT id, name FROM users WHERE city NOT IN (SELECT city FROM users);</pre>
+          <div class="out"> id | name |  city
+----+------+--------
+  1 | Anna | Москва
+  3 | Olga | Москва
+(2 rows)
+
+ id | name
+----+------
+(0 rows)</div>
+        </div>
+        <p>
+          <code class="inl">IN (..., NULL)</code> находит только Москву: совпадение с NULL не считается.
+          А <code class="inl">NOT IN</code> по подзапросу, где есть NULL, возвращает пусто — классическая ловушка.
+        </p>
+
+        <h3>Шаг 6. COUNT(*) против COUNT(col)</h3>
+        <div class="code">
+          <div class="bar"><span class="file">20_select_where.sql</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">SELECT COUNT(*) AS all_rows, COUNT(city) AS known_city FROM users;</pre>
+          <div class="out"> all_rows | known_city
+----------+------------
+        5 |          4</div>
+        </div>
+
+        <h3>Шаг 7. BETWEEN, LIKE и сортировка с NULL</h3>
+        <div class="code">
+          <div class="bar"><span class="file">20_select_where.sql</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">SELECT name, price FROM products WHERE price BETWEEN 1000 AND 30000 ORDER BY price;
+SELECT name FROM products WHERE name LIKE '%о%' ORDER BY name;
+SELECT name, city FROM users ORDER BY city ASC NULLS LAST;</pre>
+          <div class="out">  name   |  price
+---------+----------
+ Мышь    |  1500.00
+ Монитор | 22000.00
+
+  name
+---------
+ Кофе
+ Монитор
+ Ноутбук
+
+ name  |      city
+-------+-----------------
+ Ivan  | Казань
+ Anna  | Москва
+ Olga  | Москва
+ Maria | Санкт-Петербург
+ Petr  |
+(5 rows)</div>
+        </div>
+        <p>
+          <code class="inl">BETWEEN</code> включает обе границы. <code class="inl">LIKE</code> чувствителен к регистру:
+          «о» в кириллице — строчная буква. <code class="inl">NULLS LAST</code> явно задаёт место пропусков
+          в сортировке.
+        </p>
+
+        <h3>Шаг 8. COALESCE</h3>
+        <div class="code">
+          <div class="bar"><span class="file">20_select_where.sql</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">SELECT name, COALESCE(city, 'неизвестно') AS city_filled FROM users;</pre>
+          <div class="out"> name  |   city_filled
+-------+-----------------
+ Anna  | Москва
+ Ivan  | Казань
+ Olga  | Москва
+ Petr  | неизвестно
+ Maria | Санкт-Петербург</div>
+        </div>
+        <p>
+          <code class="inl">COALESCE</code> — это SQL-аналог <code class="inl">fillna</code>. Как и там,
+          подставлять значение стоит осознанно: «неизвестно» — честнее нуля.
+        </p>
+      </section>
+
+      <section>
+        <h2><span class="num">07</span>Мост: та же логика в pandas</h2>
+        <div class="code">
+          <div class="bar"><span class="file">SQL → pandas</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python"># SELECT DISTINCT city FROM users
+users["city"].drop_duplicates()
+
+# WHERE city = 'Москва'
+users[users["city"] == "Москва"]
+
+# WHERE city IN ('Москва', 'Казань')
+users[users["city"].isin(["Москва", "Казань"])]
+
+# WHERE city IS NULL
+users[users["city"].isna()]
+
+# WHERE name LIKE '%о%'
+products[products["name"].str.contains("о", regex=False)]
+
+# COUNT(*) и COUNT(city)
+len(users), users["city"].count()</pre>
+        </div>
+        <p>
+          Разница только в том, что pandas умеет хранить пропуски разных типов (глава 17), а SQL — один NULL.
+          Смысл «отсутствие не равно значению» одинаков.
+        </p>
+      </section>
+
+      <section>
+        <h2><span class="num">08</span>Шесть ошибок, на которых спотыкаются</h2>
+
+        <div class="errors">
+          <div class="err">
+            <div class="h">= NULL вместо IS NULL</div>
+            <p>Сравнение никогда не даёт TRUE, и запрос возвращает пусто.</p>
+            <div class="fix"><code class="inl">IS NULL</code> / <code class="inl">IS NOT NULL</code>.</div>
+          </div>
+          <div class="err">
+            <div class="h">NOT IN с NULL в подзапросе</div>
+            <p>Возвращает пустой результат, хотя «логически» должен вернуть строки.</p>
+            <div class="fix"><code class="inl">NOT EXISTS</code> или <code class="inl">WHERE city IS NOT NULL</code> в подзапросе.</div>
+          </div>
+          <div class="err">
+            <div class="h">Ожидание, что NULL попадёт в «не равно»</div>
+            <p>Строка с NULL не проходит ни <code class="inl">=</code>, ни <code class="inl">&lt;&gt;</code>.</p>
+            <div class="fix">Явно добавить <code class="inl">OR city IS NULL</code>, если такие строки нужны.</div>
+          </div>
+          <div class="err">
+            <div class="h">COUNT(*) как COUNT(col)</div>
+            <p>Числа расходятся при наличии пропусков.</p>
+            <div class="fix">Понимать, что считаете: строки или известные значения.</div>
+          </div>
+          <div class="err">
+            <div class="h">LIKE с регистром</div>
+            <p><code class="inl">LIKE '%москва%'</code> не найдёт «Москва» в PostgreSQL.</p>
+            <div class="fix"><code class="inl">ILIKE</code> или <code class="inl">LOWER(...) LIKE LOWER(...)</code>.</div>
+          </div>
+          <div class="err">
+            <div class="h">Сортировка с NULL по умолчанию</div>
+            <p>В PostgreSQL NULL считается больше любого значения и попадает в конец при ASC.</p>
+            <div class="fix"><code class="inl">NULLS FIRST</code> / <code class="inl">NULLS LAST</code> явно.</div>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h2><span class="num">09</span>Вопросы с собеседования</h2>
+        <div class="qa">
+          <details>
+            <summary>Чем NULL отличается от пустой строки и нуля?</summary>
+            <div class="a">
+              <p>NULL — отсутствие значения; пустая строка и ноль — известные значения. Поэтому <code class="inl">NULL = ''</code> и <code class="inl">NULL = 0</code> не TRUE.</p>
+              <div class="verdict">Резюме: неизвестно ≠ известно, что пусто.</div>
+            </div>
+          </details>
+          <details>
+            <summary>Почему NULL = NULL не TRUE?</summary>
+            <div class="a">
+              <p>Потому что сравнение с неизвестным значением даёт UNKNOWN: мы не знаем, равны ли два неизвестных.</p>
+              <div class="verdict">Резюме: UNKNOWN — третье значение истины.</div>
+            </div>
+          </details>
+          <details>
+            <summary>Почему строка с NULL не попадает в «не равно»?</summary>
+            <div class="a">
+              <p><code class="inl">NULL &lt;&gt; 'Москва'</code> — UNKNOWN, а WHERE пропускает только TRUE.</p>
+              <div class="verdict">Резюме: WHERE строг: только TRUE.</div>
+            </div>
+          </details>
+          <details>
+            <summary>Почему NOT IN с NULL возвращает пусто?</summary>
+            <div class="a">
+              <p><code class="inl">NOT IN</code> — это набор сравнений; сравнение с NULL даёт UNKNOWN, и итог не TRUE.</p>
+              <div class="verdict">Резюме: NULL отравляет NOT IN.</div>
+            </div>
+          </details>
+          <details>
+            <summary>Чем COUNT(*) отличается от COUNT(column)?</summary>
+            <div class="a">
+              <p>COUNT(*) считает строки, COUNT(column) — непустые значения колонки. Разница равна числу NULL.</p>
+              <div class="verdict">Резюме: строки против известных значений.</div>
+            </div>
+          </details>
+          <details>
+            <summary>Как заменить NULL значением?</summary>
+            <div class="a">
+              <p><code class="inl">COALESCE(col, 'значение')</code> или <code class="inl">CASE WHEN col IS NULL ...</code>.</p>
+              <div class="verdict">Резюме: COALESCE — это fillna.</div>
+            </div>
+          </details>
+          <details>
+            <summary>Что делает IN и чем похож на OR?</summary>
+            <div class="a">
+              <p><code class="inl">x IN (a, b, c)</code> — то же, что <code class="inl">x = a OR x = b OR x = c</code>; с NULL внутри ведёт себя так же хитро.</p>
+              <div class="verdict">Резюме: IN — краткая запись цепочки OR.</div>
+            </div>
+          </details>
+          <details>
+            <summary>Как отсортировать строки с NULL?</summary>
+            <div class="a">
+              <p>Явно: <code class="inl">ORDER BY city NULLS LAST</code> (или FIRST). Иначе место NULL зависит от СУБД.</p>
+              <div class="verdict">Резюме: не полагаться на умолчание.</div>
+            </div>
+          </details>
+        </div>
+      </section>
+
+      <section>
+        <h2><span class="num">10</span>Три задачи: сначала своя попытка</h2>
+
+        <h3><span style="color:var(--muted);font-family:var(--mono);font-size:.8rem">01</span> Пользователи без города</h3>
+        <p>Выведите имена и email пользователей, у которых не указан город.</p>
+        <div class="qa">
+          <details>
+            <summary>Показать решение</summary>
+            <div class="a">
+              <div class="code" style="margin-top:0">
+                <div class="bar"><span class="file">решение</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+                <pre data-lang="sql">SELECT name, email FROM users WHERE city IS NULL;</pre>
+              </div>
+              <div class="out"> name |    email
+------+-------------
+ Petr | petr@mail.ru</div>
+            </div>
+          </details>
+        </div>
+
+        <h3><span style="color:var(--muted);font-family:var(--mono);font-size:.8rem">02</span> Все, кроме Москвы</h3>
+        <p>Верните всех пользователей, кроме москвичей, включая тех, у кого город неизвестен.</p>
+        <div class="qa">
+          <details>
+            <summary>Показать решение</summary>
+            <div class="a">
+              <div class="code" style="margin-top:0">
+                <div class="bar"><span class="file">решение</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+                <pre data-lang="sql">SELECT name, city FROM users
+WHERE city &lt;&gt; 'Москва' OR city IS NULL;</pre>
+              </div>
+              <p><strong>Что важно.</strong> Без <code class="inl">OR city IS NULL</code> строка с пропуском исчезнет.</p>
+            </div>
+          </details>
+        </div>
+
+        <h3><span style="color:var(--muted);font-family:var(--mono);font-size:.8rem">03</span> Диапазон и текст</h3>
+        <p>Найдите товары дороже 400 и дешевле 30000, в названии которых есть буква «о». Отсортируйте по цене.</p>
+        <div class="qa">
+          <details>
+            <summary>Показать решение</summary>
+            <div class="a">
+              <div class="code" style="margin-top:0">
+                <div class="bar"><span class="file">решение</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+                <pre data-lang="sql">SELECT name, price FROM products
+WHERE price &gt; 400 AND price &lt; 30000 AND name LIKE '%о%'
+ORDER BY price;</pre>
+              </div>
+              <div class="out">  name   |  price
+---------+----------
+ Кофе    |   450.00
+ Мышь    |  1500.00
+ Монитор | 22000.00</div>
+              <p><strong>Что важно.</strong> BETWEEN 400 AND 30000 включил бы границы; «Ноутбук» дороже 30000
+              и в результат не попадает.</p>
+            </div>
+          </details>
+        </div>
+      </section>
+
+      <section>
+        <h2><span class="num">11</span>Чек-лист освоения</h2>
+        <div class="check">
+          <label><input type="checkbox"><span class="box"></span><span class="txt">Объяснить, почему NULL = NULL не TRUE</span></label>
+          <label><input type="checkbox"><span class="box"></span><span class="txt">Найти пропуски через IS NULL и не попасться на = NULL</span></label>
+          <label><input type="checkbox"><span class="box"></span><span class="txt">Показать ловушку NOT IN с NULL в подзапросе</span></label>
+          <label><input type="checkbox"><span class="box"></span><span class="txt">Различить COUNT(*) и COUNT(column)</span></label>
+          <label><input type="checkbox"><span class="box"></span><span class="txt">Перевести IS NULL, IN и LIKE в pandas</span></label>
+        </div>
+      </section>
+
+      <section>
+        <h2><span class="num">12</span>Куда ведут мостики</h2>
+        <div class="bridges">
+          <a class="bridge" href="ch-19-order-of-execution.html"><span class="to">Глава 19</span><span>Порядок выполнения</span><span class="what">→ WHERE на своём этапе</span></a>
+          <a class="bridge" href="ch-21-group-by-having.html"><span class="to">Глава 21</span><span>GROUP BY и HAVING</span><span class="what">→ агрегаты и NULL</span></a>
+          <a class="bridge" href="ch-22-subqueries-cte.html"><span class="to">Глава 22</span><span>Подзапросы и CTE</span><span class="what">→ NOT EXISTS вместо NOT IN</span></a>
+          <a class="bridge" href="ch-17-missing.html"><span class="to">Глава 17</span><span>Пропуски в pandas</span><span class="what">→ isna и fillna</span></a>
+          <a class="bridge" href="ch-24-indexes-explain.html"><span class="to">Глава 24</span><span>Индексы и EXPLAIN</span><span class="what">→ как фильтр использует индекс</span></a>
         </div>
       </section>
 
       <div class="pager">
-        <a class="prev" href="ch-19-order-of-execution.html"><span class="dir">← Назад</span><span class="ttl">Порядок выполнения: как база читает запрос</span></a>
-        <a class="next" href="ch-21-group-by-having.html"><span class="dir">Дальше →</span><span class="ttl">21 · GROUP BY и HAVING: тот же словарь-аккумулятор</span></a>
+        <a class="prev" href="ch-19-order-of-execution.html"><span class="dir">← Назад</span><span class="ttl">19 · порядок выполнения</span></a>
+        <a class="next" href="ch-21-group-by-having.html"><span class="dir">Дальше →</span><span class="ttl">21 · GROUP BY и HAVING</span></a>
       </div>
+
     </div>
   </main>
 </div>

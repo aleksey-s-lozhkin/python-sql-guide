@@ -137,3 +137,13 @@ service worker недоступен. Поэтому страница на Pages 
 - Схема: `reshape-wide-long.svg`; лаборатория 18.
 - Проверочная часть III: 8 вопросов, 4 задачи, 2 мостика (SQL-эквиваленты и даты), 20 баллов.
 - Дальше: часть IV, SQL (19–24), с реальной учебной БД PostgreSQL.
+
+## Часть IV начата: SQL на живой базе
+
+- Создана локальная PostgreSQL-база `learning_shop` (users/products/orders) — `tools/setup_db.sh`,
+  схема в `guide/snippets/learning_shop.sql`; все запросы глав проверяются через psql.
+- Готовы главы 19 (порядок выполнения) и 20 (SELECT/WHERE/NULL).
+- Схемы: `query-pipeline.svg`, `null-logic.svg`; лаборатории 19–20 в SQL-файлах.
+- Факты: алиас не виден в WHERE, но виден в ORDER BY; `= NULL` → 0 строк; `<>` не включает NULL;
+  NOT IN с NULL → пусто; COUNT(*) 5 против COUNT(city) 4.
+- Дальше: 21 (GROUP BY/HAVING), 22 (подзапросы/CTE), 23 (окна), 24 (индексы/EXPLAIN).
