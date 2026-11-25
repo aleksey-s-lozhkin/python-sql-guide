@@ -1,0 +1,581 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>02 · dict: шкаф с номерками — Ассоциативный гайд</title>
+<meta name="description" content="Как устроен dict в Python: хеш-таблица, коллизии, hashable, get и setdefault - с ассоциативными картами, лабораторией и вопросами с собеседования.">
+<link rel="stylesheet" href="assets/style.css">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#fbf8f2">
+<link rel="icon" href="assets/icons/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="assets/icons/icon-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Гайд Py/SQL">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+</head>
+<body data-slug="ch-02-dict">
+<div class="app">
+  <aside class="sidebar" id="sidebar"></aside>
+  <main>
+    <div class="wrap">
+
+      <header class="chapter-head">
+        <div class="eyebrow">
+          <span class="part">Часть I · Фундамент Python</span>
+          <span class="dot"></span>
+          <span>Неделя 1 · день 2</span>
+          <span class="dot"></span>
+          <span>демо-глава</span>
+        </div>
+        <h1>dict: шкаф с номерками
+          <span class="sub">Почему поиск по ключу не зависит от размера словаря</span>
+        </h1>
+        <p class="lead">
+          <code class="inl">dict</code> — первая структура, которую backend-разработчик использует каждый день:
+          JSON-ответ, конфиг, счётчик, кэш. Понять её устройство один раз — значит понять, зачем в pandas есть
+          индекс, а в SQL — индекс и <code class="inl">hash join</code>.
+        </p>
+        <div class="meta">
+          <span class="chip">⏱ <b>40 минут</b></span>
+          <span class="chip">🎯 уровень <b>2 — применить</b></span>
+          <span class="chip">🐍 Python <b>3.12</b></span>
+          <span class="chip">📚 <b>Tutorial 5.5</b>, collections</span>
+        </div>
+      </header>
+
+      <!-- ══════════════════ 1. Зачем ══════════════════ -->
+      <section>
+        <h2><span class="num">01</span>Зачем это backend-разработчику</h2>
+        <p>
+          Словарь — не «ещё одна коллекция». Это основной способ сказать в коде: «вот предмет, найди его по имени
+          за одно действие, а не за тысячу». Почти всё, что делает backend, — это поиск по ключу.
+        </p>
+        <ul>
+          <li><strong>JSON из API</strong> — это <code class="inl">dict</code> после <code class="inl">json.loads()</code>. Обращение по отсутствующему ключу роняет сервис; <code class="inl">.get()</code> — нет.</li>
+          <li><strong>Кэш и реестры</strong> — «ключ → готовый ответ», «ключ → функция-обработчик», «ключ → настройка».</li>
+          <li><strong>Счётчики и группировки</strong> — <code class="inl">Counter</code> и <code class="inl">defaultdict</code>. Ровно та же механика, что в <code class="inl">groupby</code> и <code class="inl">GROUP BY</code>.</li>
+          <li><strong>Собеседование</strong> — «почему dict быстрый?», «почему ключи должны быть hashable?» — это проверка того, понимаете ли вы хеш-таблицу, а не заучили ли определение.</li>
+        </ul>
+        <div class="note">
+          <span class="t">Проверка на понимание</span>
+          <p>Если вы можете объяснить, почему <code class="inl">{["anna"]: 1}</code> — ошибка, а <code class="inl">{("anna",): 1}</code> — нет, — тему можно считать освоенной на уровне 2.</p>
+        </div>
+      </section>
+
+      <!-- ══════════════════ 2. Якорь ══════════════════ -->
+      <section>
+        <h2><span class="num">02</span>Ассоциация-якорь: гардероб</h2>
+
+        <div class="anchor">
+          <div class="glyph">🧥</div>
+          <div>
+            <div class="t">Держите эту картинку в голове</div>
+            <p class="kick"><strong>dict — это театральный гардероб.</strong> Вы сдаёте пальто — вам дают номерок.
+            Вернувшись, вы не ищете пальто среди тысячи других: вы называете номер, и гардеробщик идёт сразу к нужной вешалке.</p>
+            <p>Ключ — пальто. <code class="inl">hash(key)</code> — номерок. Ячейка памяти — вешалка. Значение — само пальто.</p>
+          </div>
+        </div>
+
+        <p>
+          Метафора сразу объясняет главное ограничение. <strong>Пальто можно перешить — номерок станет неверным.</strong>
+          Поэтому ключ обязан быть неизменяемым: если объект поменяется после того, как его положили в словарь,
+          его «номерок» перестанет указывать на его ячейку — и значение станет невозможно найти.
+        </p>
+        <p>
+          Отсюда же два следствия, которые часто спрашивают на собеседовании. Во-первых, <code class="inl">list</code>
+          нельзя использовать как ключ: список изменяем. Во-вторых, <code class="inl">tuple</code> можно — но только
+          если все его элементы тоже hashable: <code class="inl">("Ivan", ["IT"])</code> уже нет.
+        </p>
+      </section>
+
+      <!-- ══════════════════ 3. Ряд ══════════════════ -->
+      <section>
+        <h2><span class="num">03</span>Ассоциативный ряд: восемь звеньев</h2>
+        <p>Прочитайте ряд сверху вниз один раз, затем попробуйте воспроизвести по памяти. Это и есть «объяснить внутреннюю логику» — третий уровень владения.</p>
+
+        <ol class="chain">
+          <li><b>Ключ</b><span>то, что мы знаем: <code>"anna"</code></span></li>
+          <li><b>hash()</b><span>превращает ключ в число — детерминированно</span></li>
+          <li><b>% размер</b><span>число укладывается в диапазон ячеек</span></li>
+          <li><b>Ячейка</b><span>адрес, по которому лежит пара «ключ → значение»</span></li>
+          <li><b>Коллизия</b><span>два ключа претендуют на одну ячейку</span></li>
+          <li><b>Разрешение</b><span>цепочка или пробирование: как договориться</span></li>
+          <li><b>Load factor</b><span>ячеек становится мало — таблица растёт</span></li>
+          <li><b>O(1)</b><span>в среднем; O(n) — если все ключи в одном бакете</span></li>
+        </ol>
+
+        <p class="small">
+          Обратите внимание: «коллизия» стоит в середине ряда, а не в конце. Это не аварийная ситуация, а
+          <em>штатный режим работы</em> любой хеш-таблицы: ключей бесконечно много, ячеек — конечно.
+        </p>
+      </section>
+
+      <!-- ══════════════════ 4. Схема ══════════════════ -->
+      <section>
+        <h2><span class="num">04</span>Схема, которую стоит уметь нарисовать</h2>
+
+        <figure>
+          <div class="frame">
+            <img src="assets/maps/dict-hash.svg" alt="Схема: ключи anna, ivan, petr превращаются в номера ячеек 6, 6, 3; в ячейке 6 лежат две записи — коллизия.">
+          </div>
+          <figcaption>
+            <b>Рис. 1.</b> Ключ → номерок → ячейка. «anna» и «ivan» получили одну ячейку — это коллизия;
+            в ячейке хранится цепочка записей, и поиск всё равно быстрый, пока цепочка короткая.
+          </figcaption>
+        </figure>
+
+        <p>
+          Воспроизведите эту картинку на бумаге, когда будете отвечать на вопрос «как устроен dict». Три колонки и
+          одна стрелка с изломом — этого достаточно, чтобы ответ звучал как понимание, а не как пересказ.
+        </p>
+      </section>
+
+      <!-- ══════════════════ 5. Механика ══════════════════ -->
+      <section>
+        <h2><span class="num">05</span>Как это устроено на самом деле</h2>
+
+        <p>Порядок действий при поиске значения по ключу:</p>
+        <ol>
+          <li>Считается <code class="inl">h = hash(key)</code>. Для строк он рандомизирован между запусками процесса — это защита от подбора коллизий.</li>
+          <li>Номер ячейки получается из <code class="inl">h</code>: в CPython это <code class="inl">h &amp; mask</code>, где <code class="inl">mask = размер - 1</code>. Размер таблицы — степень двойки, поэтому маска работает как остаток от деления, только быстрее.</li>
+          <li>По номеру читается запись. Сначала сравниваются <em>сами объекты ключа</em> (быстрая проверка по идентичности), затем — равенство <code class="inl">==</code>.</li>
+          <li>Если ключ не совпал — пробирование: следующая ячейка вычисляется по формуле с «возмущением» (perturb), которая перемешивает последовательность пробегов. Так разрешаются коллизии.</li>
+          <li>Когда таблица заполнена примерно на две трети, она расширяется, и все ключи пересчитываются. Поэтому вставка — <strong>амортизированно</strong> O(1), хотя отдельная вставка может быть дорогой.</li>
+        </ol>
+
+        <div class="note">
+          <span class="t">Тонкость, которую ценят на собеседовании</span>
+          <p>В учебниках коллизии решают «цепочками» — в ячейке хранится список. В CPython используется
+          <strong>открытая адресация</strong>: цепочек нет, свободная ячейка ищется пробированием. На схеме выше
+          показана общая идея; если спросят про детали реализации — говорите про пробирование, это точнее.</p>
+        </div>
+
+        <h3>Порядок вставки и сортировка — разные вещи</h3>
+        <p>
+          С Python 3.7 <code class="inl">dict</code> гарантированно помнит порядок вставки. Это не значит, что словарь
+          отсортирован: <code class="inl">{"b": 2, "a": 1}</code> останется в порядке «b, a». Если нужен порядок по
+          ключу — сортируйте явно: <code class="inl">dict(sorted(d.items()))</code>.
+        </p>
+
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Вопрос</th><th>dict</th><th>list</th></tr></thead>
+            <tbody>
+              <tr><td>Доступ по ключу</td><td class="mono">d[k] → O(1) в среднем</td><td class="mono">нужен перебор → O(n)</td></tr>
+              <tr><td>Порядок</td><td>порядок вставки</td><td>порядок добавления</td></tr>
+              <tr><td>Ключи</td><td>только hashable</td><td>индексы 0..n-1</td></tr>
+              <tr><td>Что хранит</td><td>пары ключ → значение</td><td>элементы по порядку</td></tr>
+              <tr><td>Типичное применение</td><td>поиск, счётчики, кэш</td><td>последовательность, сортировка, срезы</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ══════════════════ 6. Лаборатория ══════════════════ -->
+      <section>
+        <h2><span class="num">06</span>Лаборатория: запустить и увидеть</h2>
+        <p>
+          Ниже — фрагменты файла <a href="snippets/01_dict_lab.py"><code class="inl">snippets/01_dict_lab.py</code></a> из этого проекта. Вывод настоящий:
+          он получен запуском на Python 3.12. Ваши числа будут немного другими — время зависит от машины, а
+          <code class="inl">hash()</code> меняется от запуска к запуску.
+        </p>
+
+        <h3>Шаг 1. Увидеть «номерки» и коллизию</h3>
+        <div class="code">
+          <div class="bar"><span class="file">01_dict_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">BUCKETS = 8
+
+def toy_hash(key: str) -&gt; int:
+    """Учебный «номерок»: сумма кодов символов по модулю числа ячеек."""
+    return sum(map(ord, key)) % BUCKETS
+
+for name in ["anna", "ivan", "petr"]:
+    print(f"{name:5} → сумма {sum(map(ord, name)):4} → ячейка {toy_hash(name)}")</pre>
+          <div class="out">anna  → сумма  414 → ячейка 6
+ivan  → сумма  430 → ячейка 6
+petr  → сумма  443 → ячейка 3</div>
+        </div>
+        <p>
+          Два разных ключа дали одну ячейку. Это и есть коллизия — и именно поэтому в ячейке хранится не одно
+          значение, а структура, умеющая хранить несколько. Настоящий <code class="inl">hash()</code> устроен сложнее
+          (и рандомизирован), но идея та же.
+        </p>
+
+        <h3>Шаг 2. Сравнить поиск в списке и в словаре</h3>
+        <div class="code">
+          <div class="bar"><span class="file">01_dict_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">import time
+
+users = [f"user{i}" for i in range(1_000_000)]        # список
+by_name = {u: i for i, u in enumerate(users)}         # словарь
+
+t0 = time.perf_counter(); "user999999" in users;      t_list = time.perf_counter() - t0
+t0 = time.perf_counter(); "user999999" in by_name;    t_dict = time.perf_counter() - t0
+
+print(f"list: {t_list * 1000:.2f} ms")
+print(f"dict: {t_dict * 1_000_000:.2f} µs")</pre>
+          <div class="out">list:     4.06 ms
+dict:     0.96 µs
+ускорение ≈ 4239x</div>
+        </div>
+        <p>
+          Список честно просматривает элементы, пока не найдёт нужный, — <strong>O(n)</strong>. Словарь вычисляет
+          номерок и прыгает в ячейку — <strong>O(1)</strong>. На миллионе элементов разница в тысячи раз; на десяти
+          элементах вы её не заметите, и это нормально: сложность — про рост, а не про микросекунды.
+        </p>
+
+        <h3>Шаг 3. Три способа обновить счётчик</h3>
+        <div class="code">
+          <div class="bar"><span class="file">01_dict_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">order = {"user": "Anna", "amount": 1200}
+
+order.get("city")                    # None: ключ НЕ создан
+order.get("city", "—")               # "—"
+order.setdefault("currency", "RUB")  # "RUB": ключ создан
+"city" in order, "currency" in order # (False, True)
+
+try:
+    order["city"] += " Москва"       # KeyError: ключа ещё нет
+except KeyError as e:
+    print("KeyError:", e)</pre>
+          <div class="out">KeyError: 'city'</div>
+        </div>
+        <p>
+          Разница между <code class="inl">get</code> и <code class="inl">setdefault</code> — не стилистическая.
+          <code class="inl">get</code> только читает, <code class="inl">setdefault</code> <em>изменяет словарь</em>.
+          А <code class="inl">defaultdict</code> делает это ещё и неявно при чтении — об этом в главе 06.
+        </p>
+      </section>
+
+      <!-- ══════════════════ 7. Мост ══════════════════ -->
+      <section>
+        <h2><span class="num">07</span>Мост: та же идея в pandas и SQL</h2>
+
+        <p>
+          Здесь гайд делает то, ради чего он написан: показывает, что <code class="inl">dict</code>, индекс pandas и
+          <code class="inl">hash join</code> — три реализации одной структуры данных. Выучив одну, вы бесплатно
+          получаете две.
+        </p>
+
+        <figure>
+          <div class="frame">
+            <img src="assets/maps/one-model-three-worlds.svg" alt="Три карточки: Python dict, pandas index, PostgreSQL hash join — все используют ключ, хеш и ячейку.">
+          </div>
+          <figcaption><b>Рис. 2.</b> Один рисунок в голове — три синтаксиса. Отсюда же растут вопросы «почему JOIN по индексу быстрый» и «почему loc находит строку мгновенно».</figcaption>
+        </figure>
+
+        <h3>Один алгоритм, три записи</h3>
+        <p>Задача: посчитать сумму заказов по каждому пользователю.</p>
+
+        <div class="code">
+          <div class="bar"><span class="file">группировка</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">orders = [
+    {"user": "Anna", "amount": 1200},
+    {"user": "Ivan", "amount": 800},
+    {"user": "Anna", "amount": 500},
+]
+
+totals = {}
+for order in orders:
+    user = order["user"]
+    totals[user] = totals.get(user, 0) + order["amount"]
+
+# то же самое, но короче:
+from collections import defaultdict
+totals2 = defaultdict(int)
+for order in orders:
+    totals2[order["user"]] += order["amount"]</pre>
+        </div>
+
+        <div class="code">
+          <div class="bar"><span class="file">группировка</span><span class="lang">pandas</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">import pandas as pd
+
+df = pd.DataFrame(orders)
+df.groupby("user")["amount"].sum()      # тот же аккумулятор, но векторно</pre>
+          <div class="out">user
+Anna    1700
+Ivan     800
+Name: amount, dtype: int64</div>
+        </div>
+
+        <div class="code">
+          <div class="bar"><span class="file">группировка.sql</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">SELECT user_id, SUM(amount) AS total
+FROM orders
+GROUP BY user_id
+ORDER BY total DESC;</pre>
+        </div>
+
+        <p>
+          Во всех трёх случаях: <em>разложить строки по ключу → накопить значение → отдать результат</em>. Разница —
+          в том, где это происходит: в интерпретаторе, в векторизованном коде или в базе.
+        </p>
+        <p class="small">
+          Важная деталь честности: индекс pandas для строковых меток действительно использует хеш-таблицу, но
+          <code class="inl">RangeIndex</code> — это арифметика, а не хеш. На собеседовании такая точность ценится
+          выше, чем «всегда хеш».
+        </p>
+      </section>
+
+      <!-- ══════════════════ 8. Ошибки ══════════════════ -->
+      <section>
+        <h2><span class="num">08</span>Пять ошибок, на которых спотыкаются</h2>
+
+        <div class="errors">
+          <div class="err">
+            <div class="h">Изменяемый ключ</div>
+            <p><code>{["anna"]: 1}</code> падает с <code>TypeError: unhashable type: 'list'</code>. Но хуже — свой класс: если определить <code>__eq__</code> и забыть <code>__hash__</code>, Python сделает объект нехешируемым молча.</p>
+            <div class="fix">Ключ делайте неизменяемым: строка, число, tuple из hashable элементов. Для своего класса — <code>frozen=True</code> в dataclass.</div>
+          </div>
+
+          <div class="err">
+            <div class="h">Инкремент без инициализации</div>
+            <p><code>counts[word] += 1</code> на новом слове даёт <code>KeyError</code>: справа читается отсутствующий ключ.</p>
+            <div class="fix"><code>counts[word] = counts.get(word, 0) + 1</code>, <code>Counter</code> или <code>defaultdict(int)</code>.</div>
+          </div>
+
+          <div class="err">
+            <div class="h">Путать get и defaultdict</div>
+            <p><code>d.get(k)</code> не создаёт ключ. <code>defaultdict</code> создаёт его при чтении <code>d[k]</code> — и после проверки <code>k in d</code> вы неожиданно получите <code>True</code>.</p>
+            <div class="fix">Для чтения «на всякий случай» — <code>get</code>. Для накопления — <code>defaultdict</code> осознанно.</div>
+          </div>
+
+          <div class="err">
+            <div class="h">Изменение словаря во время итерации</div>
+            <p>Добавление или удаление ключа внутри <code>for k in d:</code> бросает <code>RuntimeError: dictionary changed size during iteration</code>.</p>
+            <div class="fix">Собирайте изменения отдельно или итерируйтесь по копии: <code>for k in list(d):</code>.</div>
+          </div>
+
+          <div class="err">
+            <div class="h">in по списку внутри цикла</div>
+            <p><code>if user in users_list</code> внутри <code>for</code> по другому списку — это O(n²). На 10 000 элементов уже больно.</p>
+            <div class="fix">Один раз постройте <code>set</code> или <code>dict</code> — и проверка станет O(1).</div>
+          </div>
+
+          <div class="err">
+            <div class="h">Считать порядок сортировкой</div>
+            <p>dict хранит порядок <em>вставки</em>. Если данные вставили в случайном порядке, вывод тоже будет случайным.</p>
+            <div class="fix">Нужен порядок — сортируйте явно: <code>sorted(d)</code>, <code>sorted(d.items(), key=...)</code>.</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ══════════════════ 9. Вопросы ══════════════════ -->
+      <section>
+        <h2><span class="num">09</span>Вопросы с собеседования</h2>
+        <p>
+          Хороший ответ на любой из них строится по одной схеме: <strong>тезис → механика → ограничение</strong>.
+          Тезис — что это. Механика — как работает. Ограничение — когда это неверно. Именно третья часть отличает
+          «читал статью» от «понимаю».
+        </p>
+
+        <div class="qa">
+          <details>
+            <summary>Почему dict обеспечивает быстрый поиск?</summary>
+            <div class="a">
+              <p>Потому что ключ не перебирается, а <em>вычисляется</em>: <code class="inl">hash(key)</code> даёт номер ячейки, и остаётся сравнить один-два ключа. В среднем — O(1), независимо от размера словаря.</p>
+              <p>Ограничение: O(1) — <em>в среднем</em>. При плохой хеш-функции (или намеренной атаке коллизиями) все ключи попадают в одну ячейку, и поиск деградирует до O(n).</p>
+              <div class="verdict">Резюме: адресация вместо перебора; средняя оценка, а не гарантия.</div>
+            </div>
+          </details>
+
+          <details>
+            <summary>Что такое hashable объект?</summary>
+            <div class="a">
+              <p>Объект, у которого есть <code class="inl">__hash__</code> и <code class="inl">__eq__</code>, причём хеш не меняется за время жизни объекта. Практически — неизменяемый: <code class="inl">int</code>, <code class="inl">str</code>, <code class="inl">tuple</code> из hashable элементов, <code class="inl">frozenset</code>.</p>
+              <p>Контракт: если <code class="inl">a == b</code>, то <code class="inl">hash(a) == hash(b)</code>. Обратное неверно — равные хеши не означают равенство, это и есть коллизия.</p>
+              <div class="verdict">Резюме: hashable = можно выдать стабильный номерок.</div>
+            </div>
+          </details>
+
+          <details>
+            <summary>Почему ключи словаря должны быть hashable?</summary>
+            <div class="a">
+              <p>Без хеша невозможно вычислить адрес ячейки, а без неизменяемости — гарантировать, что адрес не устареет. Если ключ изменится после вставки, поиск по нему будет искать в другой ячейке и не найдёт значение.</p>
+              <div class="verdict">Резюме: номерок должен оставаться верным, пока пальто в гардеробе.</div>
+            </div>
+          </details>
+
+          <details>
+            <summary>Чем dict отличается от set?</summary>
+            <div class="a">
+              <p>Внутри — одна и та же хеш-таблица. <code class="inl">set</code> — это словарь без значений: важно только наличие ключа. Поэтому <code class="inl">set</code> отвечает на вопрос «есть ли элемент?» за O(1) и умеет пересечения и объединения.</p>
+              <p>Практическое правило: нужна проверка уникальности или операции над множествами — <code class="inl">set</code>; нужно связать ключ со значением — <code class="inl">dict</code>.</p>
+              <div class="verdict">Резюме: set = dict, у которого значение не нужно.</div>
+            </div>
+          </details>
+
+          <details>
+            <summary>Как работает dict.get() и чем отличается от d[k]?</summary>
+            <div class="a">
+              <p><code class="inl">d[k]</code> требует ключ и бросает <code class="inl">KeyError</code>, если его нет. <code class="inl">d.get(k)</code> возвращает <code class="inl">None</code>, если ключа нет, <code class="inl">d.get(k, default)</code> — заданное значение. Важно: <code class="inl">get</code> никогда не создаёт ключ.</p>
+              <p>Ловушка: <code class="inl">d.get(k, 0) += 1</code> не работает — это выражение, а не присваивание по ссылке.</p>
+              <div class="verdict">Резюме: get — «мягкое» чтение без изменения словаря.</div>
+            </div>
+          </details>
+
+          <details>
+            <summary>Чем defaultdict отличается от обычного dict?</summary>
+            <div class="a">
+              <p>При обращении к отсутствующему ключу <code class="inl">defaultdict</code> вызывает фабрику (<code class="inl">int</code>, <code class="inl">list</code>, <code class="inl">set</code>) и <em>вставляет</em> результат. Это удобно для накопления: <code class="inl">totals[user] += amount</code> работает сразу.</p>
+              <p>Побочный эффект: простое чтение <code class="inl">d[missing]</code> меняет словарь — после него <code class="inl">missing in d</code> истинно. И <code class="inl">.get()</code> фабрику <em>не</em> вызывает.</p>
+              <div class="verdict">Резюме: удобство накопления в обмен на неявные вставки.</div>
+            </div>
+          </details>
+
+          <details>
+            <summary>Как удалить дубликаты, сохранив порядок?</summary>
+            <div class="a">
+              <p>С Python 3.7 самый простой способ использует порядок вставки: <code class="inl">list(dict.fromkeys(items))</code>. Альтернатива с явным множеством: <code class="inl">seen = set()</code> и добавление только новых.</p>
+              <p>Если порядок не важен — <code class="inl">list(set(items))</code>. Если элементы нехешируемы (например, словари) — придётся сравнивать вручную, и это уже другой разговор.</p>
+              <div class="verdict">Резюме: dict.fromkeys — короткий и предсказуемый вариант.</div>
+            </div>
+          </details>
+
+          <details>
+            <summary>Почему поиск по ключу dict быстрее поиска в списке?</summary>
+            <div class="a">
+              <p>Список не знает, где лежит элемент: нужно проверить каждый — O(n). Словарь вычисляет адрес по ключу — O(1). На 10 элементах разница не видна, на миллионе — в тысячи раз.</p>
+              <p>Ограничение: словарь тратит память на таблицу и на сами ключи; для «просто пройтись по всем» список дешевле.</p>
+              <div class="verdict">Резюме: платим памятью за скорость доступа.</div>
+            </div>
+          </details>
+        </div>
+      </section>
+
+      <!-- ══════════════════ 10. Задачи ══════════════════ -->
+      <section>
+        <h2><span class="num">10</span>Три задачи: сначала своя попытка</h2>
+        <p>Правило гайда: решение открывается после того, как вы написали своё. Даже если оно неверное — сравнение полезнее готового ответа.</p>
+
+        <h3><span style="color:var(--muted);font-family:var(--mono);font-size:.8rem">01</span> Заказы по пользователям</h3>
+        <p>
+          Дан список заказов (из практики недели 1). Не используя pandas, получите: сумму и количество заказов
+          каждого пользователя, затем — пользователя с максимальной суммой.
+        </p>
+        <div class="code">
+          <div class="bar"><span class="file">условие</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">orders = [
+    {"id": 1, "user": "Anna", "amount": 1200},
+    {"id": 2, "user": "Ivan", "amount": 800},
+    {"id": 3, "user": "Anna", "amount": 500},
+    {"id": 4, "user": "Petr", "amount": 2100},
+]</pre>
+        </div>
+        <div class="qa">
+          <details>
+            <summary>Показать решение и разбор</summary>
+            <div class="a">
+              <div class="code" style="margin-top:0">
+                <div class="bar"><span class="file">решение</span><span class="lang">python</span><button class="copy">копировать</button></div>
+                <pre data-lang="python">totals, counts = {}, {}
+for o in orders:
+    u = o["user"]
+    totals[u] = totals.get(u, 0) + o["amount"]
+    counts[u] = counts.get(u, 0) + 1
+
+best = max(totals, key=totals.get)     # ключ с максимальным значением
+print(totals, counts, best, sep="\n")</pre>
+                <div class="out">{'Anna': 1700, 'Ivan': 800, 'Petr': 2100}
+{'Anna': 2, 'Ivan': 1, 'Petr': 1}
+Petr</div>
+              </div>
+              <p><strong>Что здесь важно.</strong> <code class="inl">max(totals, key=totals.get)</code> — идиома «ключ с максимальным значением»; без <code class="inl">key</code> вы получите максимальный <em>ключ</em> по алфавиту. Два словаря вместо одного — нормально, но <code class="inl">defaultdict</code> читается короче.</p>
+            </div>
+          </details>
+        </div>
+
+        <h3><span style="color:var(--muted);font-family:var(--mono);font-size:.8rem">02</span> Инверсия словаря</h3>
+        <p>
+          Дан словарь «город → список людей». Постройте обратный словарь «человек → город». Обратите внимание:
+          один человек может по ошибке оказаться в двух городах — это надо обработать явно.
+        </p>
+        <div class="qa">
+          <details>
+            <summary>Показать решение и разбор</summary>
+            <div class="a">
+              <div class="code" style="margin-top:0">
+                <div class="bar"><span class="file">решение</span><span class="lang">python</span><button class="copy">копировать</button></div>
+                <pre data-lang="python">cities = {"Москва": ["Anna", "Ivan"], "Казань": ["Petr", "Anna"]}
+
+person_to_city = {}
+for city, people in cities.items():
+    for person in people:
+        if person in person_to_city:
+            print(f"дубль: {person} в {city}, уже был в {person_to_city[person]}")
+        person_to_city[person] = city
+
+print(person_to_city)</pre>
+                <div class="out">дубль: Anna в Казань, уже был в Москва
+{'Anna': 'Казань', 'Ivan': 'Москва', 'Petr': 'Казань'}</div>
+              </div>
+              <p><strong>Что здесь важно.</strong> Инверсия «многие-к-одному» всегда теряет данные — здесь мы явно проговариваем потерю, а не молча затираем. Это ровно та же проблема, что «многие-ко-многим» в <code class="inl">merge</code> и двойной <code class="inl">JOIN</code>: молчаливое размножение строк.</p>
+            </div>
+          </details>
+        </div>
+
+        <h3><span style="color:var(--muted);font-family:var(--mono);font-size:.8rem">03</span> Конфиг с значениями по умолчанию</h3>
+        <p>
+          Есть настройки <code class="inl">defaults</code> и пользовательские <code class="inl">overrides</code>.
+          Соберите итоговый конфиг, не изменяя исходные словари, и выведите ключи, которые пользователь переопределил.
+        </p>
+        <div class="qa">
+          <details>
+            <summary>Показать решение и разбор</summary>
+            <div class="a">
+              <div class="code" style="margin-top:0">
+                <div class="bar"><span class="file">решение</span><span class="lang">python</span><button class="copy">копировать</button></div>
+                <pre data-lang="python">defaults  = {"timeout": 30, "retries": 3, "debug": False}
+overrides = {"timeout": 60, "debug": True}
+
+config = {**defaults, **overrides}         # новый dict, исходные не тронуты
+changed = set(overrides) &amp; set(defaults)   # что реально переопределено
+print(config, changed)</pre>
+                <div class="out">{'timeout': 60, 'retries': 3, 'debug': True} {'timeout', 'debug'}</div>
+              </div>
+              <p><strong>Что здесь важно.</strong> <code class="inl">{**a, **b}</code> создаёт новый словарь — это не «слияние на месте». Обратный к <code class="inl">update</code>, который меняет <code class="inl">a</code>. И <code class="inl">set(overrides) &amp; set(defaults)</code> — та самая операция пересечения множеств, которая в pandas называется <code class="inl">index.intersection</code>, а в SQL — <code class="inl">INTERSECT</code>.</p>
+            </div>
+          </details>
+        </div>
+      </section>
+
+      <!-- ══════════════════ 11. Чек-лист ══════════════════ -->
+      <section>
+        <h2><span class="num">11</span>Чек-лист освоения</h2>
+        <p class="small">Отмечайте только то, что можете сделать <em>без подсказок</em>. Прогресс сохраняется в браузере и виден в оглавлении.</p>
+        <div class="check">
+          <label><input type="checkbox"><span class="box"></span><span class="txt">Объяснить на пальцах, почему <code class="inl">dict</code> ищет за O(1), нарисовав три колонки «ключ → номерок → ячейка»</span></label>
+          <label><input type="checkbox"><span class="box"></span><span class="txt">Сказать, что такое hashable, и привести пример объекта, который им не является</span></label>
+          <label><input type="checkbox"><span class="box"></span><span class="txt">Написать группировку по ключу через <code class="inl">get</code>, <code class="inl">setdefault</code> и <code class="inl">defaultdict</code></span></label>
+          <label><input type="checkbox"><span class="box"></span><span class="txt">Объяснить разницу между «порядок вставки» и «сортировка»</span></label>
+          <label><input type="checkbox"><span class="box"></span><span class="txt">Показать, где та же идея живёт в pandas и в SQL</span></label>
+        </div>
+        <p class="small">Если отмечено всё — тема на уровне 2. Уровень 3 — суметь объяснить коллизии и пробирование так, чтобы собеседник понял с первого раза.</p>
+      </section>
+
+      <!-- ══════════════════ 12. Дальше ══════════════════ -->
+      <section>
+        <h2><span class="num">12</span>Куда ведут мостики</h2>
+        <div class="bridges">
+          <a class="bridge" href="ch-03-list-tuple.html"><span class="to">Глава 03</span><span>list и tuple: почему одна коллекция изменяема, а другая нет</span><span class="what">→ и почему tuple может быть ключом</span></a>
+          <a class="bridge" href="ch-06-collections.html"><span class="to">Глава 06</span><span>Counter, defaultdict, deque: три специнструмента</span><span class="what">→ defaultdict изнутри</span></a>
+          <a class="bridge" href="ch-15-groupby.html"><span class="to">Глава 15</span><span>groupby: разложить — посчитать — собрать</span><span class="what">→ та же группировка, но векторно</span></a>
+          <a class="bridge" href="ch-21-group-by-having.html"><span class="to">Глава 21</span><span>GROUP BY и HAVING</span><span class="what">→ тот же аккумулятор в базе</span></a>
+          <a class="bridge" href="ch-24-indexes-explain.html"><span class="to">Глава 24</span><span>Индексы и EXPLAIN</span><span class="what">→ «оглавление книги» для базы данных</span></a>
+        </div>
+      </section>
+
+      <div class="pager">
+        <a class="prev" href="index.html"><span class="dir">← Назад</span><span class="ttl">Обложка и оглавление</span></a>
+        <a class="next off" href="#"><span class="dir">Дальше →</span><span class="ttl">03 · list и tuple</span></a>
+      </div>
+
+    </div>
+  </main>
+</div>
+<script src="assets/toc.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>

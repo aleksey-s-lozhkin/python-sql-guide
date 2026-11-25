@@ -1,0 +1,63 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 500" role="img" aria-labelledby="t2 d2">
+  <title id="t2">Одна модель «ключ → хеш → ячейка» объясняет dict, индекс pandas и hash join в SQL</title>
+  <desc id="d2">Три карточки: Python dict, pandas index, PostgreSQL hash join. Внизу вывод: учишь модель один раз, применяешь трижды.</desc>
+  <defs>
+    <style>
+      .h { font: 700 16px system-ui, -apple-system, "Segoe UI", sans-serif; fill: #1d1b26; }
+      .sub { font: 600 11px system-ui, -apple-system, "Segoe UI", sans-serif; fill: #8a7f73; letter-spacing: .1em; }
+      .b { font: 400 14px system-ui, -apple-system, "Segoe UI", sans-serif; fill: #4a4458; }
+      .mono { font: 600 13px ui-monospace, "SF Mono", Menlo, monospace; fill: #1d1b26; }
+      .big { font: 700 19px system-ui, -apple-system, "Segoe UI", sans-serif; fill: #1d1b26; }
+    </style>
+  </defs>
+
+  <text class="sub" x="28" y="30">ОДНА ИДЕЯ</text>
+  <text class="big" x="28" y="62">Ключ → hash(key) → ячейка с данными</text>
+  <text class="b" x="28" y="88">Три технологии ниже используют ровно её. Учишь один раз — применяешь трижды.</text>
+
+  <!-- Python -->
+  <rect x="24" y="112" width="296" height="286" rx="16" fill="#fff" stroke="#d8d1c6"/>
+  <path d="M40,112 h264 a16,16 0 0 1 16,16 v28 h-296 v-28 a16,16 0 0 1 16,-16 z" fill="#eef4fb" stroke="#b9cfe6"/>
+  <text class="h" x="44" y="142" fill="#1e5f9e">Python · dict</text>
+  <text class="mono" x="44" y="190">{ "anna": 1200 }</text>
+  <text class="mono" x="44" y="212">{"anna": 1, "ivan": 2}</text>
+  <text class="b" x="44" y="250">• ключ обязан быть hashable</text>
+  <text class="b" x="44" y="276">• доступ O(1) в среднем</text>
+  <text class="b" x="44" y="302">• порядок вставки сохранён</text>
+  <text class="b" x="44" y="328">• коллизия → цепочка</text>
+  <text class="b" x="44" y="354">• list в ключах → TypeError</text>
+
+  <!-- pandas -->
+  <rect x="342" y="112" width="296" height="286" rx="16" fill="#fff" stroke="#d8d1c6"/>
+  <path d="M358,112 h264 a16,16 0 0 1 16,16 v28 h-296 v-28 a16,16 0 0 1 16,-16 z" fill="#f3eefb" stroke="#c9b8e0"/>
+  <text class="h" x="362" y="142" fill="#6d4c8f">pandas · Series / index</text>
+  <rect x="362" y="172" width="256" height="96" rx="8" fill="#fff" stroke="#e6e0d6"/>
+  <rect x="362" y="172" width="256" height="28" rx="8" fill="#faf8f4"/>
+  <text class="sub" x="372" y="191">INDEX</text>
+  <text class="sub" x="500" y="191">AMOUNT</text>
+  <text class="mono" x="372" y="222">Anna</text><text class="mono" x="500" y="222">1200</text>
+  <text class="mono" x="372" y="244">Ivan</text><text class="mono" x="500" y="244">800</text>
+  <text class="mono" x="372" y="266">Petr</text><text class="mono" x="500" y="266">2100</text>
+  <text class="b" x="362" y="304">• index — это те же «номерки»</text>
+  <text class="b" x="362" y="330">• loc ищет по метке-ключу</text>
+  <text class="b" x="362" y="356">• merge строит хеш по ключу</text>
+  <text class="b" x="362" y="382">• дубли индекса → строки размножатся</text>
+
+  <!-- SQL -->
+  <rect x="660" y="112" width="296" height="286" rx="16" fill="#fff" stroke="#d8d1c6"/>
+  <path d="M676,112 h264 a16,16 0 0 1 16,16 v28 h-296 v-28 a16,16 0 0 1 16,-16 z" fill="#fbeeee" stroke="#e0b8b8"/>
+  <text class="h" x="680" y="142" fill="#a23b3b">PostgreSQL · hash join</text>
+  <text class="mono" x="680" y="190">SELECT ... FROM a JOIN b</text>
+  <text class="mono" x="680" y="212">  ON a.id = b.a_id</text>
+  <text class="b" x="680" y="250">• hash join: строит таблицу</text>
+  <text class="b" x="680" y="272">  по ключу, ищет за 1 шаг</text>
+  <text class="b" x="680" y="298">• GROUP BY — тот же аккумулятор</text>
+  <text class="b" x="680" y="324">• индекс = оглавление по ключу</text>
+  <text class="b" x="680" y="350">• B-tree ≠ hash: умеет диапазоны</text>
+
+  <!-- нижняя полоса -->
+  <rect x="24" y="422" width="932" height="58" rx="13" fill="#f4f1ea" stroke="#e0d9cd"/>
+  <text class="b" x="44" y="448" font-weight="600">Вывод:</text>
+  <text class="b" x="106" y="448">dict, индекс pandas и hash join — разные синтаксисы одной структуры данных.</text>
+  <text class="b" x="44" y="470" fill="#7a7285">Поэтому «почему в dict поиск O(1)?» и «почему JOIN по индексу быстрый?» — это один вопрос.</text>
+</svg>

@@ -1,0 +1,86 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 540" role="img" aria-labelledby="t1 d1">
+  <title id="t1">Как dict находит значение: ключ → номерок (хеш) → ячейка</title>
+  <desc id="d1">Ключи превращаются в номер ячейки, две записи могут попасть в одну ячейку — это коллизия.</desc>
+  <defs>
+    <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#8a7f73"/>
+    </marker>
+    <marker id="arr2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#c2410c"/>
+    </marker>
+    <style>
+      .lbl { font: 600 12px system-ui, -apple-system, "Segoe UI", sans-serif; fill: #8a7f73; letter-spacing: .12em; }
+      .card { font: 600 15px ui-monospace, "SF Mono", Menlo, monospace; fill: #1d1b26; }
+      .note { font: 400 14px system-ui, -apple-system, "Segoe UI", sans-serif; fill: #4a4458; }
+      .small { font: 400 12px system-ui, -apple-system, "Segoe UI", sans-serif; fill: #7a7285; }
+      .cell { font: 600 13px ui-monospace, "SF Mono", Menlo, monospace; fill: #1d1b26; }
+    </style>
+  </defs>
+
+  <text class="lbl" x="28" y="34">① КЛЮЧ</text>
+  <text class="lbl" x="330" y="34">② НОМЕРОК</text>
+  <text class="lbl" x="650" y="34">③ ЯЧЕЙКА</text>
+
+  <!-- ключи -->
+  <rect x="28" y="88" width="212" height="62" rx="12" fill="#fff" stroke="#d8d1c6"/>
+  <text class="card" x="46" y="118">"anna"</text>
+  <text class="small" x="46" y="138">str · hashable</text>
+
+  <rect x="28" y="168" width="212" height="62" rx="12" fill="#fff" stroke="#d8d1c6"/>
+  <text class="card" x="46" y="198">"ivan"</text>
+  <text class="small" x="46" y="218">str · hashable</text>
+
+  <rect x="28" y="248" width="212" height="62" rx="12" fill="#fff" stroke="#d8d1c6"/>
+  <text class="card" x="46" y="278">"petr"</text>
+  <text class="small" x="46" y="298">str · hashable</text>
+
+  <!-- стрелки к хешу -->
+  <path d="M240,119 C285,119 292,150 328,158" fill="none" stroke="#8a7f73" stroke-width="1.8" marker-end="url(#arr)"/>
+  <path d="M240,199 C285,199 292,192 328,192" fill="none" stroke="#8a7f73" stroke-width="1.8" marker-end="url(#arr)"/>
+  <path d="M240,279 C285,279 292,234 328,226" fill="none" stroke="#8a7f73" stroke-width="1.8" marker-end="url(#arr)"/>
+
+  <!-- хеш-машина -->
+  <rect x="330" y="120" width="188" height="130" rx="18" fill="#fdf0e6" stroke="#e8b48c"/>
+  <text class="card" x="352" y="160">hash(key)</text>
+  <text class="small" x="352" y="182">для одного ключа —</text>
+  <text class="small" x="352" y="198">одно и то же число</text>
+  <line x1="352" y1="210" x2="496" y2="210" stroke="#e8b48c" stroke-dasharray="4 4"/>
+  <text class="card" x="352" y="234">% 8</text>
+  <text class="small" x="400" y="234">→ номер 0…7</text>
+
+  <!-- стрелки к ячейкам: строка 6 (y 340..382) и строка 3 (y 214..256) -->
+  <path d="M520,222 C582,222 602,320 640,358" fill="none" stroke="#c2410c" stroke-width="2" marker-end="url(#arr2)"/>
+  <path d="M520,158 C578,158 594,205 640,232" fill="none" stroke="#c2410c" stroke-width="2" marker-end="url(#arr2)"/>
+
+  <!-- таблица ячеек -->
+  <g>
+    <rect x="650" y="88" width="300" height="336" rx="14" fill="#fff" stroke="#d8d1c6"/>
+    <g stroke="#ece6dd">
+      <line x1="650" y1="130" x2="950" y2="130"/>
+      <line x1="650" y1="172" x2="950" y2="172"/>
+      <line x1="650" y1="214" x2="950" y2="214"/>
+      <line x1="650" y1="256" x2="950" y2="256"/>
+      <line x1="650" y1="298" x2="950" y2="298"/>
+      <line x1="650" y1="340" x2="950" y2="340"/>
+      <line x1="650" y1="382" x2="950" y2="382"/>
+    </g>
+    <g class="small" text-anchor="middle">
+      <text x="670" y="115">0</text><text x="670" y="157">1</text><text x="670" y="199">2</text>
+      <text x="670" y="241">3</text><text x="670" y="283">4</text><text x="670" y="325">5</text>
+      <text x="670" y="367">6</text><text x="670" y="409">7</text>
+    </g>
+    <!-- строка 6: коллизия anna + ivan -->
+    <rect x="686" y="344" width="128" height="34" rx="9" fill="#e9f2ec" stroke="#9cc0a8"/>
+    <text class="cell" x="700" y="366">"anna" → 1200</text>
+    <rect x="820" y="344" width="118" height="34" rx="9" fill="#e9f2ec" stroke="#9cc0a8"/>
+    <text class="cell" x="832" y="366">"ivan" → 800</text>
+    <!-- строка 3: petr -->
+    <rect x="686" y="218" width="128" height="34" rx="9" fill="#e9f2ec" stroke="#9cc0a8"/>
+    <text class="cell" x="700" y="240">"petr" → 2100</text>
+  </g>
+
+  <!-- пояснение -->
+  <rect x="28" y="452" width="922" height="66" rx="13" fill="#f4f1ea" stroke="#e0d9cd"/>
+  <text class="note" x="48" y="480">Коллизия — не ошибка: «anna» и «ivan» претендуют на ячейку 6, поэтому в ячейке живёт цепочка.</text>
+  <text class="note" x="48" y="502">Поиск занимает <tspan font-weight="700">O(1) в среднем</tspan>: сначала номерок, потом 1–2 сравнения — а не просмотр всех элементов.</text>
+</svg>

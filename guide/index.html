@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ассоциативный гайд · Python → pandas → SQL</title>
+<meta name="description" content="Учебный гайд по Python, NumPy, pandas и SQL: ассоциативные карты, разборы, практика и вопросы с собеседований.">
+<link rel="stylesheet" href="assets/style.css">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#fbf8f2">
+<link rel="icon" href="assets/icons/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="assets/icons/icon-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Гайд Py/SQL">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+</head>
+<body data-slug="index">
+<div class="app">
+  <aside class="sidebar" id="sidebar"></aside>
+  <main>
+    <div class="wrap">
+
+      <header class="cover">
+        <div class="kicker">Демо-выпуск · глава 1 из 26</div>
+        <h1>Python, pandas и SQL как одна система понятий</h1>
+        <p class="lead">
+          Учебный гайд для backend-разработчика: от коллекций Python до оконных функций SQL.
+          Каждая глава — одна идея, одна ассоциация, проверяемый код и ответы на вопросы с собеседования.
+        </p>
+        <div class="stats">
+          <div><b>26</b>глав по 20–40 минут</div>
+          <div><b>8</b>недель программы</div>
+          <div><b>5</b>частей: Python → NumPy → pandas → SQL → интеграция</div>
+          <div><b>0</b>внешних зависимостей: открывается двойным щелчком</div>
+        </div>
+      </header>
+
+      <div id="resume"></div>
+
+      <section>
+        <h2><span class="num">01</span>Главная ставка гайда</h2>
+        <p>
+          Большинство учебников дают темы по отдельности: вот <code class="inl">dict</code>, вот индекс pandas, вот
+          <code class="inl">JOIN</code>. В голове при этом остаются три несвязанных набора правил, и на собеседовании
+          приходится вспоминать, «как было в статье», вместо того чтобы вывести ответ.
+        </p>
+        <p>
+          Здесь устроено иначе. <strong>Одна ментальная модель — один и тот же рисунок в голове — используется во всех
+          четырёх технологиях.</strong> Хеш-таблица объясняет <code class="inl">dict</code>, индекс pandas и
+          <code class="inl">hash join</code> в PostgreSQL. «Разложить — посчитать — собрать» объясняет
+          <code class="inl">defaultdict</code>, <code class="inl">groupby</code> и <code class="inl">GROUP BY</code>.
+          Тогда новый синтаксис не учится с нуля — он <em>узнаётся</em>.
+        </p>
+        <p class="small">
+          Это не отменяет официальную документацию: каждая глава ссылается на конкретные разделы docs и на этом
+          заканчивается. Гайд — это карта, а не замена местности.
+        </p>
+      </section>
+
+      <section>
+        <h2><span class="num">02</span>Как читать главу</h2>
+        <p>В каждой главе одни и те же блоки, в одном и том же порядке. Через две главы вы перестаёте читать заголовки — глаз сам находит нужное.</p>
+        <div class="legend">
+          <div><b>🎯 Зачем</b>3 причины, по которым это нужно backend-разработчику и на собеседовании.</div>
+          <div><b>🧠 Якорь</b>Одна бытовая метафора, к которой крепится вся тема.</div>
+          <div><b>🔗 Ассоциативный ряд</b>8 звеньев: от метафоры к механике и названиям.</div>
+          <div><b>📐 Схема</b>Картинка, которую стоит уметь нарисовать на бумаге.</div>
+          <div><b>💻 Лаборатория</b>Код, который реально запускался, с выводом и разбором строк.</div>
+          <div><b>🌉 Мост</b>Та же идея в pandas и SQL — чтобы не учить три раза.</div>
+          <div><b>⚠️ Ошибки</b>То, на чём спотыкаются в реальном коде и на интервью.</div>
+          <div><b>🎤 Вопросы</b>Вопросы с эталонными ответами на 1–2 минуты.</div>
+          <div><b>✍️ Задачи</b>С решением под спойлером — сначала своя попытка.</div>
+          <div><b>✅ Чек-лист</b>Отметки сохраняются: видно, что уже освоено.</div>
+        </div>
+        <div class="note">
+          <span class="t">Правило гайда</span>
+          <p>Не читать код глазами. Запускать. Менять одну строку и смотреть, что сломается. Вопрос «а что если?» — это и есть обучение.</p>
+        </div>
+        <div class="note">
+          <span class="t">Телефон и офлайн</span>
+          <p>Книга работает как приложение: после публикации на GitHub Pages откройте ссылку на телефоне и добавьте на домашний экран. Service worker скачает все страницы один раз — дальше они открываются без интернета. Позиция чтения и размер текста сохраняются.</p>
+        </div>
+      </section>
+
+      <section>
+        <h2><span class="num">03</span>Оглавление</h2>
+        <div class="toc" id="toc"></div>
+        <p class="small">Готово к чтению пока одно: глава 02 — она задаёт шаблон для остальных. Номера и порядок глав соответствуют программе на 8 недель.</p>
+      </section>
+
+      <section>
+        <h2><span class="num">04</span>Что уже собирается в этом проекте</h2>
+        <ul>
+          <li><strong>Главы</strong> — по шаблону «якорь → ряд → схема → код → мост → ошибки → вопросы → задачи → чек-лист».</li>
+          <li><strong>Схемы</strong> — векторные, генерируются из текста, поэтому правятся в одну строку и не мылятся при печати.</li>
+          <li><strong>Лаборатории</strong> — Python-файлы, которые действительно запускаются на этой машине; вывод в главах не выдуман.</li>
+          <li><strong>База для SQL</strong> — отдельная учебная БД PostgreSQL с теми же <code class="inl">users</code>, <code class="inl">products</code>, <code class="inl">orders</code>, что и в плане.</li>
+        </ul>
+        <p class="small">Следующий шаг — решить формат и ритм. Черновик главы 02 уже открыт: посмотрите на него как на образец вкуса, а не как на финальный текст.</p>
+      </section>
+
+      <div class="pager">
+        <a class="prev off" href="#"><span class="dir">Назад</span><span class="ttl">Обложка</span></a>
+        <a class="next" href="ch-02-dict.html"><span class="dir">Начать чтение</span><span class="ttl">02 · dict: шкаф с номерками</span></a>
+      </div>
+
+    </div>
+  </main>
+</div>
+<script src="assets/toc.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>
