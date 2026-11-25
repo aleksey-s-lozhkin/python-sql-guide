@@ -727,3 +727,20 @@ td b { font-weight: 700; }
 .resume + .resume { margin-top: 10px; }
 .task h3 { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
 .task h3 .point { font-family: var(--mono); font-size: 10.5px; color: var(--gold); }
+
+/* печать проверочной части II — те же правила, что для первой */
+@media print {
+  [data-slug="checkpoint-2"] .sidebar,
+  [data-slug="checkpoint-2"] .diag-panel,
+  [data-slug="checkpoint-2"] .qa,
+  [data-slug="checkpoint-2"] .rubric,
+  [data-slug="checkpoint-2"] .explain,
+  [data-slug="checkpoint-2"] .verdict,
+  [data-slug="checkpoint-2"] .result,
+  [data-slug="checkpoint-2"] .pager,
+  [data-slug="checkpoint-2"] .print-hint { display: none !important; }
+  [data-slug="checkpoint-2"] .q-item, [data-slug="checkpoint-2"] .task { break-inside: avoid; }
+  [data-slug="checkpoint-2"] .options label { border-color: #ccc; }
+  [data-slug="checkpoint-2"] .options label::before { content: "☐"; font-size: 13px; line-height: 1.2; margin-top: 1px; }
+  [data-slug="checkpoint-2"] .options input { display: none; }
+}

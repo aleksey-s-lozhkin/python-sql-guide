@@ -97,3 +97,11 @@ service worker недоступен. Поэтому страница на Pages 
 - Ключевые факты: `sum(axis=0)` из (3,4) даёт (4,); `broadcast_to` даёт strides (0,8) и read-only;
   slice/resize/T — view, маска/fancy — копия; pandas 3 CoW не даёт менять df через Series.
 - Дальше: часть III, pandas (12–18).
+
+## Проверочная по части II
+
+- `guide/checkpoint-2.html`: 8 вопросов (ndarray, shape, dtype, axis, broadcasting, маска, view, int8),
+  4 задачи (маска+агрегаты, оси, keepdims-центрирование, баг с копией), 2 мостика (pandas-эквиваленты,
+  Copy-on-Write). Те же 20 баллов, таймер, сохранение, печать бланка.
+- Ссылки: сайдбар, обложка, конец главы 11.
+- Дальше: часть III, pandas (12–18).
