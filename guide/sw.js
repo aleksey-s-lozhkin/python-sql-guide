@@ -1,5 +1,5 @@
 // Сгенерировано tools/gen_sw.cjs — не править руками.
-const CACHE = "assoc-guide-v587b3dec";
+const CACHE = "assoc-guide-va9783269";
 const PRECACHE = [
   "./assets/app.js",
   "./assets/icons/favicon.svg",
@@ -26,10 +26,12 @@ const PRECACHE = [
   "./assets/maps/ndarray-vs-list.svg",
   "./assets/maps/null-logic.svg",
   "./assets/maps/one-model-three-worlds.svg",
+  "./assets/maps/project-pipeline.svg",
   "./assets/maps/query-pipeline.svg",
   "./assets/maps/reshape-wide-long.svg",
   "./assets/maps/set-operations.svg",
   "./assets/maps/split-apply-combine.svg",
+  "./assets/maps/sql-vs-pandas.svg",
   "./assets/maps/subquery-cte.svg",
   "./assets/maps/view-copy.svg",
   "./assets/maps/window-functions.svg",
@@ -64,6 +66,7 @@ const PRECACHE = [
   "./checkpoint-1.html",
   "./checkpoint-2.html",
   "./checkpoint-3.html",
+  "./checkpoint-4.html",
   "./diagnostic.html",
   "./index.html",
   "./manifest.webmanifest",
@@ -90,6 +93,9 @@ const PRECACHE = [
   "./snippets/22_subqueries_cte.sql",
   "./snippets/23_window_functions.sql",
   "./snippets/24_indexes_explain.sql",
+  "./snippets/25_benchmark.py",
+  "./snippets/25_benchmark.sql",
+  "./snippets/26_project.sql",
   "./snippets/learning_shop.sql"
 ];
 
