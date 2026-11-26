@@ -121,9 +121,10 @@
 
         <h3>Агрегаты и NULL</h3>
         <p>
-          <code class="inl">AVG</code> делит сумму на количество известных значений, а не на число строк.
-          Поэтому среднее «по группе» может отличаться от среднего «по строкам группы с пропусками».
-          Если нужна именно строгая арифметика — считайте отдельно <code class="inl">COUNT(*)</code>.
+          <code class="inl">AVG</code> делит сумму на число <em>известных</em> значений, а не на число строк.
+          Например, две строки, одна с <code class="inl">NULL</code>: сумма делится на 1, а не на 2.
+          Если нужен знаменатель «все строки», считайте отношение явно:
+          <code class="inl">SUM(x) / COUNT(*)</code>.
         </p>
 
         <h3>NULL как ключ группировки</h3>
@@ -136,6 +137,7 @@
 
       <section>
         <h2><span class="num">06</span>Лаборатория: запустить и увидеть</h2>
+        <p>Фрагменты файла <a title="Открыть файл с номерами строк" href="snippets/view.html?f=21_group_by_having.sql"><code class="inl">21_group_by_having.sql</code></a>.</p>
         <p>
           База <code class="inl">learning_shop</code>. Выручка заказа — <code class="inl">quantity * price</code>,
           поэтому везде соединение заказов с товарами.
@@ -407,9 +409,11 @@ FROM orders o JOIN products p ON p.id = o.product_id
 GROUP BY p.category
 ORDER BY revenue DESC;</pre>
               </div>
-              <div class="out"> electronics | 5 | 195500.00
- food        | 3 |   4200.00
- books       | 2 |   2700.00</div>
+              <div class="out">  category   | orders |  revenue
+-------------+--------+-----------
+ electronics |      5 | 195500.00
+ food        |      3 |   4200.00
+ books       |      2 |   2700.00</div>
             </div>
           </details>
         </div>
@@ -460,8 +464,8 @@ ORDER BY revenue DESC;</pre>
  Olga   | 76500.00
  Ivan   | 23800.00
  Petr   | 22000.00
- гость  |   900.00
- Maria  |  2250.00</div>
+ Maria  |  2250.00
+ гость  |   900.00</div>
               <p><strong>Что важно.</strong> LEFT JOIN сохранил гостевой заказ, COALESCE дал ему имя,
               а сумма всех строк теперь совпадает с общей выручкой.</p>
             </div>

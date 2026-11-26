@@ -1,5 +1,5 @@
 // Сгенерировано tools/gen_sw.cjs — не править руками.
-const CACHE = "assoc-guide-v82dd2a6e";
+const CACHE = "assoc-guide-vb3ae6f13";
 const PRECACHE = [
   "./assets/app.js",
   "./assets/icons/favicon.svg",
@@ -95,6 +95,7 @@ const PRECACHE = [
   "./snippets/24_indexes_explain.sql",
   "./snippets/25_benchmark.py",
   "./snippets/25_benchmark.sql",
+  "./snippets/26_project.py",
   "./snippets/26_project.sql",
   "./snippets/learning_shop.sql",
   "./snippets/view.html"

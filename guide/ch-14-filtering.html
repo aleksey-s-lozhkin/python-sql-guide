@@ -129,9 +129,11 @@
 
         <h3>NaN ведёт себя отдельно</h3>
         <p>
-          Любое сравнение с <code class="inl">NaN</code> даёт <code class="inl">False</code>, поэтому строка с
-          пропуском не попадёт ни в <code class="inl">amount &gt; 600</code>, ни в <code class="inl">amount &lt;= 600</code>.
-          Для пропусков есть <code class="inl">isna()</code>/<code class="inl">notna()</code>.
+          Для обычного <code class="inl">float64</code> сравнение с <code class="inl">NaN</code> даёт
+          <code class="inl">False</code>, поэтому строка с пропуском не попадёт ни в
+          <code class="inl">amount &gt; 600</code>, ни в <code class="inl">amount &lt;= 600</code>.
+          У nullable-типов (<code class="inl">Int64</code>, глава 17) результат — <code class="inl">&lt;NA&gt;</code>,
+          и маска ведёт себя иначе. Для пропусков есть <code class="inl">isna()</code>/<code class="inl">notna()</code>.
         </p>
       </section>
 
@@ -239,9 +241,10 @@ SELECT * FROM orders WHERE amount IS NULL;</pre>
 
         <h3>NOT IN и NULL</h3>
         <p>
-          <code class="inl">~df["city"].isin([...])</code> в pandas ведёт себя предсказуемо. А в SQL
-          <code class="inl">NOT IN</code> с NULL в подзапросе может вернуть пустой результат — об этом подробно
-          в главах 20 и 22. Здесь достаточно запомнить: пропуски — отдельная категория, а не «ещё одно значение».
+          <code class="inl">~df["city"].isin([...])</code> <b>сохраняет</b> строки с <code class="inl">NaN</code>
+          (NaN не входит в список, значит отрицание истинно). А в SQL <code class="inl">NOT IN</code> с NULL
+          в подзапросе, наоборот, может вернуть пустой результат. Одно и то же условие даёт разные числа —
+          ещё одна причина сверять перенос отчёта. Подробно — в главах 20 и 22.
         </p>
 
         <h3>Фильтр в pandas или в SQL?</h3>
@@ -272,7 +275,9 @@ SELECT * FROM orders WHERE amount IS NULL;</pre>
           </div>
           <div class="err">
             <div class="h">str.contains без na=False</div>
-            <p>На пропусках по умолчанию получается NaN в маске, и фильтрация может вести себя неожиданно.</p>
+            <p>На object-колонке маска содержит <code class="inl">None</code>, и <code class="inl">df[mask]</code>
+            падает с <code class="inl">ValueError: Cannot mask with non-boolean array containing NA / NaN values</code>.
+            На строковом dtype pandas 3 пропуск даёт <code class="inl">False</code> и падения нет.</p>
             <div class="fix"><code class="inl">str.contains("x", na=False)</code>; при необходимости <code class="inl">regex=False</code>.</div>
           </div>
           <div class="err">
@@ -322,7 +327,9 @@ SELECT * FROM orders WHERE amount IS NULL;</pre>
           <details>
             <summary>Как отфильтровать по списку значений?</summary>
             <div class="a">
-              <p><code class="inl">df[df["city"].isin(values)]</code>, отрицание — <code class="inl">~</code>. Для больших списков передавайте set: проверка будет быстрее.</p>
+              <p><code class="inl">df[df["city"].isin(values)]</code>, отрицание — <code class="inl">~</code>.
+              Для десятков тысяч значений разница между list и set почти не видна; если список огромный,
+              лучше не гонять <code class="inl">isin</code>, а сделать <code class="inl">merge</code>.</p>
               <div class="verdict">Резюме: isin — это IN.</div>
             </div>
           </details>

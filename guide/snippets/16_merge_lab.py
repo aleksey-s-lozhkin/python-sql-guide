@@ -2,6 +2,7 @@
 
 Запуск:  python3 guide/snippets/16_merge_lab.py
 """
+import numpy as np
 import pandas as pd
 
 print("pandas", pd.__version__)
@@ -62,8 +63,11 @@ try:
 except ValueError as e:
     print("   ValueError:", str(e).split("\n")[0])
 
-# ─── 8. NULL-ключи не соединяются ───────────────────────────────
-print("\n8) NULL В КЛЮЧЕ НЕ СОЕДИНЯЕТСЯ")
+# ─── 8. NaN-ключи в pandas соединяются с NaN ────────────────────
+print("\n8) NULL В КЛЮЧЕ: PANDAS СОЕДИНЯЕТ NaN С NaN (В ОТЛИЧИЕ ОТ SQL)")
+users_null = pd.concat(
+    [users, pd.DataFrame({"user_id": [np.nan], "name": ["гость"]})], ignore_index=True
+)
 orders_null = pd.DataFrame({"user_id": [10, None], "amount": [100, 200]})
-print(orders_null.merge(users, on="user_id", how="left", indicator=True))
+print(orders_null.merge(users_null, on="user_id", how="left", indicator=True))
 print("=" * 64)

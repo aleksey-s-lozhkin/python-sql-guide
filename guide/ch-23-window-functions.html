@@ -51,7 +51,7 @@
         <ul>
           <li><strong>Рейтинги и топы:</strong> топ-3 заказа на пользователя, место категории по выручке.</li>
           <li><strong>Накопительные метрики:</strong> выручка с начала месяца, скользящее среднее, сравнение с прошлым заказом.</li>
-          <li><strong>Доли:</strong> «какой процент выручки пользователя дал этот заказ» — без второго запроса и self-join.</li>
+          <li><strong>Доли:</strong> «какой процент выручки пользователя дал этот заказ» — без второго запроса и self-join (соединения таблицы с самой собой).</li>
           <li><strong>Собеседование:</strong> «чем окно отличается от GROUP BY», «ROW_NUMBER против RANK», «почему окно не работает в WHERE».</li>
         </ul>
       </section>
@@ -134,6 +134,7 @@
 
       <section>
         <h2><span class="num">06</span>Лаборатория: запустить и увидеть</h2>
+        <p>Фрагменты файла <a title="Открыть файл с номерами строк" href="snippets/view.html?f=23_window_functions.sql"><code class="inl">23_window_functions.sql</code></a>.</p>
         <p>База <code class="inl">learning_shop</code>, выручка заказа — <code class="inl">quantity * price</code>.</p>
 
         <h3>Шаг 1. ROW_NUMBER, RANK и DENSE_RANK при равенстве</h3>
@@ -258,7 +259,10 @@ ORDER BY o.created_at;</pre>
         <h2><span class="num">07</span>Мост: окна в pandas</h2>
         <div class="code">
           <div class="bar"><span class="file">SQL → pandas</span><span class="lang">python</span><button class="copy">копировать</button></div>
-          <pre data-lang="python"># SUM(...) OVER (PARTITION BY user ORDER BY day)
+          <pre data-lang="python"># порядок строк в pandas = ORDER BY внутри окна
+df = df.sort_values(["user", "day"]).reset_index(drop=True)
+
+# SUM(...) OVER (PARTITION BY user ORDER BY day)
 df["running"] = df.groupby("user")["revenue"].cumsum()
 
 # LAG(...) OVER (PARTITION BY user ORDER BY day)
@@ -285,7 +289,9 @@ df["place"] = df["revenue"].rank(ascending=False, method="min")</pre>
         <div class="errors">
           <div class="err">
             <div class="h">Окно в WHERE</div>
-            <p><code class="inl">WHERE ROW_NUMBER() OVER (...) = 1</code> — синтаксическая ошибка: окна считаются после WHERE.</p>
+            <p><code class="inl">WHERE ROW_NUMBER() OVER (...) = 1</code> — ошибка этапа:
+            PostgreSQL ответит <code class="inl">window functions are not allowed in WHERE</code>,
+            потому что окна считаются после WHERE.</p>
             <div class="fix">Обернуть в CTE/подзапрос и фильтровать снаружи.</div>
           </div>
           <div class="err">

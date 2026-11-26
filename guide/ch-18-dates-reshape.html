@@ -14,7 +14,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Гайд Py/SQL">
-<meta name="mobile-apple-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 </head>
 <body data-slug="ch-18-dates-reshape">
 <div class="app">
@@ -220,8 +220,10 @@ ivan       NaN  300.0</div>
         <h3>Даты в SQL</h3>
         <div class="code">
           <div class="bar"><span class="file">мост в SQL</span><span class="lang">sql</span><button class="copy">копировать</button></div>
-          <pre data-lang="sql">SELECT DATE_TRUNC('month', created_at) AS month, SUM(amount)
-FROM orders GROUP BY 1 ORDER BY 1;
+          <pre data-lang="sql">SELECT DATE_TRUNC('month', o.created_at)::date AS month,
+       SUM(o.quantity * p.price) AS revenue
+FROM orders o JOIN products p ON p.id = o.product_id
+GROUP BY 1 ORDER BY 1;
 
 SELECT EXTRACT(YEAR FROM created_at), EXTRACT(MONTH FROM created_at)
 FROM orders;</pre>
@@ -248,7 +250,7 @@ SELECT * FROM users WHERE LOWER(city) LIKE '%москва%';</pre>
         <div class="errors">
           <div class="err">
             <div class="h">Даты остаются строками</div>
-            <p>Сортировка лексикографическая, арифметика невозможна, `.dt` падает.</p>
+            <p>Сортировка лексикографическая, арифметика невозможна, <code class="inl">.dt</code> падает.</p>
             <div class="fix"><code class="inl">pd.to_datetime(col, errors="coerce")</code> и проверка пропусков.</div>
           </div>
           <div class="err">
@@ -297,7 +299,7 @@ SELECT * FROM users WHERE LOWER(city) LIKE '%москва%';</pre>
             </div>
           </details>
           <details>
-            <summary>Что делает `.str`?</summary>
+            <summary>Что делает <code class="inl">.str</code>?</summary>
             <div class="a">
               <p>Применяет строковые операции ко всей колонке: <code class="inl">lower</code>, <code class="inl">strip</code>, <code class="inl">contains</code>, <code class="inl">replace</code>, <code class="inl">split</code>.</p>
               <div class="verdict">Резюме: векторизация для текста.</div>

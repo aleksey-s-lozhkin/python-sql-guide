@@ -125,9 +125,13 @@
       });
     })
     .catch((e) => {
+      const direct = '<a href="' + file + '" download>скачать ' + file + '</a>';
+      const hint = location.protocol === "file:"
+        ? 'Книга открыта как файл: браузер блокирует чтение соседних файлов. Запустите <code>start.command</code> (локальный сервер) или '
+        : 'Не удалось загрузить файл. ';
       document.getElementById("content").innerHTML =
-        '<div class="err">Не удалось открыть файл: ' + e.message +
-        '. <a href="../index.html">Вернуться к оглавлению</a>.</div>';
+        '<div class="err">' + hint + 'Можно ' + direct + ' и открыть в редакторе.' +
+        '<br><a href="../index.html">Вернуться к оглавлению</a>.</div>';
     });
 })();
 </script>

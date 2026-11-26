@@ -14,7 +14,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Гайд Py/SQL">
-<meta name="mobile-apple-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 </head>
 <body data-slug="checkpoint-4">
 <div class="app">
@@ -188,9 +188,11 @@ FROM orders o
 JOIN products p ON p.id = o.product_id
 GROUP BY p.category
 ORDER BY revenue DESC;</pre>
-                  <div class="out"> electronics | 5 | 195500.00
- food        | 3 |   4200.00
- books       | 2 |   2700.00</div>
+                  <div class="out">  category   | orders |  revenue
+-------------+--------+-----------
+ electronics |      5 | 195500.00
+ food        |      3 |   4200.00
+ books       |      2 |   2700.00</div>
                 </div>
                 <p><strong>Критерии.</strong> JOIN по product_id, GROUP BY по категории, агрегат по quantity*price.</p>
               </div>
@@ -221,9 +223,11 @@ JOIN products p ON p.id = o.product_id
 GROUP BY u.name
 HAVING COUNT(*) &gt; 1
 ORDER BY revenue DESC;</pre>
-                  <div class="out"> Anna | 3 | 76950.00
- Olga | 2 | 76500.00
- Ivan | 2 | 23800.00</div>
+                  <div class="out"> name | orders | revenue
+------+--------+----------
+ Anna |      3 | 76950.00
+ Olga |      2 | 76500.00
+ Ivan |      2 | 23800.00</div>
                 </div>
                 <p><strong>Критерии.</strong> HAVING, а не WHERE; правильные соединения.</p>
               </div>
@@ -311,9 +315,9 @@ WHERE NOT EXISTS (SELECT 1 FROM users u WHERE u.id = o.user_id);</pre>
               <div class="a">
                 <div class="code" style="margin-top:0">
                   <div class="bar"><span class="file">pandas</span><span class="lang">python</span><button class="copy">копировать</button></div>
-                  <pre data-lang="python">orders["revenue"] = orders["quantity"] * products["price"]
-merged = orders.merge(users, on="user_id")       # JOIN
-merged["revenue"] = merged["quantity"] * products["price"]
+                  <pre data-lang="python">merged = orders.merge(products, left_on="product_id", right_on="id")
+merged = merged.merge(users, on="user_id")        # JOIN
+merged["revenue"] = merged["quantity"] * merged["price"]
 summary = merged.groupby("name").agg(
     orders=("id", "count"),
     revenue=("revenue", "sum"),

@@ -132,6 +132,9 @@
       <section>
         <h2><span class="num">06</span>Лаборатория: честный замер</h2>
         <p>
+          Фрагменты файлов
+          <a title="Открыть файл с номерами строк" href="snippets/view.html?f=25_benchmark.sql"><code class="inl">25_benchmark.sql</code></a> и
+          <a title="Открыть файл с номерами строк" href="snippets/view.html?f=25_benchmark.py"><code class="inl">25_benchmark.py</code></a>.
           Одна и та же задача на <code class="inl">orders_big</code> (100 000 строк, PostgreSQL 14)
           и в pandas 3.0 на этой машине. Замер — ориентир, а не абсолют.
         </p>
@@ -156,12 +159,21 @@ Time: 20.819 ms</div>
         </div>
 
         <h3>Вариант 2: выгрузить всё и посчитать в pandas</h3>
+        <p>Сначала выгружаем строки в CSV — это и есть цена «забрать всё на верстак»:</p>
+        <div class="code">
+          <div class="bar"><span class="file">экспорт</span><span class="lang">shell</span><button class="copy">копировать</button></div>
+          <pre>psql -d learning_shop -c "\copy (
+  SELECT o.user_id, o.quantity, p.price
+  FROM orders_big o JOIN products p ON p.id = o.product_id
+) TO '/tmp/big_orders.csv' CSV HEADER"</pre>
+        </div>
         <div class="code">
           <div class="bar"><span class="file">25_benchmark.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
-          <pre data-lang="python">df = pd.read_csv("/tmp/big_orders.csv")        # 100 000 строк
+          <pre data-lang="python">df = pd.read_csv("/tmp/big_orders.csv")        # 100 000 строк, 1.1 МБ
 df["revenue"] = df["quantity"] * df["price"]
 result = df.groupby("user_id")["revenue"].sum()</pre>
-          <div class="out">read_csv: 9.4 ms
+          <div class="out">rows: 100000
+read_csv: 9.4 ms
 groupby:  4.0 ms
 total:    13.4 ms
 
@@ -199,10 +211,9 @@ ORDER BY revenue DESC;</pre>
         </div>
         <div class="code">
           <div class="bar"><span class="file">pandas</span><span class="lang">python</span><button class="copy">копировать</button></div>
-          <pre data-lang="python">orders["revenue"] = orders["quantity"] * products["price"]
-orders.merge(products, on="product_id") \
-      .groupby("category")["revenue"].sum() \
-      .sort_values(ascending=False)</pre>
+          <pre data-lang="python">merged = orders.merge(products, left_on="product_id", right_on="id")
+merged["revenue"] = merged["quantity"] * merged["price"]
+merged.groupby("category")["revenue"].sum().sort_values(ascending=False)</pre>
         </div>
         <p>
           Оба варианта правильные. Выбор — по объёму, частоте и тому, где удобнее поддерживать код.
@@ -377,7 +388,6 @@ GROUP BY 1 ORDER BY 1;</pre>
           <a class="bridge" href="ch-26-project.html"><span class="to">Глава 26</span><span>Проект</span><span class="what">→ применить выбор</span></a>
           <a class="bridge" href="ch-12-series-dataframe.html"><span class="to">Глава 12</span><span>Series и DataFrame</span><span class="what">→ данные на верстаке</span></a>
           <a class="bridge" href="ch-15-groupby.html"><span class="to">Глава 15</span><span>groupby</span><span class="what">→ агрегат в pandas</span></a>
-          <a class="bridge" href="ch-26-project.html"><span class="to">Глава 26</span><span>Проект</span><span class="what">→ практика с базой</span></a>
         </div>
       </section>
 

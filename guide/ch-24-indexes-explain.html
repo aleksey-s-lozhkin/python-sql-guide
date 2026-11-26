@@ -94,7 +94,7 @@
             <img src="assets/maps/index-explain.svg" alt="Seq Scan читает все страницы, Index Scan идёт по B-tree к нужным строкам; примеры времени.">
           </div>
           <figcaption>
-            <b>Рис. 1.</b> 100 000 строк: Seq Scan — 3.48 мс, Index Scan по created_at — 0.11 мс.
+            <b>Рис. 1.</b> 100 000 строк: Seq Scan — 3.78 мс, Index Scan по created_at — 0.108 мс.
             Но индекс не помогает, если сравнивать функцию от колонки.
           </figcaption>
         </figure>
@@ -118,6 +118,8 @@
               <tr><td class="mono">Seq Scan on t</td><td>последовательное чтение всей таблицы</td></tr>
               <tr><td class="mono">Index Scan using idx</td><td>чтение по индексу</td></tr>
               <tr><td class="mono">Bitmap Heap Scan</td><td>сначала bitmap по индексу, потом страницы таблицы</td></tr>
+              <tr><td class="mono">Hash Join</td><td>строит хеш по меньшей таблице и ищет по нему</td></tr>
+              <tr><td class="mono">Nested Loop</td><td>для каждой строки внешней таблицы ищет по индексу</td></tr>
               <tr><td class="mono">cost=0.29..57.99</td><td>оценка: стартовая и полная стоимость</td></tr>
               <tr><td class="mono">rows=1435</td><td>сколько строк ожидает планировщик</td></tr>
               <tr><td class="mono">actual time=0.010..0.075</td><td>реальное время до первой/последней строки, мс</td></tr>
@@ -136,6 +138,10 @@
 
         <h3>Селективность и «маленькая таблица»</h3>
         <p>
+          <strong>Селективность</strong> — доля строк, которые проходят фильтр: 1% селективнее, чем 20%.
+          Чем меньше доля, тем выгоднее индекс.
+        </p>
+        <p>
           Планировщик выбирает Seq Scan, если фильтр пропускает большую долю строк: читать всё подряд
           дешевле, чем прыгать по индексу. На таблице из 10 строк Seq Scan — нормальное решение, а не ошибка.
           Статистика обновляется командой <code class="inl">ANALYZE</code>.
@@ -152,6 +158,7 @@
 
       <section>
         <h2><span class="num">06</span>Лаборатория: запустить и увидеть</h2>
+        <p>Фрагменты файла <a title="Открыть файл с номерами строк" href="snippets/view.html?f=24_indexes_explain.sql"><code class="inl">24_indexes_explain.sql</code></a>.</p>
         <p>
           Для наглядности создадим <code class="inl">orders_big</code> на 100 000 строк — на маленькой
           <code class="inl">orders</code> планировщик честно выберет Seq Scan.
@@ -221,7 +228,7 @@ Planning Time: 0.180 ms
 Execution Time: 0.108 ms</div>
         </div>
         <p>
-          Узкий фильтр (примерно 1,4% строк) — идеальный случай для индекса: 0.108 мс против 3.48 мс
+          Узкий фильтр (примерно 1,4% строк) — идеальный случай для индекса: 0.108 мс против 3.78 мс
           у Seq Scan.
         </p>
 
@@ -282,8 +289,9 @@ SELECT relname, seq_scan, idx_scan FROM pg_stat_user_tables;</pre>
         </div>
         <p>
           В ORM та же история: <code class="inl">.where(...)</code> превращается в SQL, и только EXPLAIN
-          покажет, использовался ли индекс. Для pandas-аналога — <code class="inl">df.groupby</code> держит
-          хеш-таблицу в памяти, а не индекс в базе; это разные механики с одной идеей «найти нужное быстро».
+          покажет, использовался ли индекс. В pandas аналог индекса — индекс DataFrame
+          (<code class="inl">set_index</code>), но он ускоряет выборки по метке, а не влияет на план SQL;
+          это разные механики с одной идеей «найти нужное быстро».
         </p>
       </section>
 

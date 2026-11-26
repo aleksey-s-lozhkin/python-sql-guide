@@ -83,7 +83,7 @@
           <div class="q-h"><span class="qn">A2</span><span>Чем loc отличается от iloc?</span><span class="pt">1 балл</span></div>
           <div class="options">
             <label><input type="radio" name="a2" value="a"><span>loc — по позиции, iloc — по метке</span></label>
-            <label><input type="radio" name="a2" value="b"><span>iloc — по метке, loc — по позиции</span></label>
+            <label><input type="radio" name="a2" value="b"><span>Оба работают только по метке</span></label>
             <label><input type="radio" name="a2" value="c"><span>Они одинаковые</span></label>
             <label><input type="radio" name="a2" value="d"><span>loc — по метке, iloc — по позиции</span></label>
           </div>
@@ -266,7 +266,18 @@ print(merged[merged["_merge"] == "left_only"])</pre>
 
         <div class="task">
           <h3>B4. Пропуски <span class="point">2 балла</span></h3>
-          <p>Найдите долю пропусков в amount, добавьте флаг и заполните медианой. Объясните, почему не нулём.</p>
+          <p>Дан список заказов — у части клиентов сумма неизвестна. Найдите долю пропусков в amount,
+          добавьте флаг и заполните медианой. Объясните, почему не нулём.</p>
+          <div class="code">
+            <div class="bar"><span class="file">данные</span><span class="lang">python</span><button class="copy">копировать</button></div>
+            <pre data-lang="python">import numpy as np
+import pandas as pd
+
+df = pd.DataFrame({
+    "user": ["anna", "ivan", "olga", "petr"],
+    "amount": [1200, np.nan, 500, np.nan],
+})</pre>
+          </div>
           <div class="qa">
             <details>
               <summary>Показать решение</summary>
@@ -303,13 +314,19 @@ df["amount"] = df["amount"].fillna(df["amount"].median())</pre>
               <div class="a">
                 <div class="code" style="margin-top:0">
                   <div class="bar"><span class="file">sql</span><span class="lang">sql</span><button class="copy">копировать</button></div>
-                  <pre data-lang="sql">SELECT * FROM orders WHERE city = 'Москва';
+                  <pre data-lang="sql">SELECT o.id, u.name
+FROM orders o JOIN users u ON u.id = o.user_id
+WHERE u.city = 'Москва';
 
-SELECT user_id, SUM(amount) FROM orders GROUP BY user_id;
+SELECT u.name, SUM(o.quantity * p.price) AS revenue
+FROM orders o
+JOIN users u ON u.id = o.user_id
+JOIN products p ON p.id = o.product_id
+GROUP BY u.name;
 
-SELECT o.order_id FROM orders o
-LEFT JOIN users u ON u.user_id = o.user_id
-WHERE u.user_id IS NULL;</pre>
+SELECT o.id FROM orders o
+LEFT JOIN users u ON u.id = o.user_id
+WHERE u.id IS NULL;</pre>
                 </div>
                 <p><strong>Критерии.</strong> Три конструкции соответствуют mask, groupby и left+indicator.</p>
               </div>

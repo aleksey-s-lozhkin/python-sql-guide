@@ -14,7 +14,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Гайд Py/SQL">
-<meta name="mobile-apple-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 </head>
 <body data-slug="ch-26-project">
 <div class="app">
@@ -104,6 +104,7 @@
         <p>
           Данные: <code class="inl">users</code> (5), <code class="inl">products</code> (6),
           <code class="inl">orders</code> (10). Выручка заказа — <code class="inl">quantity * price</code>.
+          Таблица <code class="inl">orders_big</code> из глав 24–25 — только для замеров, в отчёте она не участвует.
         </p>
         <ol>
           <li>Как менялась выручка по месяцам и какой средний чек?</li>
@@ -116,6 +117,7 @@
 
       <section>
         <h2><span class="num">06</span>Лаборатория: пять запросов</h2>
+        <p>Фрагменты файла <a title="Открыть файл с номерами строк" href="snippets/view.html?f=26_project.sql"><code class="inl">26_project.sql</code></a>.</p>
 
         <h3>Шаг 1. Выручка, заказы и средний чек по месяцам</h3>
         <div class="code">
@@ -207,9 +209,12 @@ FROM orders o JOIN products p ON p.id = o.product_id;</pre>
       </section>
 
       <section>
-        <h2><span class="num">07</span>Шаг 6. Небольшая аналитика в pandas</h2>
+        <h2><span class="num">07</span>Мост: небольшая аналитика в pandas</h2>
         <p>
           Месячная сводка — маленькая (3 строки), её удобно дооформить в pandas: посчитать динамику.
+          Сначала выгружаем сводку в CSV, затем читаем её в скрипте
+          <a title="Открыть файл с номерами строк" href="snippets/view.html?f=26_project.py"><code class="inl">26_project.py</code></a>
+          (команда экспорта — в docstring файла). Это тот же отчёт, но уже на стороне приложения.
         </p>
         <div class="code">
           <div class="bar"><span class="file">26_project.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
@@ -217,7 +222,9 @@ FROM orders o JOIN products p ON p.id = o.product_id;</pre>
 
 df = pd.read_csv("/tmp/monthly.csv")
 df["growth_pct"] = (df["revenue"].pct_change() * 100).round(1)
-print(df.to_string(index=False))</pre>
+
+print(df.to_string(index=False))
+print("total revenue:", df["revenue"].sum(), "| orders:", df["orders"].sum())</pre>
           <div class="out">     month  orders  revenue  avg_check  growth_pct
 2024-01-01       3  78150.0   26050.00         NaN
 2024-02-01       3  25750.0    8583.33       -67.1

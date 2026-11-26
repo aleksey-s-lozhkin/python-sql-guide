@@ -314,9 +314,11 @@ FROM orders;</pre>
             <div class="fix">Нужен результат той же длины — <code class="inl">transform</code>.</div>
           </div>
           <div class="err">
-            <div class="h">Цепочка агрегатов в одну строку</div>
-            <p><code class="inl">df.groupby("a").sum().mean()</code> считает среднее уже от сумм, а не от исходных данных.</p>
-            <div class="fix">Проговаривать порядок: сначала агрегат, потом производные величины.</div>
+            <div class="h">Среднее средних — не среднее по данным</div>
+            <p><code class="inl">df.groupby("a")["x"].mean().mean()</code> — среднее по средним групп,
+            а не по всем строкам. При разном размере групп результат расходится с
+            <code class="inl">df["x"].mean()</code>.</p>
+            <div class="fix">Если нужно среднее по данным — считайте его по исходной таблице, а не по агрегатам.</div>
           </div>
           <div class="err">
             <div class="h">Пропавший ключ NaN</div>
@@ -330,8 +332,9 @@ FROM orders;</pre>
           </div>
           <div class="err">
             <div class="h">Забыть сортировку топа</div>
-            <p>Агрегаты возвращают группы в порядке появления, а не по величине.</p>
-            <div class="fix"><code class="inl">sort_values(ascending=False).head(n)</code>.</div>
+            <p>По умолчанию <code class="inl">groupby</code> сортирует группы по ключу (<code class="inl">sort=True</code>),
+            а не по величине агрегата. Порядок появления — только при <code class="inl">sort=False</code>.</p>
+            <div class="fix"><code class="inl">sort_values(ascending=False).head(n)</code>, если нужен топ.</div>
           </div>
         </div>
       </section>

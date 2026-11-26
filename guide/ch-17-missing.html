@@ -12,9 +12,8 @@
 <link rel="icon" href="assets/icons/favicon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="assets/icons/icon-180.png">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Гайд Py/SQL">
-<meta name="mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 </head>
 <body data-slug="ch-17-missing">
 <div class="app">
@@ -50,9 +49,10 @@
         <h2><span class="num">01</span>Зачем это backend-разработчику</h2>
         <ul>
           <li><strong>Реальные данные грязные:</strong> пустые поля в CSV, NULL из базы, отсутствующие ответы API.</li>
-          <li><strong>Аналитика ломается тихо:</strong> среднее с NaN даёт NaN, `fillna(0)` занижает среднее, `dropna()` выкидывает половину данных.</li>
+          <li><strong>Аналитика ломается тихо:</strong> среднее с NaN может дать NaN, <code class="inl">fillna(0)</code>
+          занижает среднее, <code class="inl">dropna()</code> выкидывает половину данных.</li>
           <li><strong>Прямой мост в SQL:</strong> <code class="inl">isna()</code> — <code class="inl">IS NULL</code>, <code class="inl">fillna</code> — <code class="inl">COALESCE</code>, <code class="inl">count</code> — <code class="inl">COUNT(col)</code>.</li>
-          <li><strong>Собеседование:</strong> «как обработать пропуски», «чем `count` отличается от `size`», «почему `fillna(0)` — плохая идея».</li>
+          <li><strong>Собеседование:</strong> «как обработать пропуски», «чем <code class="inl">count</code> отличается от <code class="inl">size</code>», «почему <code class="inl">fillna(0)</code> — плохая идея».</li>
         </ul>
       </section>
 
@@ -76,7 +76,7 @@
         <ol class="chain">
           <li><b>NaN</b><span>float-«не число»</span></li>
           <li><b>None</b><span>питоновский None в object</span></li>
-          <li><b>pd.NA</b><span>единый пропуск с 1.0</span></li>
+          <li><b>pd.NA</b><span>единый пропуск для nullable-типов (с pandas 1.0)</span></li>
           <li><b>isna</b><span>маска пропусков</span></li>
           <li><b>count</b><span>непустые значения</span></li>
           <li><b>dropna</b><span>удалить строки</span></li>
@@ -104,7 +104,9 @@
         <p>
           В pandas пропуски представлены несколькими способами. <code class="inl">np.nan</code> — это float,
           поэтому числовая колонка с одним NaN становится <code class="inl">float64</code>, даже если значения
-          целые. <code class="inl">None</code> живёт в object-колонках. <code class="inl">pd.NA</code> — единый
+          целые. В pandas 3 строковые колонки получают dtype <code class="inl">str</code>, а
+          <code class="inl">None</code> нормализуется в <code class="inl">NaN</code>; <code class="inl">object</code>
+          остаётся для смешанных колонок. <code class="inl">pd.NA</code> — единый
           «пропуск» для nullable-типов (<code class="inl">Int64</code>, <code class="inl">boolean</code>,
           <code class="inl">string</code>).
         </p>
@@ -123,7 +125,7 @@
           </table>
         </div>
 
-        <h3>Почему mean с NaN даёт NaN</h3>
+        <h3>Почему mean обычно не даёт NaN — и когда всё-таки даёт</h3>
         <p>
           <code class="inl">df["amount"].mean()</code> по умолчанию пропускает NaN и считает по известным
           (<code class="inl">skipna=True</code>), но ручные вычисления через NumPy без этого флага дадут NaN.
@@ -207,10 +209,16 @@ float64</div>
           <div class="bar"><span class="file">17_missing_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
           <pre data-lang="python">print(df["amount"].ffill())   # протянуть вперёд
 print(df["amount"].bfill())   # протянуть назад</pre>
-          <div class="out">0    1200.0     ffill: 1200, 1200, 500, 500
-...
-0    1200.0     bfill: 1200, 500, 500, NaN
-...</div>
+          <div class="out">0    1200.0
+1    1200.0
+2     500.0
+3     500.0
+Name: amount, dtype: float64
+0    1200.0
+1     500.0
+2     500.0
+3       NaN
+Name: amount, dtype: float64</div>
         </div>
         <p>
           Обратите внимание: у <code class="inl">bfill</code> последний пропуск остался — после него нет значения,

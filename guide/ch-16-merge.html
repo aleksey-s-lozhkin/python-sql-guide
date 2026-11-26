@@ -198,6 +198,7 @@ print(a.merge(b, on="user_id"))</pre>
 right_tbl = pd.DataFrame({"user_id": [10], "amount": [200]})
 print(left_tbl.merge(right_tbl, on="user_id", suffixes=("_order", "_limit")))
 
+more_orders = pd.DataFrame({"order_id": [5], "user_id": [20], "amount": [300]})
 print(pd.concat([orders, more_orders], ignore_index=True))</pre>
           <div class="out">   user_id  amount_order  amount_limit
 0       10           100           200</div>
@@ -212,9 +213,27 @@ orders.merge(users_str, on="user_id")
           <div class="out">ValueError: You are trying to merge on int64 and str columns for key 'user_id'.</div>
         </div>
         <p>
-          И отдельно: <code class="inl">NaN</code> в ключе не соединяется ни с чем — строка остаётся
-          в <code class="inl">left_only</code>, даже если справа есть похожая запись.
+          Отдельно про <code class="inl">NaN</code> в ключе — и здесь pandas ведёт себя <em>не как SQL</em>.
+          pandas соединяет <code class="inl">NaN</code> с <code class="inl">NaN</code>: строка с пропуском
+          находит пару только у такой же строки с пропуском. С обычным значением она не соединяется.
         </p>
+        <div class="code">
+          <div class="bar"><span class="file">16_merge_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">users_null = pd.concat(
+    [users, pd.DataFrame({"user_id": [np.nan], "name": ["гость"]})], ignore_index=True
+)
+orders_null = pd.DataFrame({"user_id": [10, None], "amount": [100, 200]})
+print(orders_null.merge(users_null, on="user_id", how="left", indicator=True))</pre>
+          <div class="out">   user_id  amount   name _merge
+0     10.0     100   anna   both
+1      NaN     200  гость   both</div>
+        </div>
+        <div class="note">
+          <span class="t">Важно</span>
+          <p>В SQL <code class="inl">NULL</code> не равен сам себе, поэтому <code class="inl">JOIN</code>
+          по NULL-ключу ничего не находит. В pandas <code class="inl">NaN</code> в merge считается равным
+          <code class="inl">NaN</code>. Это ещё одна причина сверять числа при переносе отчёта из SQL в pandas.</p>
+        </div>
       </section>
 
       <section>
@@ -279,9 +298,9 @@ SELECT user_id, COUNT(*) FROM users GROUP BY user_id HAVING COUNT(*) &gt; 1;</pr
             <div class="fix">Проверять <code class="inl">df.index</code>; при необходимости <code class="inl">reset_index()</code>.</div>
           </div>
           <div class="err">
-            <div class="h">NULL-ключ как «совпадение»</div>
-            <p><code class="inl">NaN</code> не равен даже сам себе, поэтому не соединяется.</p>
-            <div class="fix">Заполнить ключ или обрабатывать как отдельную категорию.</div>
+            <div class="h">NULL-ключ и «как в SQL»</div>
+            <p>В pandas <code class="inl">NaN</code>-ключи соединяются друг с другом — это отличие от SQL, где NULL не равен NULL.</p>
+            <div class="fix">Не полагайтесь на «одинаково везде»: проверяйте, нужны ли строки с пропуском, и заполняйте ключ осознанно.</div>
           </div>
         </div>
       </section>
@@ -341,7 +360,8 @@ SELECT user_id, COUNT(*) FROM users GROUP BY user_id HAVING COUNT(*) &gt; 1;</pr
           <details>
             <summary>Что будет с NaN в ключе?</summary>
             <div class="a">
-              <p>Строка не найдёт пару и останется как непокрытая (или исчезнет при inner). NaN не равен сам себе.</p>
+              <p>В pandas строка с NaN найдёт пару только у другой строки с NaN; с обычным ключом — не найдёт.
+              В SQL NULL-ключ не соединяется ни с чем. Поведение разное — проверяйте на своих данных.</p>
               <div class="verdict">Резюме: пропуск — не значение ключа.</div>
             </div>
           </details>

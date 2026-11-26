@@ -132,6 +132,7 @@
 
       <section>
         <h2><span class="num">06</span>Лаборатория: запустить и увидеть</h2>
+        <p>Фрагменты файла <a title="Открыть файл с номерами строк" href="snippets/view.html?f=22_subqueries_cte.sql"><code class="inl">22_subqueries_cte.sql</code></a>.</p>
         <p>База <code class="inl">learning_shop</code>, выручка заказа — <code class="inl">quantity * price</code>.</p>
 
         <h3>Шаг 1. Скалярный подзапрос: средняя выручка заказа</h3>
@@ -292,7 +293,8 @@ SELECT * FROM numbers;</pre>
         <h2><span class="num">07</span>Мост: CTE и промежуточные переменные в pandas</h2>
         <div class="code">
           <div class="bar"><span class="file">pandas</span><span class="lang">python</span><button class="copy">копировать</button></div>
-          <pre data-lang="python">orders["revenue"] = orders["quantity"] * products["price"]   # order_revenue
+          <pre data-lang="python">merged = orders.merge(products, left_on="product_id", right_on="id")
+merged["revenue"] = merged["quantity"] * merged["price"]      # order_revenue
 
 user_totals = orders.groupby("user_id")["revenue"].sum()     # user_totals
 
@@ -428,9 +430,7 @@ ORDER BY t.total DESC;</pre>
               <div class="out"> name |  total
 ------+----------
  Anna | 76950.00
- Olga | 76500.00
- Ivan | 23800.00
- Petr | 22000.00</div>
+ Olga | 76500.00</div>
               <p><strong>Что важно.</strong> Среднее считается по агрегатам (<code class="inl">AVG(total)</code>),
               а не по строкам заказов — это разные числа.</p>
             </div>

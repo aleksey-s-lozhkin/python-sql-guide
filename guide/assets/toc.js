@@ -29,11 +29,11 @@ window.BOOK = {
     { n: "20", slug: "ch-20-select-where-null", title: "SELECT, WHERE и логика трёх значений", desc: "Неделя 6", part: 4, ready: true },
     { n: "21", slug: "ch-21-group-by-having", title: "GROUP BY и HAVING: тот же словарь-аккумулятор", desc: "Неделя 6", part: 4, ready: true },
     { n: "22", slug: "ch-22-subqueries-cte", title: "Подзапросы и CTE: как разложить вопрос", desc: "Неделя 7", part: 4, ready: true },
-    { n: "23", slug: "ch-23-window-functions", title: "Оконные функции: строка и её группа", desc: "Неделя 7", part: 4 },
-    { n: "24", slug: "ch-24-indexes-explain", title: "Индексы и EXPLAIN: верить плану, а не догадкам", desc: "Неделя 7", part: 4 },
+    { n: "23", slug: "ch-23-window-functions", title: "Оконные функции: агрегат без схлопывания", desc: "Неделя 7", part: 4, ready: true },
+    { n: "24", slug: "ch-24-indexes-explain", title: "Индексы и EXPLAIN: где тормозит запрос", desc: "Неделя 7", part: 4, ready: true },
     // ── V. Интеграция ──────────────────────────────────────────
-    { n: "25", slug: "ch-25-sql-vs-pandas", title: "SQL или pandas: где считать", desc: "Неделя 8", part: 5 },
-    { n: "26", slug: "ch-26-project", title: "Проект: аналитика заказов интернет-магазина", desc: "Неделя 8", part: 5 }
+    { n: "25", slug: "ch-25-sql-vs-pandas", title: "SQL или pandas: что где делать", desc: "Неделя 8", part: 5, ready: true },
+    { n: "26", slug: "ch-26-project", title: "Проект: отчёт из нескольких таблиц", desc: "Неделя 8", part: 5, ready: true }
   ],
   parts: [
     { n: 1, title: "Фундамент Python", range: "Неделя 1" },

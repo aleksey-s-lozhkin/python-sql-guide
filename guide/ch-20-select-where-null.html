@@ -125,6 +125,7 @@
 
       <section>
         <h2><span class="num">06</span>Лаборатория: запустить и увидеть</h2>
+        <p>Фрагменты файла <a title="Открыть файл с номерами строк" href="snippets/view.html?f=20_select_where.sql"><code class="inl">20_select_where.sql</code></a>.</p>
         <p>
           База <code class="inl">learning_shop</code>: у Petr нет города, у Maria нет email. Этого достаточно,
           чтобы увидеть все ловушки.
@@ -143,8 +144,8 @@
 (4 rows)</div>
         </div>
         <p>
-          Четыре строки — потому что NULL тоже считается отдельным значением DISTINCT. В выводе это
-          пустая строка.
+          Четыре строки — потому что NULL тоже считается отдельным значением DISTINCT.
+          В psql его ячейка выглядит пустой (там один пробел выравнивания).
         </p>
 
         <h3>Шаг 2. Сравнение с NULL не работает</h3>
@@ -251,9 +252,9 @@ SELECT name, city FROM users ORDER BY city ASC NULLS LAST;</pre>
 (5 rows)</div>
         </div>
         <p>
-          <code class="inl">BETWEEN</code> включает обе границы. <code class="inl">LIKE</code> чувствителен к регистру:
-          «о» в кириллице — строчная буква. <code class="inl">NULLS LAST</code> явно задаёт место пропусков
-          в сортировке.
+          <code class="inl">BETWEEN</code> включает обе границы. <code class="inl">LIKE</code> не приводит регистр:
+          <code class="inl">'%о%'</code> найдёт «Ноутбук», но не «Очки». <code class="inl">NULLS LAST</code>
+          явно задаёт место пропусков в сортировке.
         </p>
 
         <h3>Шаг 8. COALESCE</h3>

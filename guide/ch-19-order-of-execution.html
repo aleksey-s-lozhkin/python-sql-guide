@@ -244,7 +244,7 @@ LIMIT 2;</pre>
           <div class="bar"><span class="file">pandas</span><span class="lang">python</span><button class="copy">копировать</button></div>
           <pre data-lang="python">(df[df["price"] &gt; 500]                    # WHERE
    .groupby("category")                   # GROUP BY
-   .agg(cnt=("product_id", "count"))      # SELECT + агрегат
+   .agg(cnt=("product_id", "size"))       # COUNT(*) — считаем строки
    .query("cnt &gt; 1")                      # HAVING
    .sort_values("cnt", ascending=False)   # ORDER BY
    .head(2))                              # LIMIT</pre>
