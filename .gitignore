@@ -3,3 +3,9 @@ node_modules/
 *.log
 .tmp/
 notes/preview-*.png
+
+# сервис практики
+deploy/.env
+__pycache__/
+*.pyc
+/backup/

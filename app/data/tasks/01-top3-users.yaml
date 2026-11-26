@@ -1,0 +1,25 @@
+slug: top3-users
+title: Топ-3 пользователей по выручке
+chapter: "24"
+difficulty: средняя
+order: 1
+prompt: |
+  Выведите имена трёх пользователей с наибольшей выручкой и сумму их заказов.
+
+  Выручка заказа — quantity * price. Таблицы: users(id, name), products(id, price),
+  orders(id, user_id, product_id, quantity).
+
+  Ожидаемые колонки: name, revenue. Сортировка — по убыванию выручки, три строки.
+hints:
+  - Нужны оба соединения: orders → users и orders → products.
+  - Сумма по пользователю — GROUP BY u.name.
+  - Топ — ORDER BY revenue DESC LIMIT 3.
+reference: |
+  SELECT u.name, SUM(o.quantity * p.price) AS revenue
+  FROM orders o
+  JOIN users u ON u.id = o.user_id
+  JOIN products p ON p.id = o.product_id
+  GROUP BY u.name
+  ORDER BY revenue DESC
+  LIMIT 3;
+ordered: true

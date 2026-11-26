@@ -1,0 +1,23 @@
+slug: monthly-revenue
+title: Выручка по месяцам
+chapter: "25"
+difficulty: средняя
+order: 2
+prompt: |
+  Посчитайте для каждого месяца число заказов и выручку.
+
+  Таблицы: orders(id, created_at, quantity, product_id), products(id, price).
+  Ожидаемые колонки: month, orders, revenue. Порядок — по возрастанию месяца.
+hints:
+  - Месяц: DATE_TRUNC('month', created_at)::date.
+  - Число заказов — COUNT(*), выручка — SUM(quantity * price).
+  - Группировка по месяцу, сортировка по нему же.
+reference: |
+  SELECT DATE_TRUNC('month', o.created_at)::date AS month,
+         COUNT(*) AS orders,
+         SUM(o.quantity * p.price) AS revenue
+  FROM orders o
+  JOIN products p ON p.id = o.product_id
+  GROUP BY 1
+  ORDER BY 1;
+ordered: true

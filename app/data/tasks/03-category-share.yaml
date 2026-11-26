@@ -1,0 +1,29 @@
+slug: category-share
+title: Доля категорий в выручке
+chapter: "26"
+difficulty: сложная
+order: 3
+prompt: |
+  Для каждой категории товаров посчитайте выручку и её долю в общей выручке в процентах,
+  округлённую до одного знака.
+
+  Таблицы: orders(id, quantity, product_id), products(id, category, price).
+  Ожидаемые колонки: category, revenue, share_pct. Сортировка — по убыванию выручки.
+
+  Подсказка про формулу: 100.0 * revenue / SUM(revenue) OVER ().
+hints:
+  - Сначала выручка по категориям — GROUP BY.
+  - Общий итог рядом — окно SUM(...) OVER ().
+  - Округление: ROUND(x, 1).
+reference: |
+  WITH category_revenue AS (
+      SELECT p.category, SUM(o.quantity * p.price) AS revenue
+      FROM orders o
+      JOIN products p ON p.id = o.product_id
+      GROUP BY p.category
+  )
+  SELECT category, revenue,
+         ROUND(100.0 * revenue / SUM(revenue) OVER (), 1) AS share_pct
+  FROM category_revenue
+  ORDER BY revenue DESC;
+ordered: true

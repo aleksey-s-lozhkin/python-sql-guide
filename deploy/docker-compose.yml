@@ -1,0 +1,53 @@
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: learning_shop
+      POSTGRES_USER: guide
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-guide}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./initdb:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U guide -d learning_shop"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  api:
+    build: ../app
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://guide:${POSTGRES_PASSWORD:-guide}@db:5432/learning_shop
+      LEARNER_DATABASE_URL: postgresql://learner_ro:${LEARNER_PASSWORD:-learner_ro_dev}@db:5432/learning_shop
+      LEARNER_PASSWORD: ${LEARNER_PASSWORD:-learner_ro_dev}
+      COOKIE_SECURE: ${COOKIE_SECURE:-0}
+      ALLOWED_ORIGIN: ${ALLOWED_ORIGIN:-}
+      SESSION_DAYS: ${SESSION_DAYS:-30}
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "${API_PORT:-8080}:8080"
+
+  caddy:
+    image: caddy:2-alpine
+    profiles: ["prod"]
+    restart: unless-stopped
+    environment:
+      DOMAIN: ${DOMAIN:-localhost}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - api
+
+volumes:
+  pgdata:
+  caddy_data:
+  caddy_config:

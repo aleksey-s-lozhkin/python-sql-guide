@@ -1,0 +1,23 @@
+slug: guest-orders
+title: Гостевые заказы
+chapter: "22"
+difficulty: средняя
+order: 4
+prompt: |
+  Найдите число заказов без пользователя (user_id IS NULL) и их суммарную выручку.
+
+  Таблицы: orders(id, user_id, quantity, product_id), products(id, price).
+  Ожидаемые колонки: guest_orders, guest_revenue.
+
+  В базе такой заказ один; выручка — quantity * price.
+hints:
+  - Заказ без пользователя — это user_id IS NULL.
+  - Соединение с products нужно, чтобы посчитать выручку.
+  - COUNT(*) и SUM(quantity * price) в одном SELECT.
+reference: |
+  SELECT COUNT(*) AS guest_orders,
+         SUM(o.quantity * p.price) AS guest_revenue
+  FROM orders o
+  JOIN products p ON p.id = o.product_id
+  WHERE o.user_id IS NULL;
+ordered: false

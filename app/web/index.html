@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Практика · Python → pandas → SQL</title>
+<meta name="description" content="Проверка SQL-задач на живой базе: аккаунт, прогресс и разбор результата.">
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+<header class="top">
+  <div class="brand">
+    <span class="mark">P→pandas→SQL</span>
+    <strong>Практика</strong>
+  </div>
+  <nav class="top-nav">
+    <a id="book-link" href="https://aleksey-s-lozhkin.github.io/python-sql-guide/" target="_blank" rel="noopener">Книга</a>
+    <span id="who" class="who"></span>
+    <button id="logout" class="ghost" hidden>Выйти</button>
+  </nav>
+</header>
+
+<main class="wrap">
+
+  <section id="auth-view" class="card auth" hidden>
+    <h1>Вход в практику</h1>
+    <p class="muted">Аккаунт нужен, чтобы сохранять прогресс и историю попыток. Без входа книга
+      остаётся доступной и офлайн — это отдельный слой.</p>
+    <div class="tabs" role="tablist">
+      <button id="tab-login" class="tab active" type="button">Вход</button>
+      <button id="tab-register" class="tab" type="button">Регистрация</button>
+    </div>
+    <form id="auth-form" novalidate>
+      <label>Email
+        <input id="email" type="email" autocomplete="email" required placeholder="you@example.com">
+      </label>
+      <label>Пароль
+        <input id="password" type="password" autocomplete="current-password" minlength="8" required placeholder="не короче 8 символов">
+      </label>
+      <button id="auth-submit" class="primary" type="submit">Войти</button>
+      <p id="auth-error" class="error" hidden></p>
+    </form>
+  </section>
+
+  <section id="app-view" hidden>
+    <div class="layout">
+      <aside class="side">
+        <div class="card">
+          <h2>Задачи</h2>
+          <div id="task-list" class="task-list"></div>
+        </div>
+        <div class="card">
+          <h2>Прогресс</h2>
+          <p class="muted small">Отмечайте главы — прогресс сохранится в аккаунте.</p>
+          <div id="progress" class="progress"></div>
+        </div>
+      </aside>
+
+      <article class="card study">
+        <div id="task-empty" class="empty">
+          <h2>Выберите задачу</h2>
+          <p class="muted">Слева — четыре SQL-задачи из части IV. Проверяется результат, а не текст
+            запроса: можно писать как угодно, важно, что вернулось.</p>
+        </div>
+        <div id="task-view" hidden>
+          <div class="task-head">
+            <h2 id="task-title"></h2>
+            <span id="task-meta" class="chip"></span>
+          </div>
+          <div id="task-prompt" class="prompt"></div>
+          <details id="task-hints" class="hints" hidden>
+            <summary>Подсказки</summary>
+            <ul id="hints-list"></ul>
+          </details>
+          <label class="editor-label" for="sql">Ваш запрос</label>
+          <textarea id="sql" spellcheck="false" rows="9" placeholder="SELECT ..."></textarea>
+          <div class="actions">
+            <button id="run" class="primary" type="button">Проверить</button>
+            <span id="run-status" class="muted small"></span>
+          </div>
+          <div id="result" class="result" hidden></div>
+        </div>
+      </article>
+    </div>
+  </section>
+</main>
+
+<script src="app.js"></script>
+</body>
+</html>
