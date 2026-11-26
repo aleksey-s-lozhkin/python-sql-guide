@@ -28,7 +28,7 @@
           <span class="dot"></span>
           <span>Неделя 1 · день 2</span>
           <span class="dot"></span>
-          <span>демо-глава</span>
+          <span>готово</span>
         </div>
         <h1>dict: шкаф с номерками
           <span class="sub">Почему поиск по ключу не зависит от размера словаря</span>
@@ -45,6 +45,28 @@
           <span class="chip">📚 <b>Tutorial 5.5</b>, collections</span>
         </div>
       </header>
+
+      <div class="tldr">
+        <div class="t">Самое главное</div>
+        <ul>
+          <li>Поиск по ключу занимает O(1) в среднем: <b>hash(key)</b> → номер ячейки → значение.</li>
+          <li>Ключ обязан быть <b>hashable</b>: неизменяемым. Поэтому list — нельзя, tuple — можно.</li>
+          <li>Коллизия — не авария, а нормальный режим. CPython разрешает её пробированием, поэтому порядок вставки сохраняется.</li>
+        </ul>
+      </div>
+
+      <details class="glossary">
+        <summary>Словарь главы — если забыли термины</summary>
+        <dl>
+          <dt>hash(key)</dt><dd>Число, которое детерминированно получается из ключа. У строк рандомизировано между запусками.</dd>
+          <dt>hashable</dt><dd>Объект, у которого есть хеш и который можно сравнить. Неизменяемые объекты обычно hashable.</dd>
+          <dt>коллизия</dt><dd>Два разных ключа получили одну ячейку. Штатная ситуация, а не ошибка.</dd>
+          <dt>бакет / ячейка</dt><dd>Место в таблице, куда попадает пара «ключ → значение» после деления хеша.</dd>
+          <dt>load factor</dt><dd>Доля заполненных ячеек. Когда их становится много, таблица расширяется.</dd>
+          <dt>пробирование</dt><dd>Способ найти следующую свободную ячейку при коллизии. Используется в CPython.</dd>
+        </dl>
+      </details>
+
 
       <!-- ══════════════════ 1. Зачем ══════════════════ -->
       <section>
@@ -178,14 +200,14 @@
       <section>
         <h2><span class="num">06</span>Лаборатория: запустить и увидеть</h2>
         <p>
-          Ниже — фрагменты файла <a href="snippets/01_dict_lab.py"><code class="inl">snippets/01_dict_lab.py</code></a> из этого проекта. Вывод настоящий:
+          Ниже — фрагменты файла <a title="Открыть файл с номерами строк" href="snippets/view.html?f=02_dict_lab.py"><code class="inl">02_dict_lab.py</code></a> из этого проекта. Вывод настоящий:
           он получен запуском на Python 3.12. Ваши числа будут немного другими — время зависит от машины, а
           <code class="inl">hash()</code> меняется от запуска к запуску.
         </p>
 
         <h3>Шаг 1. Увидеть «номерки» и коллизию</h3>
         <div class="code">
-          <div class="bar"><span class="file">01_dict_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <div class="bar"><span class="file">02_dict_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
           <pre data-lang="python">BUCKETS = 8
 
 def toy_hash(key: str) -&gt; int:
@@ -206,12 +228,16 @@ petr  → сумма  443 → ячейка 3</div>
 
         <h3>Шаг 2. Сравнить поиск в списке и в словаре</h3>
         <div class="code">
-          <div class="bar"><span class="file">01_dict_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <div class="bar"><span class="file">02_dict_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
           <pre data-lang="python">import time
 
-users = [f"user{i}" for i in range(1_000_000)]        # список
-by_name = {u: i for i, u in enumerate(users)}         # словарь
+# список: проверка перебирает элементы, пока не найдёт (O(n))
+users = [f"user{i}" for i in range(1_000_000)]
 
+# словарь: проверка считает хеш и прыгает в ячейку (O(1))
+by_name = {u: i for i, u in enumerate(users)}
+
+# замеряем только саму проверку, без создания коллекций
 t0 = time.perf_counter(); "user999999" in users;      t_list = time.perf_counter() - t0
 t0 = time.perf_counter(); "user999999" in by_name;    t_dict = time.perf_counter() - t0
 
@@ -229,7 +255,7 @@ dict:     0.96 µs
 
         <h3>Шаг 3. Три способа обновить счётчик</h3>
         <div class="code">
-          <div class="bar"><span class="file">01_dict_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <div class="bar"><span class="file">02_dict_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
           <pre data-lang="python">order = {"user": "Anna", "amount": 1200}
 
 order.get("city")                    # None: ключ НЕ создан

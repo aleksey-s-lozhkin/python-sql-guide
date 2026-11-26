@@ -43,7 +43,7 @@
     const pct = Math.round((done / total) * 100);
 
     return `
-      <a class="brand" href="index.html">
+      <a class="brand" href="index.html?stay=1">
         <span class="kicker">Обучающий гайд</span>
         <span class="name">Python <em>→</em> pandas <em>→</em> SQL</span>
       </a>
@@ -426,7 +426,13 @@
       if (card && "IntersectionObserver" in window) {
         new IntersectionObserver(([entry]) => { fab.hidden = entry.isIntersecting; }, { threshold: 0.55 }).observe(card);
       }
-      if (standalone && autoOn() && !params.has("stay") && !params.has("continue")) {
+      let firstLaunch = false;
+      try {
+        firstLaunch = !sessionStorage.getItem("assoc-pwa-launched");
+        sessionStorage.setItem("assoc-pwa-launched", "1");
+      } catch (e) { firstLaunch = true; }
+      const cameFromInside = document.referrer && document.referrer.startsWith(location.origin);
+      if (standalone && autoOn() && firstLaunch && !cameFromInside && !params.has("stay") && !params.has("continue")) {
         location.replace(saved.slug + ".html?continue=1");
         return;
       }

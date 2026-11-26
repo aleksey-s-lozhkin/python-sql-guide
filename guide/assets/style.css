@@ -32,7 +32,7 @@
   --mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
 
   --sidebar: 312px;
-  --measure: 78ch;
+  --measure: 72ch;
   --radius: 14px;
   --rs: 1;
 }
@@ -855,3 +855,22 @@ td b { font-weight: 700; }
   .bookmark-fab, .resume-fab, .toast { display: none !important; }
 }
 .resume-fab[hidden] { display: none !important; }
+
+/* ── «самое главное» и словарь главы ──────────────────────── */
+.tldr {
+  margin: 22px 0 0; padding: 15px 18px; border-radius: 12px;
+  background: linear-gradient(120deg, var(--accent-soft), var(--card));
+  border: 1px solid color-mix(in srgb, var(--accent) 22%, var(--line));
+  font-family: var(--sans);
+}
+.tldr .t { font-size: 10px; letter-spacing: .14em; text-transform: uppercase; color: var(--accent); font-weight: 700; }
+.tldr ul { margin: 8px 0 0; padding-left: 18px; }
+.tldr li { margin: 4px 0; font-size: .96rem; }
+.glossary {
+  margin: 14px 0 0; padding: 10px 16px; border: 1px solid var(--line);
+  border-radius: 12px; background: var(--card); font-family: var(--sans);
+}
+.glossary summary { cursor: pointer; font-size: 13px; font-weight: 600; color: var(--accent); }
+.glossary dl { margin: 10px 0 2px; display: grid; gap: 9px; }
+.glossary dt { font-family: var(--mono); font-size: 12.5px; font-weight: 600; }
+.glossary dd { margin: 2px 0 0; color: var(--ink-2); font-size: .94rem; }
