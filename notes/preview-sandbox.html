@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Практика: песочница SQL и Python — макет</title>
+<style>
+  :root{
+    --bg:#fbf8f2;--card:#fffdf9;--ink:#1d1b26;--muted:#6f687d;--line:#e4ddd1;
+    --accent:#c2410c;--accent-soft:#fdf0e6;--ok:#2f6b4f;--bad:#a23b3b;
+    --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 var(--sans)}
+  header{display:flex;align-items:center;justify-content:space-between;gap:16px;
+    padding:12px 22px;border-bottom:1px solid var(--line);background:var(--card)}
+  .brand{display:flex;gap:10px;align-items:baseline}
+  .mark{font-family:var(--mono);font-size:13px;color:var(--accent)}
+  .nav{display:flex;gap:14px;align-items:center;color:var(--muted);font-size:13px}
+  .wrap{max-width:1180px;margin:0 auto;padding:22px}
+  .layout{display:grid;grid-template-columns:300px 1fr;gap:18px;align-items:start}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px}
+  h2{font:600 20px/1.25 Georgia,serif;margin:0 0 8px}
+  .muted{color:var(--muted)}.small{font-size:13px}
+  .task-btn{display:block;width:100%;text-align:left;border:1px solid var(--line);background:#fff;
+    border-radius:10px;padding:10px 12px;margin-bottom:8px;font:inherit;color:var(--ink)}
+  .task-btn.active{background:var(--accent-soft);border-color:#e8b48c}
+  .task-btn span{display:block;font-size:12px;color:var(--muted)}
+  .chips{display:flex;gap:8px;flex-wrap:wrap;margin:4px 0 14px}
+  .chip{font-size:12px;color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:3px 10px}
+  .chip.run{color:var(--ok);border-color:#cfe2d5;background:#f3f8f4}
+  .seg{display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;margin-bottom:14px}
+  .seg button{border:0;background:#fff;padding:8px 16px;font:inherit;font-size:13px;color:var(--muted);cursor:pointer}
+  .seg button.on{background:var(--accent-soft);color:var(--ink)}
+  .prompt{white-space:pre-wrap;margin:0 0 12px;color:#3c3746;font-size:15px}
+  .editor{border:1px solid var(--line);border-radius:10px;overflow:hidden;background:#1b1a21;color:#e9e6f2}
+  .editor .bar{display:flex;justify-content:space-between;align-items:center;padding:7px 12px;
+    background:#121118;border-bottom:1px solid #2a2833;font:11px var(--mono);color:#9d97ad}
+  .editor pre{margin:0;padding:14px;font:13px/1.6 var(--mono);white-space:pre-wrap;overflow:auto}
+  .kw{color:#c792ea}.str{color:#a5d6a7}.fn{color:#82aaff}.num{color:#f78c6c}.cm{color:#7f7a8e}
+  .actions{display:flex;align-items:center;gap:12px;margin-top:10px}
+  .primary{background:var(--accent);color:#fff;border:0;border-radius:9px;padding:10px 18px;font:inherit;font-weight:600;cursor:pointer}
+  .ghost{border:1px solid var(--line);background:transparent;border-radius:8px;padding:7px 12px;font:inherit;font-size:13px;cursor:pointer}
+  .result{margin-top:14px;border-top:1px solid var(--line);padding-top:14px}
+  .verdict{display:flex;align-items:center;gap:10px;margin:0 0 8px}
+  .verdict b{font-size:16px}
+  .verdict.ok b{color:var(--ok)}.verdict.bad b{color:var(--bad)}
+  .tests{display:grid;gap:4px;margin:10px 0;font-size:13px;color:#3c3746}
+  .tests div:before{content:"✓";color:var(--ok);margin-right:7px;font-weight:700}
+  table{width:100%;border-collapse:collapse;margin-top:10px;font:12.5px var(--mono)}
+  th,td{border:1px solid var(--line);padding:6px 8px;text-align:left}
+  th{background:#f4f1ea}
+  .out{margin-top:10px;background:#121118;color:#d9d4e6;border-radius:10px;padding:12px;font:12px/1.6 var(--mono);white-space:pre-wrap}
+  .schema{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0 0}
+  .schema code{background:#f4f1ea;border:1px solid var(--line);border-radius:6px;padding:3px 8px;font:11.5px var(--mono)}
+  .hint{margin-top:10px;font-size:13px;color:var(--accent)}
+  .progressline{height:7px;border-radius:99px;background:#efe7da;overflow:hidden;margin:8px 0}
+  .progressline i{display:block;height:100%;width:64%;background:var(--accent)}
+  .mode-sql .py-only,.mode-python .sql-only{display:none}
+  @media(max-width:900px){.layout{grid-template-columns:1fr}.wrap{padding:14px}}
+  @media(max-width:600px){.nav span:nth-child(2){display:none}}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand"><span class="mark">P→pandas→SQL</span><strong>Практика</strong></div>
+  <div class="nav"><span>Книга</span><span>you@example.com</span><span>Выйти</span></div>
+</header>
+<div class="wrap">
+  <div class="layout">
+    <aside>
+      <div class="card" style="margin-bottom:14px">
+        <h2>Задачи</h2>
+        <button class="task-btn"><strong>Топ-3 пользователей</strong><span>SQL · глава 24</span></button>
+        <button class="task-btn active"><strong>Продажи по месяцам</strong><span>SQL · глава 25</span></button>
+        <button class="task-btn"><strong>Pandas: средний чек</strong><span>Python · глава 15</span></button>
+        <button class="task-btn"><strong>NumPy: маска и axis</strong><span>Python · глава 09</span></button>
+      </div>
+      <div class="card">
+        <h2>Где выполняется</h2>
+        <p class="small muted" style="margin:0 0 8px">SQL — на сервере, в вашей схеме <code>work</code>.</p>
+        <p class="small muted" style="margin:0">Python — в браузере через Pyodide, ничего не уходит на сервер.</p>
+      </div>
+    </aside>
+
+    <article class="card mode-python" id="main">
+      <div class="chips">
+        <span class="chip">глава 15 · pandas</span>
+        <span class="chip">2 балла</span>
+        <span class="chip run" id="where">выполняется в браузере</span>
+      </div>
+      <h2>Pandas: средний чек по пользователям</h2>
+      <p class="prompt">Дан orders.csv. Посчитайте число заказов и средний чек по каждому пользователю.
+Результат — DataFrame с колонками name, orders, avg_check. Проверка выполнится в вашем браузере.</p>
+
+      <div class="seg">
+        <button class="on" onclick="setMode('python')">Python · pandas</button>
+        <button onclick="setMode('sql')">SQL · PostgreSQL</button>
+      </div>
+
+      <div class="py-only">
+        <div class="editor">
+          <div class="bar"><span>solution.py</span><span>Pyodide · Python 3.12</span></div>
+<pre><span class="kw">import</span> pandas <span class="kw">as</span> pd
+
+df = pd.<span class="fn">read_csv</span>(<span class="str">"orders.csv"</span>)
+result = df.<span class="fn">groupby</span>(<span class="str">"name"</span>).agg(
+    orders=(<span class="str">"order_id"</span>, <span class="str">"count"</span>),
+    avg_check=(<span class="str">"amount"</span>, <span class="str">"mean"</span>),
+)
+</pre>
+        </div>
+        <div class="actions">
+          <button class="primary" id="run">Выполнить</button>
+          <button class="ghost">Сбросить</button>
+          <span class="small muted">Ctrl/⌘ + Enter</span>
+          <span class="small muted" style="margin-left:auto">Pyodide 0.26 · pandas 2.2 · загрузка 18 МБ один раз</span>
+        </div>
+        <div class="progressline"><i></i></div>
+        <div class="small muted">Первый запуск скачивает окружение; дальше берётся из кэша браузера (офлайн — при установленном PWA).</div>
+
+        <div class="result">
+          <div class="verdict ok"><b>Верно · 3 из 3 тестов</b><span class="small muted">412 мс</span></div>
+          <div class="tests">
+            <div>name = [Anna, Ivan, Olga]</div>
+            <div>orders = [3, 2, 2]</div>
+            <div>avg_check сходится с допуском 0.01</div>
+          </div>
+          <table>
+            <thead><tr><th>name</th><th>orders</th><th>avg_check</th></tr></thead>
+            <tbody>
+              <tr><td>Anna</td><td>3</td><td>25650.0</td></tr>
+              <tr><td>Ivan</td><td>2</td><td>11900.0</td></tr>
+              <tr><td>Olga</td><td>2</td><td>38250.0</td></tr>
+            </tbody>
+          </table>
+          <div class="hint">Подсказка: если groupby «съел» строки — проверьте, что name не попал в индекс.</div>
+        </div>
+      </div>
+
+      <div class="sql-only">
+        <div class="schema">ваша схема: <code>work</code> <code>work.orders</code> <code>work.products</code>
+          <button class="ghost" style="padding:3px 9px;font-size:11px">Сбросить схему</button></div>
+        <div class="editor">
+          <div class="bar"><span>query.sql</span><span>PostgreSQL 16 · read-write только work</span></div>
+<pre><span class="kw">SELECT</span> u.name,
+       <span class="fn">COUNT</span>(*) <span class="kw">AS</span> orders,
+       <span class="fn">ROUND</span>(<span class="fn">AVG</span>(o.quantity * p.price), <span class="num">2</span>) <span class="kw">AS</span> avg_check
+<span class="kw">FROM</span> work.orders o
+<span class="kw">JOIN</span> work.users u <span class="kw">ON</span> u.id = o.user_id
+<span class="kw">JOIN</span> work.products p <span class="kw">ON</span> p.id = o.product_id
+<span class="kw">GROUP BY</span> u.name
+<span class="kw">ORDER BY</span> avg_check <span class="kw">DESC</span>;</pre>
+        </div>
+        <div class="actions">
+          <button class="primary">Выполнить</button>
+          <button class="ghost">Сбросить схему</button>
+          <span class="small muted" style="margin-left:auto">выполнено на сервере · 12 мс</span>
+        </div>
+        <div class="result">
+          <div class="verdict ok"><b>Верно · результат совпал</b><span class="small muted">3 строки · 12 мс</span></div>
+          <table>
+            <thead><tr><th>name</th><th>orders</th><th>avg_check</th></tr></thead>
+            <tbody>
+              <tr><td>Anna</td><td>3</td><td>25650.00</td></tr>
+              <tr><td>Ivan</td><td>2</td><td>11900.00</td></tr>
+              <tr><td>Olga</td><td>2</td><td>38250.00</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </article>
+  </div>
+</div>
+<script>
+  function setMode(mode) {
+    document.getElementById("main").className = "card mode-" + mode;
+    document.querySelectorAll(".seg button").forEach((b) => b.classList.toggle("on", b.textContent.toLowerCase().includes(mode === "sql" ? "sql" : "python")));
+    document.getElementById("where").textContent = mode === "sql" ? "выполняется на сервере" : "выполняется в браузере";
+  }
+  const q = new URLSearchParams(location.search);
+  if (q.get("mode") === "sql") setMode("sql");
+</script>
+</body>
+</html>
