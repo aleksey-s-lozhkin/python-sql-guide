@@ -247,42 +247,193 @@
   );
 })();
 
-/* ── место чтения: продолжить с того же места ──────────────── */
+/* ── место чтения и закладки ─────────────────────────────── */
 (function reading() {
-  const KEY = "assoc-reader";
+  const LAST = "assoc-reader";
+  const MARKS = "assoc-bookmarks";
+  const AUTO = "assoc-autoresume";
   const pageSlug = document.body.dataset.slug || "";
+  const isIndex = pageSlug === "index";
+  const isChapter = /^ch-/.test(pageSlug);
   let saved = null;
-  try { saved = JSON.parse(localStorage.getItem(KEY) || "null"); } catch {}
+  try { saved = JSON.parse(localStorage.getItem(LAST) || "null"); } catch {}
 
-  if (saved && saved.slug === pageSlug && !location.hash && saved.y > 240) {
-    setTimeout(() => window.scrollTo(0, saved.y), 40);
+  if ("scrollRestoration" in history) history.scrollRestoration = "manual";
+
+  function escText(value) {
+    return String(value).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  }
+
+  function headings() {
+    const hs = [...document.querySelectorAll(".wrap h2, .wrap h3")];
+    hs.forEach((h, i) => { if (!h.id) h.id = "sec-" + i; });
+    return hs;
+  }
+
+  function position() {
+    const y = Math.round(window.scrollY);
+    const max = Math.max(1, document.documentElement.scrollHeight - window.innerHeight);
+    let best = null;
+    headings().forEach((h) => {
+      const top = h.getBoundingClientRect().top + y;
+      if (top <= y + 60) best = { id: h.id, top };
+    });
+    const h1 = document.querySelector("h1");
+    return {
+      slug: pageSlug,
+      y,
+      ratio: Math.min(1, Math.max(0, y / max)),
+      anchor: best ? best.id : "",
+      offset: best ? Math.max(0, y - best.top) : y,
+      title: h1 ? (h1.firstChild ? h1.firstChild.textContent.trim() : h1.textContent.trim()) : document.title,
+      updatedAt: Date.now(),
+    };
+  }
+
+  function storePosition() {
+    if (!isChapter) return;
+    try { localStorage.setItem(LAST, JSON.stringify(position())); } catch {}
+  }
+
+  function readMarks() {
+    try { return JSON.parse(localStorage.getItem(MARKS) || "[]") || []; } catch { return []; }
+  }
+  function writeMarks(list) {
+    try { localStorage.setItem(MARKS, JSON.stringify(list.slice(0, 30))); } catch {}
+  }
+
+  function targetFrom(s) {
+    if (s.anchor) {
+      const el = document.getElementById(s.anchor);
+      if (el) return Math.round(el.getBoundingClientRect().top + window.scrollY + (s.offset || 0));
+    }
+    return Math.round(s.y || 0);
+  }
+
+  function restore(s) {
+    const max = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
+    const target = Math.max(0, Math.min(max, targetFrom(s)));
+    if (target < 80) return;
+    const apply = () => window.scrollTo(0, target);
+    requestAnimationFrame(() => requestAnimationFrame(apply));
+    setTimeout(apply, 140);
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => setTimeout(apply, 80));
+  }
+
+  if (saved && saved.slug === pageSlug && !isIndex && !location.hash) {
+    restore(saved);
   }
 
   let timer = null;
-  const save = () => {
-    const doc = document.documentElement;
-    const max = doc.scrollHeight - window.innerHeight;
-    const y = Math.round(window.scrollY);
-    const h1 = document.querySelector("h1");
-    try {
-      localStorage.setItem(KEY, JSON.stringify({
-        slug: pageSlug,
-        y,
-        ratio: max > 0 ? Math.min(1, y / max) : 0,
-        title: h1 ? h1.firstChild.textContent.trim() : document.title,
-      }));
-    } catch {}
-  };
-  window.addEventListener("scroll", () => {
+  const saveSoon = () => {
     if (timer) return;
-    timer = setTimeout(() => { timer = null; save(); }, 400);
-  }, { passive: true });
+    timer = setTimeout(() => { timer = null; storePosition(); }, 300);
+  };
+  window.addEventListener("scroll", saveSoon, { passive: true });
+  window.addEventListener("pagehide", storePosition);
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "hidden") storePosition();
+  });
+
+  function toast(text) {
+    let el = document.querySelector(".toast");
+    if (!el) {
+      el = document.createElement("div");
+      el.className = "toast";
+      el.setAttribute("role", "status");
+      document.body.appendChild(el);
+    }
+    el.textContent = text;
+    el.classList.add("show");
+    clearTimeout(el._t);
+    el._t = setTimeout(() => el.classList.remove("show"), 2400);
+  }
+
+  if (isChapter) {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "bookmark-fab";
+    btn.id = "bookmark-fab";
+    btn.title = "Поставить закладку на этом месте";
+    btn.setAttribute("aria-label", "Поставить закладку на этом месте");
+    btn.textContent = "🔖";
+    document.body.appendChild(btn);
+    btn.classList.toggle("on", readMarks().some((m) => m.slug === pageSlug));
+    btn.addEventListener("click", () => {
+      const list = readMarks();
+      const idx = list.findIndex((m) => m.slug === pageSlug);
+      if (idx >= 0) {
+        list.splice(idx, 1);
+        btn.classList.remove("on");
+        toast("Закладка снята");
+      } else {
+        list.unshift(Object.assign(position(), { createdAt: Date.now() }));
+        btn.classList.add("on");
+        toast("Закладка сохранена — она есть на обложке");
+      }
+      writeMarks(list);
+      renderMarks();
+    });
+  }
 
   const host = document.getElementById("resume");
-  if (host && saved && saved.slug && saved.slug !== "index" && saved.title) {
-    host.innerHTML = `<a class="resume" href="${saved.slug}.html">
-      <span class="k">Продолжить чтение</span>
-      <span class="t">${saved.title}</span>
-      <span class="p">${Math.round((saved.ratio || 0) * 100)}%</span></a>`;
+  const marksHost = document.getElementById("bookmarks");
+  const autoOn = () => localStorage.getItem(AUTO) !== "0";
+  const standalone = window.matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
+  const params = new URLSearchParams(location.search);
+
+  function renderMarks() {
+    if (!isIndex || !marksHost) return;
+    const list = readMarks();
+    if (!list.length) { marksHost.innerHTML = ""; return; }
+    marksHost.innerHTML = '<div class="marks-head"><span>Закладки</span><span class="muted">' + list.length + '</span></div>' +
+      list.map((m, i) => '<div class="mark-row">' +
+        '<a class="resume mark-link" href="' + escText(m.slug) + '.html?continue=1">' +
+          '<span class="k">Закладка</span><span class="t">' + escText(m.title) + '</span>' +
+          '<span class="p">' + Math.round((m.ratio || 0) * 100) + '%</span></a>' +
+        '<button type="button" class="mark-del" data-i="' + i + '" aria-label="Удалить закладку">×</button></div>').join("");
+    marksHost.querySelectorAll(".mark-link").forEach((a, i) => {
+      a.addEventListener("click", () => {
+        try { localStorage.setItem(LAST, JSON.stringify(readMarks()[i])); } catch {}
+      });
+    });
+    marksHost.querySelectorAll(".mark-del").forEach((b) =>
+      b.addEventListener("click", () => {
+        const list2 = readMarks();
+        list2.splice(Number(b.dataset.i), 1);
+        writeMarks(list2);
+        renderMarks();
+      })
+    );
+  }
+
+  if (isIndex) {
+    if (saved && saved.slug && saved.slug !== "index" && saved.title && host) {
+      const pct = Math.round((saved.ratio || 0) * 100);
+      host.innerHTML = '<a class="resume resume-main" href="' + escText(saved.slug) + '.html?continue=1">' +
+        '<span class="k">Продолжить чтение</span>' +
+        '<span class="t">' + escText(saved.title) + '</span>' +
+        '<span class="p">' + pct + '%</span></a>' +
+        '<label class="autoresume"><input type="checkbox" id="auto-resume"' + (autoOn() ? " checked" : "") + '> открывать сразу с этого места при запуске</label>';
+      const box = document.getElementById("auto-resume");
+      if (box) box.addEventListener("change", () => localStorage.setItem(AUTO, box.checked ? "1" : "0"));
+      const fab = document.createElement("a");
+      fab.className = "resume-fab";
+      fab.href = saved.slug + ".html?continue=1";
+      fab.innerHTML = '<span class="k">Продолжить</span><span class="p">' + pct + '%</span>';
+      document.body.appendChild(fab);
+      const card = document.querySelector(".resume-main");
+      if (card && "IntersectionObserver" in window) {
+        new IntersectionObserver(([entry]) => { fab.hidden = entry.isIntersecting; }, { threshold: 0.55 }).observe(card);
+      }
+      if (standalone && autoOn() && !params.has("stay") && !params.has("continue")) {
+        location.replace(saved.slug + ".html?continue=1");
+        return;
+      }
+    } else if (host) {
+      host.innerHTML = '<a class="resume resume-main" href="ch-01-python-collections.html">' +
+        '<span class="k">Начало</span><span class="t">Глава 01 · Карта коллекций</span><span class="p">0%</span></a>';
+    }
+    renderMarks();
   }
 })();
