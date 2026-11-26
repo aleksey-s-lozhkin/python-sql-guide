@@ -45,6 +45,19 @@
         </div>
       </header>
 
+      <details class="glossary">
+        <summary>Словарь главы — если забыли термины</summary>
+        <dl>
+          <dt>view</dt><dd>Новый массив, смотрящий в те же данные: правка видна в исходнике.</dd>
+          <dt>copy</dt><dd>Полная копия данных: изменения не влияют на исходник.</dd>
+          <dt>base</dt><dd>Ссылка на массив-владелец буфера; <code>.base is None</code> — массив владеет данными.</dd>
+          <dt>owndata</dt><dd>Флаг «массив владеет своим буфером».</dd>
+          <dt>shares_memory</dt><dd>Проверка, делят ли два массива общую память.</dd>
+          <dt>CoW</dt><dd>Copy-on-Write в pandas: копия создаётся при попытке записи, а не сразу.</dd>
+        </dl>
+      </details>
+
+
       <section>
         <h2><span class="num">01</span>Зачем это backend-разработчику</h2>
         <ul>
@@ -139,7 +152,7 @@
       <section>
         <h2><span class="num">06</span>Лаборатория: запустить и увидеть</h2>
         <p>
-          Фрагменты файла <a title="Открыть файл с номерами строк" href="snippets/view.html?f=11_views_copies_lab.py"><code class="inl">11_views_copies_lab.py</code></a>.
+          Фрагменты файла из папки <code class="inl">guide/snippets</code>: <a title="Открыть файл с номерами строк" href="snippets/view.html?f=11_views_copies_lab.py"><code class="inl">11_views_copies_lab.py</code></a>.
         </p>
 
         <h3>Шаг 1. Срез — окно: правка видна в исходнике</h3>
@@ -186,8 +199,8 @@ print(masked.base)</pre>
 None</div>
         </div>
         <p>
-          <code class="inl">base=None</code> означает «владею своим буфером»: это копия. Правка такой выборки
-          исходный массив не меняет.
+          <code class="inl">.base is None</code> означает «массив владеет своим буфером»: это копия.
+          Правка такой выборки исходный массив не меняет.
         </p>
 
         <h3>Шаг 4. reshape и транспонирование: обычно view</h3>
@@ -278,7 +291,9 @@ SELECT * FROM active_users;   -- окно в данные, а не копия т
           </div>
           <div class="err">
             <div class="h">Ожидание, что reshape всегда view</div>
-            <p>После транспонирования <code class="inl">reshape</code> копирует — и правки «переставшего» массива не видны в исходном.</p>
+            <p>После транспонирования <code class="inl">reshape</code> обычно копирует: шаги не позволяют
+            описать данные окном. Но если раскладка совпала (например, квадратная матрица), результатом может
+            остаться view — проверяйте через <code class="inl">np.shares_memory(base, result)</code>.</p>
             <div class="fix">Проверять <code class="inl">np.shares_memory(a, b)</code>.</div>
           </div>
           <div class="err">
@@ -319,7 +334,9 @@ SELECT * FROM active_users;   -- окно в данные, а не копия т
           <details>
             <summary>Какие операции возвращают копию?</summary>
             <div class="a">
-              <p>Продвинутая индексация: булева маска, список индексов, а также явный <code class="inl">.copy()</code>. Ещё иногда <code class="inl">reshape</code>, если данные не непрерывны.</p>
+              <p>Копию дают маска, список индексов и явный <code class="inl">.copy()</code>.
+              <code class="inl">reshape</code> — view или копия: зависит от раскладки памяти, проверяйте
+              <code class="inl">shares_memory</code>.</p>
               <div class="verdict">Резюме: всё, что нельзя описать окном, копируется.</div>
             </div>
           </details>

@@ -46,6 +46,18 @@
         </div>
       </header>
 
+      <details class="glossary">
+        <summary>Словарь главы — если забыли термины</summary>
+        <dl>
+          <dt>хеш</dt><dd>Число, которое вычисляется из значения и указывает место в таблице.</dd>
+          <dt>уникальность</dt><dd>Повтор не добавляется: set хранит каждое значение один раз.</dd>
+          <dt>O(1) в среднем</dt><dd>Проверка входа не зависит от размера множества — в среднем.</dd>
+          <dt>frozenset</dt><dd>Неизменяемое множество: можно использовать как ключ словаря.</dd>
+          <dt>&amp;, |, −, ^</dt><dd>Пересечение, объединение, разность и симметричная разность.</dd>
+        </dl>
+      </details>
+
+
       <section>
         <h2><span class="num">01</span>Зачем это backend-разработчику</h2>
         <p>
@@ -107,11 +119,11 @@
       </section>
 
       <section>
-        <h2><span class="num">04</span>Схема: четыре операции на одном рисунке</h2>
+        <h2><span class="num">04</span>Схема: пересечение, объединение, разность</h2>
 
         <figure>
           <div class="frame">
-            <img src="assets/maps/set-operations.svg" alt="Круги Эйлера: пересечение, объединение и разность множеств.">
+            <img src="assets/maps/set-operations.svg" alt="Круги Эйлера: пересечение, объединение и разность; симметрическая разность описана в подписи.">
           </div>
           <figcaption>
             <b>Рис. 1.</b> Закрашено то, что вернёт операция. Симметрическая разность <code class="inl">a ^ b</code>
@@ -120,9 +132,10 @@
         </figure>
 
         <p>
-          Запомните направление: <code class="inl">a - b</code> — это «что удалить из <code class="inl">a</code>,
-          чтобы стало <code class="inl">b</code>». Разность несимметрична: <code class="inl">a - b</code> и
-          <code class="inl">b - a</code> — разные множества, и на собеседовании это любят уточнять.
+          Запомните направление: <code class="inl">a - b</code> — элементы <code class="inl">a</code>,
+          которых нет в <code class="inl">b</code>. Чтобы получить <code class="inl">b</code>, удалите
+          <code class="inl">a - b</code> и добавьте <code class="inl">b - a</code>. Разность несимметрична —
+          на собеседовании это любят уточнять.
         </p>
       </section>
 
@@ -160,7 +173,7 @@
       <section>
         <h2><span class="num">06</span>Лаборатория: запустить и увидеть</h2>
         <p>
-          Фрагменты файла <a title="Открыть файл с номерами строк" href="snippets/view.html?f=04_set_lab.py"><code class="inl">04_set_lab.py</code></a>.
+          Фрагменты файла из папки <code class="inl">guide/snippets</code>: <a title="Открыть файл с номерами строк" href="snippets/view.html?f=04_set_lab.py"><code class="inl">04_set_lab.py</code></a>.
           Числа зависят от машины, порядок элементов множества — от запуска.
         </p>
 
@@ -255,11 +268,14 @@ df["user"].isin({"Anna", "Petr"})    # как `in set` для каждой ст�
 df["user"].value_counts()            # как Counter из главы 06
 
 # операции над индексами — те же множества
+idx1 = pd.Index(["Anna", "Ivan"])
+idx2 = pd.Index(["Ivan", "Olga"])
 idx1.intersection(idx2); idx1.union(idx2); idx1.difference(idx2)</pre>
         </div>
         <p>
-          <code class="inl">isin</code> принимает именно множество — и это не случайно: проверка каждого значения
-          должна быть O(1), иначе фильтрация по большому списку разрешений станет квадратичной.
+          <code class="inl">isin</code> принимает и список, и множество: pandas сама строит по нему
+          хеш-таблицу. Передавать set не обязательно, но полезно понимать, почему проверка не превращается
+          в квадратичную.
         </p>
 
         <h3>SQL: IN, EXISTS и операции над результатами</h3>
@@ -416,10 +432,10 @@ u2 = {"python", "dbt", "sql"}</pre>
                 <pre data-lang="python">common = u1 &amp; u2
 only_u1 = u1 - u2
 
-print(common)            # {'python', 'sql'}
+print(sorted(common))    # ['python', 'sql']
 print(sorted(only_u1))   # ['airflow', 'pandas']
 print(u1.isdisjoint(u2)) # False — пересечение не пусто</pre>
-                <div class="out">{'python', 'sql'}
+                <div class="out">['python', 'sql']
 ['airflow', 'pandas']
 False</div>
               </div>

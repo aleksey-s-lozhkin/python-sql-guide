@@ -339,9 +339,9 @@ df.loc[df["age"] &gt; 25, "salary"].mean()</pre>
                   <div class="bar"><span class="file">решение</span><span class="lang">python</span><button class="copy">копировать</button></div>
                   <pre data-lang="python">df.loc[0, "salary"] = 0</pre>
                 </div>
-                <p><code class="inl">df["salary"]</code> возвращает временный объект, а CoW гарантирует, что производные объекты не меняют исходную таблицу.
+                <p><code class="inl">df["salary"]</code> возвращает промежуточный Series, а не таблицу; CoW гарантирует, что производные объекты не меняют исходную таблицу.
                 Это родственник правила «маска — копия»: менять данные нужно явной операцией записи, а не через промежуточное представление.</p>
-                <p><strong>Критерии.</strong> Указано, что цепочка создаёт временный объект; правильная запись — <code class="inl">.loc</code>; проведена параллель с view/copy.</p>
+                <p><strong>Критерии.</strong> Указано, что цепочка создаёт промежуточный Series; правильная запись — <code class="inl">.loc</code>; проведена параллель с view/copy.</p>
               </div>
             </details>
           </div>

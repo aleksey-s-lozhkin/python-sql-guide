@@ -46,6 +46,19 @@
         </div>
       </header>
 
+      <details class="glossary">
+        <summary>Словарь главы — если забыли термины</summary>
+        <dl>
+          <dt>Seq Scan</dt><dd>Последовательное чтение всей таблицы; нормально для маленьких таблиц.</dd>
+          <dt>Index Scan</dt><dd>Чтение по индексу: находим нужные строки, не просматривая всё.</dd>
+          <dt>Bitmap Heap Scan</dt><dd>Сначала карта страниц по индексу, потом чтение страниц пачкой.</dd>
+          <dt>cost</dt><dd>Оценка планировщика; не миллисекунды, а единицы для сравнения планов.</dd>
+          <dt>селективность</dt><dd>Доля строк, проходящих фильтр: чем меньше, тем выгоднее индекс.</dd>
+          <dt>EXPLAIN ANALYZE</dt><dd>Выполняет запрос и показывает реальное время и строки.</dd>
+        </dl>
+      </details>
+
+
       <section>
         <h2><span class="num">01</span>Зачем это backend-разработчику</h2>
         <ul>
@@ -158,7 +171,7 @@
 
       <section>
         <h2><span class="num">06</span>Лаборатория: запустить и увидеть</h2>
-        <p>Фрагменты файла <a title="Открыть файл с номерами строк" href="snippets/view.html?f=24_indexes_explain.sql"><code class="inl">24_indexes_explain.sql</code></a>.</p>
+        <p>Фрагменты файла из папки <code class="inl">guide/snippets</code>: <a title="Открыть файл с номерами строк" href="snippets/view.html?f=24_indexes_explain.sql"><code class="inl">24_indexes_explain.sql</code></a>.</p>
         <p>
           Для наглядности создадим <code class="inl">orders_big</code> на 100 000 строк — на маленькой
           <code class="inl">orders</code> планировщик честно выберет Seq Scan.

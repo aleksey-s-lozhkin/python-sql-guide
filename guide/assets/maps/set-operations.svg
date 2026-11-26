@@ -38,7 +38,7 @@
   <circle cx="815" cy="118" r="58" fill="#ffffff" stroke="#b9cfe6" stroke-width="1.5" stroke-dasharray="5 5"/>
   <circle cx="750" cy="118" r="58" fill="none" stroke="#b9cfe6" stroke-width="1.5"/>
   <text class="cap" x="660" y="206">только у первого</text>
-  <text class="small" x="660" y="226">что удалить из a, чтобы стало b</text>
+  <text class="small" x="660" y="226">элементы a, которых нет в b</text>
 
   <rect x="30" y="258" width="920" height="44" rx="10" fill="#f4f1ea" stroke="#e0d9cd"/>
   <text class="cap" x="50" y="286">Множество не хранит порядок, принимает только hashable и проверяет вход за O(1) в среднем.</text>

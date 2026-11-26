@@ -46,6 +46,19 @@
         </div>
       </header>
 
+      <details class="glossary">
+        <summary>Словарь главы — если забыли термины</summary>
+        <dl>
+          <dt>логика трёх значений</dt><dd>TRUE, FALSE и UNKNOWN; WHERE пропускает только TRUE.</dd>
+          <dt>UNKNOWN</dt><dd>Результат сравнения с NULL; не TRUE и не FALSE.</dd>
+          <dt>IS NULL</dt><dd>Проверка отсутствия значения; сравнение <code>= NULL</code> не работает.</dd>
+          <dt>COUNT(*)</dt><dd>Число строк группы, включая строки с NULL в колонках.</dd>
+          <dt>LIKE</dt><dd>Поиск по шаблону (<code>%</code>, <code>_</code>); регистр не приводит.</dd>
+          <dt>BETWEEN</dt><dd>Диапазон включительно с обеих границ.</dd>
+        </dl>
+      </details>
+
+
       <section>
         <h2><span class="num">01</span>Зачем это backend-разработчику</h2>
         <ul>
@@ -65,7 +78,9 @@
             <div class="t">Держите эту картинку в голове</div>
             <p class="kick"><strong>У условия в SQL не два исхода, а три:</strong> TRUE, FALSE и UNKNOWN.
             TRUE — строка проходит; FALSE и UNKNOWN — нет.</p>
-            <p><strong>Любое сравнение с NULL даёт UNKNOWN</strong> — даже <code class="inl">NULL = NULL</code>.
+            <p><strong>Сравнения <code class="inl">=</code>, <code class="inl">&lt;&gt;</code>,
+            <code class="inl">&lt;</code>, <code class="inl">&gt;</code> с NULL дают UNKNOWN</strong> — даже
+            <code class="inl">NULL = NULL</code>.
             Поэтому «найти пропуск» можно только через <code class="inl">IS NULL</code>: это проверка
             факта отсутствия, а не сравнение значений.</p>
           </div>
@@ -125,7 +140,7 @@
 
       <section>
         <h2><span class="num">06</span>Лаборатория: запустить и увидеть</h2>
-        <p>Фрагменты файла <a title="Открыть файл с номерами строк" href="snippets/view.html?f=20_select_where.sql"><code class="inl">20_select_where.sql</code></a>.</p>
+        <p>Фрагменты файла из папки <code class="inl">guide/snippets</code>: <a title="Открыть файл с номерами строк" href="snippets/view.html?f=20_select_where.sql"><code class="inl">20_select_where.sql</code></a>.</p>
         <p>
           База <code class="inl">learning_shop</code>: у Petr нет города, у Maria нет email. Этого достаточно,
           чтобы увидеть все ловушки.

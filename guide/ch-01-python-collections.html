@@ -50,7 +50,7 @@
         <div class="t">Самое главное</div>
         <ul>
           <li>Все коллекции Python — это две идеи: <b>массив</b> (порядок, индексы) и <b>хеш-таблица</b> (доступ по ключу).</li>
-          <li>Пять вопросов о задаче ведут к нужной структуре — запоминать семь методов не нужно.</li>
+          <li>Пять вопросов о задаче ведут к нужной структуре — запоминать семь структур не нужно.</li>
           <li>Выбор структуры — это выбор сложности: O(1) против O(n). На больших данных это тысячи раз.</li>
         </ul>
       </div>
@@ -100,11 +100,12 @@
 
         <figure>
           <div class="frame">
-            <img src="assets/maps/collection-map.svg" alt="Пять вопросов о задаче и структуры, которые на них отвечают: dict, set, Counter, defaultdict, deque, tuple, list.">
+            <img src="assets/maps/collection-map.svg" alt="Схема выбора структуры: вопросы о задаче и структуры, которые на них отвечают.">
           </div>
           <figcaption>
             <b>Рис. 1.</b> Читайте сверху вниз: найдите вопрос, который описывает вашу задачу, — и структуру.
-            Справа указана глава, где эта структура разобрана.
+            Справа указана глава, где эта структура разобрана. На рисунке семь вопросов: они складываются
+            в пять групп выбора из этой главы.
           </figcaption>
         </figure>
 
@@ -118,7 +119,7 @@
         <h2><span class="num">04</span>Пять вопросов с примерами</h2>
 
         <h3>1. Нужен доступ по ключу?</h3>
-        <p>Если данные — это пары «имя → значение», берите <code class="inl">dict</code>. Поиск, проверка наличия и обновление — всё O(1).</p>
+        <p>Если данные — это пары «имя → значение», берите <code class="inl">dict</code>. Поиск, проверка наличия и обновление — всё O(1) в среднем.</p>
         <div class="code">
           <div class="bar"><span class="file">dict</span><span class="lang">python</span><button class="copy">копировать</button></div>
           <pre data-lang="python">prices = {"apple": 120, "pear": 90}
@@ -130,7 +131,7 @@ prices.get("apple")        # 120
         <p>Если важен сам факт «есть или нет», а порядок не нужен, — <code class="inl">set</code>. Дедупликация и пересечения за один шаг.</p>
         <div class="code">
           <div class="bar"><span class="file">set</span><span class="lang">python</span><button class="copy">копировать</button></div>
-          <pre data-lang="python">tags = {"python", "sql", "python"}       # {'python', 'sql'}
+          <pre data-lang="python">tags = {"python", "sql", "python"}       # {'python', 'sql'}, порядок не гарантирован
 u1, u2 = {"python", "sql"}, {"sql", "dbt"}
 u1 &amp; u2                                  # {'sql'}</pre>
         </div>

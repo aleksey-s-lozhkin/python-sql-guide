@@ -45,6 +45,17 @@
         </div>
       </header>
 
+      <details class="glossary">
+        <summary>Словарь главы — если забыли термины</summary>
+        <dl>
+          <dt>axis</dt><dd>Номер оси, вдоль которой идёт свёртка: <code>0</code> — вниз по строкам, <code>1</code> — вправо.</dd>
+          <dt>свёртка</dt><dd>Агрегат вдоль оси: сумма, среднее, максимум — размерность уменьшается.</dd>
+          <dt>keepdims</dt><dd>Оставить ось размером 1, чтобы форма результата сошлась с исходной.</dd>
+          <dt>argmax</dt><dd>Индекс максимального элемента, а не само значение.</dd>
+        </dl>
+      </details>
+
+
       <section>
         <h2><span class="num">01</span>Зачем это backend-разработчику</h2>
         <ul>
@@ -139,7 +150,7 @@
       <section>
         <h2><span class="num">06</span>Лаборатория: запустить и увидеть</h2>
         <p>
-          Фрагменты файла <a title="Открыть файл с номерами строк" href="snippets/view.html?f=09_axis_lab.py"><code class="inl">09_axis_lab.py</code></a>.
+          Фрагменты файла из папки <code class="inl">guide/snippets</code>: <a title="Открыть файл с номерами строк" href="snippets/view.html?f=09_axis_lab.py"><code class="inl">09_axis_lab.py</code></a>.
         </p>
 
         <h3>Шаг 1. Две суммы одной матрицы</h3>
@@ -372,7 +383,7 @@ print(m.sum(axis=0), m.mean(axis=0))</pre>
                 <pre data-lang="python">row_sums = m.sum(axis=1)
 shares = row_sums / m.sum()
 print(shares.round(3))</pre>
-                <div class="out">[0.091 0.318 0.545]</div>
+                <div class="out">[0.045 0.182 0.318 0.455]</div>
               </div>
               <p><strong>Что важно.</strong> Сначала агрегат по оси, потом деление на скаляр — векторная операция без цикла.</p>
             </div>
@@ -390,13 +401,15 @@ print(shares.round(3))</pre>
                 <pre data-lang="python">row_means = m.mean(axis=1, keepdims=True)   # (4, 1)
 centered = m - row_means
 print(centered.round(3))</pre>
-                <div class="out">[[-2.  0.  2.]
- [-2.  0.  2.]
- [-2.  0.  2.]
- [-2.  0.  2.]]</div>
+                <div class="out">[[-1.  0.  1.]
+ [-1.  0.  1.]
+ [-1.  0.  1.]
+ [-1.  0.  1.]]</div>
               </div>
-              <p><strong>Что важно.</strong> Без keepdims форма была бы <code class="inl">(4,)</code> и вычиталась бы по-другому
-              (по столбцам). Глава 10 объяснит, почему.</p>
+              <p><strong>Что важно.</strong> Без keepdims форма была бы <code class="inl">(4,)</code>,
+              и вычитание из <code class="inl">(4, 3)</code> дало бы <code class="inl">ValueError</code>:
+              последние оси не совпадают. Глава 10 объясняет, как NumPy выравнивает формы и почему
+              <code class="inl">keepdims</code> убирает двусмысленность.</p>
             </div>
           </details>
         </div>

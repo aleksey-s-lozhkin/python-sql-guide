@@ -46,6 +46,18 @@
         </div>
       </header>
 
+      <details class="glossary">
+        <summary>Словарь главы — если забыли термины</summary>
+        <dl>
+          <dt>агрегат</dt><dd>Свёртка группы в одно значение: сумма, среднее, количество.</dd>
+          <dt>transform</dt><dd>Агрегат той же длины, что исходная таблица: результат можно добавить колонкой.</dd>
+          <dt>size / count</dt><dd>size — строк в группе; count — непустых значений колонки.</dd>
+          <dt>HAVING</dt><dd>Фильтр групп по агрегату; в pandas — <code>groupby(...).filter(...)</code>.</dd>
+          <dt>as_index=False</dt><dd>Вернуть обычную таблицу вместо индекса-группы.</dd>
+        </dl>
+      </details>
+
+
       <section>
         <h2><span class="num">01</span>Зачем это backend-разработчику</h2>
         <ul>
@@ -139,7 +151,7 @@
       <section>
         <h2><span class="num">06</span>Лаборатория: запустить и увидеть</h2>
         <p>
-          Фрагменты файла <a title="Открыть файл с номерами строк" href="snippets/view.html?f=15_groupby_lab.py"><code class="inl">15_groupby_lab.py</code></a>.
+          Фрагменты файла из папки <code class="inl">guide/snippets</code>: <a title="Открыть файл с номерами строк" href="snippets/view.html?f=15_groupby_lab.py"><code class="inl">15_groupby_lab.py</code></a>.
         </p>
 
         <h3>Шаг 1. Разложить по ключу</h3>

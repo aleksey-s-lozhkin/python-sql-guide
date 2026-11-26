@@ -45,6 +45,18 @@
         </div>
       </header>
 
+      <details class="glossary">
+        <summary>Словарь главы — если забыли термины</summary>
+        <dl>
+          <dt>подзапрос</dt><dd>Запрос внутри запроса: скалярный, IN, EXISTS или коррелированный.</dd>
+          <dt>CTE</dt><dd>Именованный шаг <code>WITH name AS (...)</code>, на который ссылаются дальше.</dd>
+          <dt>коррелированный</dt><dd>Подзапрос зависит от строки внешнего запроса и выполняется для каждой.</dd>
+          <dt>NOT EXISTS</dt><dd>Анти-соединение: строки, для которых во внутреннем запросе ничего нет.</dd>
+          <dt>рекурсивный CTE</dt><dd><code>WITH RECURSIVE</code>: шаг ссылается сам на себя до условия остановки.</dd>
+        </dl>
+      </details>
+
+
       <section>
         <h2><span class="num">01</span>Зачем это backend-разработчику</h2>
         <ul>
@@ -132,7 +144,7 @@
 
       <section>
         <h2><span class="num">06</span>Лаборатория: запустить и увидеть</h2>
-        <p>Фрагменты файла <a title="Открыть файл с номерами строк" href="snippets/view.html?f=22_subqueries_cte.sql"><code class="inl">22_subqueries_cte.sql</code></a>.</p>
+        <p>Фрагменты файла из папки <code class="inl">guide/snippets</code>: <a title="Открыть файл с номерами строк" href="snippets/view.html?f=22_subqueries_cte.sql"><code class="inl">22_subqueries_cte.sql</code></a>.</p>
         <p>База <code class="inl">learning_shop</code>, выручка заказа — <code class="inl">quantity * price</code>.</p>
 
         <h3>Шаг 1. Скалярный подзапрос: средняя выручка заказа</h3>

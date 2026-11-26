@@ -46,6 +46,19 @@
         </div>
       </header>
 
+      <details class="glossary">
+        <summary>Словарь главы — если забыли термины</summary>
+        <dl>
+          <dt>Counter</dt><dd>Словарь частот: ключ — элемент, значение — сколько раз встретился.</dd>
+          <dt>most_common(n)</dt><dd>Возвращает n самых частых элементов в порядке убывания.</dd>
+          <dt>defaultdict</dt><dd>Словарь с фабрикой значений: отсутствующий ключ создаётся сам.</dd>
+          <dt>__missing__</dt><dd>Метод, который вызывается при чтении отсутствующего ключа.</dd>
+          <dt>deque</dt><dd>Двусторонняя очередь: добавление и удаление с обоих концов за O(1).</dd>
+          <dt>maxlen</dt><dd>Ограничение длины deque: старые элементы вытесняются сами.</dd>
+        </dl>
+      </details>
+
+
       <section>
         <h2><span class="num">01</span>Зачем это backend-разработчику</h2>
         <p>
@@ -122,7 +135,7 @@
         </p>
         <p>
           Считать он умеет не только частоты: <code class="inl">+</code>, <code class="inl">-</code>,
-          <code class="inl">&amp;</code>, <code class="inl">|</code> работают как операции над мультимножествами.
+          <code class="inl">&amp;</code>, <code class="inl">|</code> работают как операции над мультимножествами (multiset — элементы с кратностями: каждый со своим счётчиком).
           При вычитании нулевые и отрицательные счётчики исчезают — это удобно, но иногда удивляет.
         </p>
 
@@ -157,7 +170,7 @@
       <section>
         <h2><span class="num">06</span>Лаборатория: запустить и увидеть</h2>
         <p>
-          Фрагменты файла <a title="Открыть файл с номерами строк" href="snippets/view.html?f=06_collections_lab.py"><code class="inl">06_collections_lab.py</code></a>.
+          Фрагменты файла из папки <code class="inl">guide/snippets</code>: <a title="Открыть файл с номерами строк" href="snippets/view.html?f=06_collections_lab.py"><code class="inl">06_collections_lab.py</code></a>.
           Время зависит от машины, поведение — нет.
         </p>
 
@@ -202,9 +215,15 @@ print(dict(a | b))   # максимум</pre>
           <div class="bar"><span class="file">06_collections_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
           <pre data-lang="python">from collections import defaultdict
 
+orders = [
+    {"user": "Anna", "amount": 1200},
+    {"user": "Ivan", "amount": 800},
+    {"user": "Anna", "amount": 500},
+]
 by_user = defaultdict(list)
 for order in orders:
     by_user[order["user"]].append(order["amount"])
+print(dict(by_user))
 
 d = defaultdict(int)
 print(d.get("x"), "x" in d)   # None False — get не создаёт
@@ -242,11 +261,25 @@ for value in range(6):
         <h3>Шаг 5. Почему deque, а не list</h3>
         <div class="code">
           <div class="bar"><span class="file">06_collections_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
-          <pre data-lang="python"># 100 000 вставок в начало:
-lst.insert(0, i)      # сдвиг всего массива, O(n)
-dq.appendleft(i)      # O(1)</pre>
-          <div class="out">list.insert(0):     655.0 ms
-deque.appendleft:     2.2 ms</div>
+          <pre data-lang="python">import time
+from collections import deque
+
+n = 100_000
+lst, dq = [], deque()
+
+t0 = time.perf_counter()
+for i in range(n):
+    lst.insert(0, i)      # сдвиг всего массива, O(n)
+t1 = time.perf_counter()
+
+for i in range(n):
+    dq.appendleft(i)      # O(1)
+t2 = time.perf_counter()
+
+print(f"list.insert(0):   {(t1 - t0) * 1000:6.1f} ms")
+print(f"deque.appendleft: {(t2 - t1) * 1000:6.1f} ms")</pre>
+          <div class="out">list.insert(0):    655.0 ms
+deque.appendleft:    2.2 ms</div>
         </div>
         <p>
           Разница в 300 раз — та же причина, что в главе 03: у списка элементы лежат подряд, и вставка в начало
@@ -256,18 +289,31 @@ deque.appendleft:     2.2 ms</div>
         <h3>Шаг 6. Counter быстрее ручного словаря</h3>
         <div class="code">
           <div class="bar"><span class="file">06_collections_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
-          <pre data-lang="python">manual = {}
+          <pre data-lang="python">import random
+import time
+from collections import Counter
+
+data = [random.randint(0, 20_000) for _ in range(300_000)]
+
+t0 = time.perf_counter()
+manual = {}
 for x in data:
     manual[x] = manual.get(x, 0) + 1
+t1 = time.perf_counter()
 
-fast = Counter(data)</pre>
+fast = Counter(data)
+t2 = time.perf_counter()
+
+print(f"dict.get: {(t1 - t0) * 1000:.1f} ms")
+print(f"Counter : {(t2 - t1) * 1000:.1f} ms")
+print("результаты совпали:", manual == dict(fast))</pre>
           <div class="out">dict.get:   11.7 ms
 Counter :    5.0 ms
 результаты совпали: True</div>
         </div>
         <p>
-          Counter реализован на C и делает то же самое за половину времени. На 300 000 элементов экономия — секунды
-          на больших пайплайнах.
+          Counter реализован на C и делает то же самое за половину времени. На 300 000 элементов экономия — миллисекунды; на больших
+          объёмах она становится заметной.
         </p>
       </section>
 
@@ -300,7 +346,7 @@ FROM users GROUP BY city ORDER BY cnt DESC LIMIT 3;
 -- defaultdict(list): группы
 SELECT user_id, array_agg(amount) FROM orders GROUP BY user_id;
 
--- deque: последние N событий на пользователя
+-- deque: последние N событий (без разбивки по пользователям)
 SELECT * FROM events ORDER BY created_at DESC LIMIT 10;</pre>
         </div>
         <p>
@@ -358,13 +404,13 @@ class RateLimiter:
 
           <div class="err">
             <div class="h">maxlen молча выбрасывает данные</div>
-            <p><code class="inl">deque(iterable, maxlen=3)</code> без предупреждения оставит только последние три элемента. Данные не теряются только если это ожидаемое скользящее окно.</p>
+            <p><code class="inl">deque(iterable, maxlen=3)</code> без предупреждения оставит только последние три элемента. Данные теряются; это допустимо, только если окно — часть замысла.</p>
             <div class="fix">Проверять, что длина не больше maxlen, когда это важно; для истории — список.</div>
           </div>
 
           <div class="err">
             <div class="h">Counter вместо dict там, где нужны нули</div>
-            <p><code class="inl">"" in counts</code> вернёт <code class="inl">False</code>, даже если счётчик равен нулю: отсутствующий ключ не создаётся.</p>
+            <p>Counter не хранит нули: после вычитания ключ исчезает. Поэтому <code class="inl">"" in counts</code> — проверка наличия ключа, а не «счётчик больше нуля».</p>
             <div class="fix">Проверять значение: <code class="inl">counts.get(key, 0) &gt; 0</code>.</div>
           </div>
 

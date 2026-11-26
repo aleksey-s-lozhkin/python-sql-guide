@@ -46,6 +46,18 @@
         </div>
       </header>
 
+      <details class="glossary">
+        <summary>Словарь главы — если забыли термины</summary>
+        <dl>
+          <dt>Series</dt><dd>Одномерные значения с индексом: колонка таблицы.</dd>
+          <dt>DataFrame</dt><dd>Таблица из колонок с общим индексом строк.</dd>
+          <dt>индекс</dt><dd>Подписи строк. Не то же самое, что номера позиций.</dd>
+          <dt>dtype</dt><dd>Тип колонки: <code>int64</code>, <code>float64</code>, <code>str</code>.</dd>
+          <dt>read_csv</dt><dd>Загрузка CSV в DataFrame с разбором типов.</dd>
+        </dl>
+      </details>
+
+
       <section>
         <h2><span class="num">01</span>Зачем это backend-разработчику</h2>
         <ul>
@@ -138,7 +150,7 @@
       <section>
         <h2><span class="num">06</span>Лаборатория: запустить и увидеть</h2>
         <p>
-          Фрагменты файла <a title="Открыть файл с номерами строк" href="snippets/view.html?f=12_series_dataframe_lab.py"><code class="inl">12_series_dataframe_lab.py</code></a>.
+          Фрагменты файла из папки <code class="inl">guide/snippets</code>: <a title="Открыть файл с номерами строк" href="snippets/view.html?f=12_series_dataframe_lab.py"><code class="inl">12_series_dataframe_lab.py</code></a>.
           CSV читается из строки, чтобы не зависеть от файлов на диске.
         </p>
 
@@ -208,9 +220,23 @@ print(df2.head(2))</pre>
 print(df2.describe())</pre>
           <div class="out">&lt;class 'pandas.DataFrame'&gt;
 RangeIndex: 3 entries, 0 to 2
+Data columns (total 3 columns):
  #   Column  Non-Null Count  Dtype
+---  ------  --------------  -----
  0   user    3 non-null      str
  1   amount  3 non-null      int64
+ 2   city    3 non-null      str
+dtypes: int64(1), str(2)
+memory usage: 204.0 bytes
+            amount
+count     3.000000
+mean    833.333333
+std     351.188458
+min     500.000000
+25%     650.000000
+50%     800.000000
+75%    1000.000000
+max    1200.000000
  2   city    3 non-null      str
 ...          amount
 count     3.000000
@@ -395,9 +421,12 @@ df.to_sql("report", con=engine, if_exists="replace", index=False)</pre>
     "age": [22, 31, 25],
     "city": ["Москва", "Казань", "Москва"],
 })
-print(df.shape, df.dtypes.to_dict())
+print(df.shape, df.dtypes.astype(str).to_dict())
 print(df.head(2))</pre>
-                <div class="out">(3, 3) {'name': dtype('str'), 'age': dtype('int64'), 'city': dtype('str')}</div>
+                <div class="out">(3, 3) {'name': 'str', 'age': 'int64', 'city': 'str'}
+   name  age    city
+0  anna   22  Москва
+1  ivan   31  Казань</div>
               </div>
             </div>
           </details>
@@ -430,7 +459,7 @@ print(df.head(2))</pre>
 print(df.shape, df.columns.tolist())
 print(df.dtypes)
 print(df.head())
-print(df.info())
+df.info()
 print(df.describe())</pre>
               </div>
               <p><strong>Что важно.</strong> Эти пять вызовов ловят 80% проблем: не тот разделитель, не тот тип,

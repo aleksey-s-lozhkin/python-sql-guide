@@ -46,6 +46,18 @@
         </div>
       </header>
 
+      <details class="glossary">
+        <summary>Словарь главы — если забыли термины</summary>
+        <dl>
+          <dt>логический порядок</dt><dd>FROM → WHERE → GROUP BY → HAVING → SELECT → ORDER BY → LIMIT.</dd>
+          <dt>алиас</dt><dd>Имя колонки из SELECT; появляется поздно, поэтому не виден в WHERE.</dd>
+          <dt>HAVING</dt><dd>Фильтр групп после GROUP BY; WHERE фильтрует строки до.</dd>
+          <dt>DISTINCT</dt><dd>Убрать дубли уже выбранного результата; выполняется после SELECT.</dd>
+          <dt>LIMIT</dt><dd>Отрезать строки в конце; без ORDER BY порядок не гарантирован.</dd>
+        </dl>
+      </details>
+
+
       <section>
         <h2><span class="num">01</span>Зачем это backend-разработчику</h2>
         <ul>

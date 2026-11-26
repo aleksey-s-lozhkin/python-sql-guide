@@ -46,6 +46,19 @@
         </div>
       </header>
 
+      <details class="glossary">
+        <summary>Словарь главы — если забыли термины</summary>
+        <dl>
+          <dt>datetime64</dt><dd>Тип даты-времени в pandas; после него работают <code>.dt</code> и разности.</dd>
+          <dt>.dt</dt><dd>Аксессор частей даты: <code>.dt.year</code>, <code>.dt.month</code>, <code>.dt.day</code>.</dd>
+          <dt>to_period</dt><dd>Привести дату к периоду (месяц, квартал) — удобно для группировки.</dd>
+          <dt>pivot</dt><dd>Длинная таблица → широкая: значения колонки становятся колонками.</dd>
+          <dt>melt</dt><dd>Широкая таблица → длинная: колонки становятся строками.</dd>
+          <dt>explode</dt><dd>Развернуть список в ячейке в несколько строк.</dd>
+        </dl>
+      </details>
+
+
       <section>
         <h2><span class="num">01</span>Зачем это backend-разработчику</h2>
         <ul>
@@ -136,7 +149,7 @@
       <section>
         <h2><span class="num">06</span>Лаборатория: запустить и увидеть</h2>
         <p>
-          Фрагменты файла <a title="Открыть файл с номерами строк" href="snippets/view.html?f=18_dates_reshape_lab.py"><code class="inl">18_dates_reshape_lab.py</code></a>.
+          Фрагменты файла из папки <code class="inl">guide/snippets</code>: <a title="Открыть файл с номерами строк" href="snippets/view.html?f=18_dates_reshape_lab.py"><code class="inl">18_dates_reshape_lab.py</code></a>.
         </p>
 
         <h3>Шаг 1. Строка становится датой</h3>

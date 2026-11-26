@@ -45,6 +45,17 @@
         </div>
       </header>
 
+      <details class="glossary">
+        <summary>Словарь главы — если забыли термины</summary>
+        <dl>
+          <dt>broadcasting</dt><dd>Растягивание формы меньшего массива до большего без копирования.</dd>
+          <dt>выравнивание справа налево</dt><dd>Формы сравниваются с конца: последние оси должны совпасть или быть 1.</dd>
+          <dt>newaxis</dt><dd><code>a[:, None]</code> добавляет ось, чтобы формы сошлись.</dd>
+          <dt>strides=0</dt><dd>Шаг по растянутой оси — 0 байт: значение читается многократно из одного места.</dd>
+        </dl>
+      </details>
+
+
       <section>
         <h2><span class="num">01</span>Зачем это backend-разработчику</h2>
         <ul>
@@ -78,7 +89,7 @@
           <li><b>Единица</b><span>растягивается до размера соседа</span></li>
           <li><b>Несовпадение</b><span>ValueError: нельзя</span></li>
           <li><b>Результат</b><span>по максимуму размеров</span></li>
-          <li><b>Без копий</b><span>шаг по оси 0 (strides=0)</span></li>
+          <li><b>Без копий</b><span>шаг по растянутой оси — 0 байт (в примере — ось 0)</span></li>
           <li><b>newaxis</b><span>добавить ось, чтобы формы сошлись</span></li>
           <li><b>keepdims</b><span>не потерять ось при агрегате</span></li>
         </ol>
@@ -133,7 +144,7 @@
       <section>
         <h2><span class="num">06</span>Лаборатория: запустить и увидеть</h2>
         <p>
-          Фрагменты файла <a title="Открыть файл с номерами строк" href="snippets/view.html?f=10_broadcasting_lab.py"><code class="inl">10_broadcasting_lab.py</code></a>.
+          Фрагменты файла из папки <code class="inl">guide/snippets</code>: <a title="Открыть файл с номерами строк" href="snippets/view.html?f=10_broadcasting_lab.py"><code class="inl">10_broadcasting_lab.py</code></a>.
         </p>
 
         <h3>Шаг 1. Строка прибавляется к каждой строке</h3>

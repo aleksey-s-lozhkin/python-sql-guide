@@ -46,6 +46,18 @@
         </div>
       </header>
 
+      <details class="glossary">
+        <summary>Словарь главы — если забыли термины</summary>
+        <dl>
+          <dt>окно</dt><dd>Агрегат, который не схлопывает строки: значение дописывается к каждой.</dd>
+          <dt>PARTITION BY</dt><dd>Разбиение на независимые разделы, внутри которых считается окно.</dd>
+          <dt>рамка</dt><dd>Какие строки раздела участвуют: по умолчанию от начала до текущей.</dd>
+          <dt>ROW_NUMBER / RANK</dt><dd>Номер строки / место с пропусками при равенстве.</dd>
+          <dt>LAG / LEAD</dt><dd>Предыдущая / следующая строка раздела — без self-join.</dd>
+        </dl>
+      </details>
+
+
       <section>
         <h2><span class="num">01</span>Зачем это backend-разработчику</h2>
         <ul>
@@ -134,7 +146,7 @@
 
       <section>
         <h2><span class="num">06</span>Лаборатория: запустить и увидеть</h2>
-        <p>Фрагменты файла <a title="Открыть файл с номерами строк" href="snippets/view.html?f=23_window_functions.sql"><code class="inl">23_window_functions.sql</code></a>.</p>
+        <p>Фрагменты файла из папки <code class="inl">guide/snippets</code>: <a title="Открыть файл с номерами строк" href="snippets/view.html?f=23_window_functions.sql"><code class="inl">23_window_functions.sql</code></a>.</p>
         <p>База <code class="inl">learning_shop</code>, выручка заказа — <code class="inl">quantity * price</code>.</p>
 
         <h3>Шаг 1. ROW_NUMBER, RANK и DENSE_RANK при равенстве</h3>

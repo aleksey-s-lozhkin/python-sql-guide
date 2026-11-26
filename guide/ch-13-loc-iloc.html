@@ -46,6 +46,17 @@
         </div>
       </header>
 
+      <details class="glossary">
+        <summary>Словарь главы — если забыли термины</summary>
+        <dl>
+          <dt>loc</dt><dd>Выбор по метке индекса и имени колонки; правая граница среза включается.</dd>
+          <dt>iloc</dt><dd>Выбор по номеру позиции; правая граница среза не включается.</dd>
+          <dt>at / iat</dt><dd>Доступ к одному значению по метке / по позиции, без Series.</dd>
+          <dt>дубли индекса</dt><dd>Одинаковые метки строк: loc вернёт несколько строк, а не одну.</dd>
+        </dl>
+      </details>
+
+
       <section>
         <h2><span class="num">01</span>Зачем это backend-разработчику</h2>
         <ul>
@@ -101,6 +112,12 @@
 
       <section>
         <h2><span class="num">05</span>Как это устроено на самом деле</h2>
+        <p>
+          Под капотом у DataFrame — набор колонок и объект-индекс. <code class="inl">loc</code> просит индекс
+          найти метки (для строковых меток это хеш-таблица, для <code class="inl">RangeIndex</code> — арифметика),
+          а <code class="inl">iloc</code> просто отсчитывает позиции. Поэтому при смене порядка строк метка
+          остаётся надёжной, а номер — нет.
+        </p>
 
         <div class="tbl-wrap">
           <table>
@@ -110,7 +127,7 @@
               <tr><td class="mono">df.iloc[1]</td><td>вторую строку по порядку</td><td>—</td></tr>
               <tr><td class="mono">df.loc["anna":"ivan"]</td><td>строки по меткам</td><td>обе включены</td></tr>
               <tr><td class="mono">df.iloc[0:2]</td><td>строки по позициям</td><td>правая не включена</td></tr>
-              <tr><td class="mono">df.loc[mask, "amount"]</td><td>колонку по маске</td><td>—</td></tr>
+              <tr><td class="mono">df.loc[mask, "amount"]</td><td>строки по маске + колонку amount</td><td>—</td></tr>
               <tr><td class="mono">df.at["ivan", "amount"]</td><td>одно значение</td><td>—</td></tr>
             </tbody>
           </table>
@@ -140,7 +157,7 @@
       <section>
         <h2><span class="num">06</span>Лаборатория: запустить и увидеть</h2>
         <p>
-          Фрагменты файла <a title="Открыть файл с номерами строк" href="snippets/view.html?f=13_loc_iloc_lab.py"><code class="inl">13_loc_iloc_lab.py</code></a>.
+          Фрагменты файла из папки <code class="inl">guide/snippets</code>: <a title="Открыть файл с номерами строк" href="snippets/view.html?f=13_loc_iloc_lab.py"><code class="inl">13_loc_iloc_lab.py</code></a>.
         </p>
 
         <h3>Шаг 1. loc и iloc на одной таблице</h3>
@@ -248,7 +265,7 @@ olga     500  Москва</div>
           <div class="bar"><span class="file">мост в SQL</span><span class="lang">sql</span><button class="copy">копировать</button></div>
           <pre data-lang="sql">SELECT amount FROM users WHERE id = 42;          -- что-то вроде df.loc[42, "amount"]
 SELECT * FROM users WHERE amount &gt; 600;           -- df.loc[df["amount"] &gt; 600]
-SELECT * FROM users ORDER BY amount DESC LIMIT 2; -- df.sort_values("amount").iloc[:2]</pre>
+SELECT * FROM users ORDER BY amount DESC LIMIT 2; -- df.sort_values("amount", ascending=False).iloc[:2]</pre>
         </div>
 
         <h3>Маска — это WHERE</h3>
@@ -256,7 +273,7 @@ SELECT * FROM users ORDER BY amount DESC LIMIT 2; -- df.sort_values("amount").il
           <div class="bar"><span class="file">мост в pandas</span><span class="lang">python</span><button class="copy">копировать</button></div>
           <pre data-lang="python">df.loc[df["city"] == "Москва"]            # WHERE city = 'Москва'
 df.loc[df["amount"] &gt; 600, ["city"]]      # SELECT city WHERE amount &gt; 600
-df.sort_values("amount").iloc[:2]         # ORDER BY amount LIMIT 2</pre>
+df.sort_values("amount", ascending=False).iloc[:2]  # ORDER BY amount DESC LIMIT 2</pre>
         </div>
         <p>
           <code class="inl">iloc</code> с позициями — самый близкий родственник <code class="inl">LIMIT/OFFSET</code>:
@@ -373,6 +390,13 @@ df.sort_values("amount").iloc[:2]         # ORDER BY amount LIMIT 2</pre>
             <summary>Показать решение</summary>
             <div class="a">
               <div class="code" style="margin-top:0">
+                <div class="bar"><span class="file">данные</span><span class="lang">python</span><button class="copy">копировать</button></div>
+                <pre data-lang="python">df = pd.DataFrame(
+    {"amount": [1200, 850, 500], "city": ["Москва", "Казань", "Москва"]},
+    index=["anna", "ivan", "olga"],
+)</pre>
+              </div>
+              <div class="code">
                 <div class="bar"><span class="file">решение</span><span class="lang">python</span><button class="copy">копировать</button></div>
                 <pre data-lang="python">df.loc["ivan", "amount"]
 df.iloc[1, 0]</pre>

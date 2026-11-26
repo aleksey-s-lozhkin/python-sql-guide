@@ -45,6 +45,19 @@
         </div>
       </header>
 
+      <details class="glossary">
+        <summary>Словарь главы — если забыли термины</summary>
+        <dl>
+          <dt>NaN</dt><dd>Float-значение «не число», стандартный пропуск в числовых колонках.</dd>
+          <dt>pd.NA</dt><dd>Единый пропуск для nullable-типов: <code>Int64</code>, <code>boolean</code>, <code>string</code>.</dd>
+          <dt>nullable-тип</dt><dd>Тип, который хранит и значения, и пропуск: <code>Int64</code> вместо <code>int64</code>.</dd>
+          <dt>dropna</dt><dd>Удалить строки с пропусками (можно только по subset колонок).</dd>
+          <dt>fillna</dt><dd>Заполнить пропуски значением; смысл значения — на ответственности аналитика.</dd>
+          <dt>ffill / bfill</dt><dd>Протянуть последнее/следующее известное значение вперёд или назад.</dd>
+        </dl>
+      </details>
+
+
       <section>
         <h2><span class="num">01</span>Зачем это backend-разработчику</h2>
         <ul>
@@ -143,7 +156,7 @@
       <section>
         <h2><span class="num">06</span>Лаборатория: запустить и увидеть</h2>
         <p>
-          Фрагменты файла <a title="Открыть файл с номерами строк" href="snippets/view.html?f=17_missing_lab.py"><code class="inl">17_missing_lab.py</code></a>.
+          Фрагменты файла из папки <code class="inl">guide/snippets</code>: <a title="Открыть файл с номерами строк" href="snippets/view.html?f=17_missing_lab.py"><code class="inl">17_missing_lab.py</code></a>.
         </p>
 
         <h3>Шаг 1. Три вида пропусков</h3>

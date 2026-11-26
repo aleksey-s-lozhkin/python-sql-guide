@@ -46,6 +46,18 @@
         </div>
       </header>
 
+      <details class="glossary">
+        <summary>Словарь главы — если забыли термины</summary>
+        <dl>
+          <dt>ndarray</dt><dd>Массив NumPy: непрерывный буфер с формой, типом и шагами.</dd>
+          <dt>shape</dt><dd>Размеры по осям: <code>(3, 4)</code> — 3 строки, 4 столбца.</dd>
+          <dt>dtype</dt><dd>Тип элементов массива. Один тип на все ячейки.</dd>
+          <dt>strides</dt><dd>Сколько байт шагнуть, чтобы перейти к следующему элементу оси.</dd>
+          <dt>векторизация</dt><dd>Операция применяется ко всем элементам без цикла в Python.</dd>
+        </dl>
+      </details>
+
+
       <section>
         <h2><span class="num">01</span>Зачем это backend-разработчику</h2>
         <p>
@@ -128,7 +140,7 @@
               <tr><td class="mono">size</td><td>всего элементов</td><td class="mono">5 · 12</td></tr>
               <tr><td class="mono">nbytes</td><td>байт под данные</td><td class="mono">40 · 96</td></tr>
               <tr><td class="mono">itemsize</td><td>байт на элемент</td><td class="mono">8</td></tr>
-              <tr><td class="mono">strides</td><td>байт на шаг по оси</td><td class="mono">(24, 8)</td></tr>
+              <tr><td class="mono">strides</td><td>байт на шаг по оси</td><td class="mono">(32, 8)</td></tr>
             </tbody>
           </table>
         </div>
@@ -151,7 +163,7 @@
       <section>
         <h2><span class="num">06</span>Лаборатория: запустить и увидеть</h2>
         <p>
-          Фрагменты файла <a title="Открыть файл с номерами строк" href="snippets/view.html?f=07_ndarray_lab.py"><code class="inl">07_ndarray_lab.py</code></a>.
+          Фрагменты файла из папки <code class="inl">guide/snippets</code>: <a title="Открыть файл с номерами строк" href="snippets/view.html?f=07_ndarray_lab.py"><code class="inl">07_ndarray_lab.py</code></a>.
           Время у вас будет другим — порядок величин тот же.
         </p>
 
@@ -240,7 +252,7 @@ print((tiny + 1)[0])</pre>
           <pre data-lang="python">x = np.arange(1, 1.3, 0.1)
 print(len(x), repr(x[-1]), x[-1] == 1.3)
 print(np.linspace(1, 1.3, 4))</pre>
-          <div class="out">4 1.3000000000000003 False
+          <div class="out">4 np.float64(1.3000000000000003) False
 [1.  1.1 1.2 1.3]</div>
         </div>
         <p>
@@ -276,7 +288,7 @@ df = pd.DataFrame({"age": [22, 31, 25]})
 df["age"].values  # тоже ndarray</pre>
         </div>
         <p>
-          Поэтому pandas-операции быстрые: под каждая колонка — массив NumPy. И поэтому ошибки dtype в pandas
+          Поэтому pandas-операции быстрые: под каждой колонкой — массив NumPy. И поэтому ошибки dtype в pandas
           выглядят так же, как в NumPy: <code class="inl">object</code> вместо числа — это медленно.
         </p>
 

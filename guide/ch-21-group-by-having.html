@@ -46,6 +46,18 @@
         </div>
       </header>
 
+      <details class="glossary">
+        <summary>Словарь главы — если забыли термины</summary>
+        <dl>
+          <dt>GROUP BY</dt><dd>Разложить строки по ключу и посчитать агрегаты в каждой группе.</dd>
+          <dt>агрегат</dt><dd>COUNT, SUM, AVG, MIN/MAX — сворачивают группу в одно значение.</dd>
+          <dt>HAVING</dt><dd>Фильтр групп по агрегату; WHERE для строк выполняется раньше.</dd>
+          <dt>ключ группировки</dt><dd>Колонка(и), по значениям которых собираются группы.</dd>
+          <dt>NULL-группа</dt><dd>В PostgreSQL строки с NULL в ключе образуют отдельную группу.</dd>
+        </dl>
+      </details>
+
+
       <section>
         <h2><span class="num">01</span>Зачем это backend-разработчику</h2>
         <ul>
@@ -137,7 +149,7 @@
 
       <section>
         <h2><span class="num">06</span>Лаборатория: запустить и увидеть</h2>
-        <p>Фрагменты файла <a title="Открыть файл с номерами строк" href="snippets/view.html?f=21_group_by_having.sql"><code class="inl">21_group_by_having.sql</code></a>.</p>
+        <p>Фрагменты файла из папки <code class="inl">guide/snippets</code>: <a title="Открыть файл с номерами строк" href="snippets/view.html?f=21_group_by_having.sql"><code class="inl">21_group_by_having.sql</code></a>.</p>
         <p>
           База <code class="inl">learning_shop</code>. Выручка заказа — <code class="inl">quantity * price</code>,
           поэтому везде соединение заказов с товарами.

@@ -53,9 +53,9 @@
   </div>
 </header>
 <main>
-  <div id="content"></div>
-  <p class="hint" id="hint" hidden>Это полный файл лаборатории: его можно запустить локально
+  <p class="hint" id="hint">Полный файл лаборатории. Его можно запустить локально
     (<code>python3 файл.py</code> или <code>psql -f файл.sql</code>) и сверить вывод с главой.</p>
+  <div id="content"></div>
 </main>
 <script>
 (function () {
@@ -112,7 +112,6 @@
       });
       frame.appendChild(code);
       wrap.appendChild(frame);
-      document.getElementById("hint").hidden = false;
 
       copy.addEventListener("click", async () => {
         try {

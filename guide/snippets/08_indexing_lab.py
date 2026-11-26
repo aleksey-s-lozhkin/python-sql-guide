@@ -53,7 +53,7 @@ base = np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]])
 view = base[:, 1:3]
 fancy = base[[0, 2]]
 print("   view.base is base  →", view.base is base)
-print("   fancy.base is base →", fancy.base is None)
+print("   fancy.base is None →", fancy.base is None)
 print("   view.flags.owndata  :", view.flags.owndata)
 print("   fancy.flags.owndata :", fancy.flags.owndata)
 

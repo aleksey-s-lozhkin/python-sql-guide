@@ -26,7 +26,7 @@
         <div class="eyebrow">
           <span class="part">Часть I · Фундамент Python</span>
           <span class="dot"></span>
-          <span>Неделя 1 · день 1</span>
+          <span>Неделя 1 · день 2</span>
           <span class="dot"></span>
           <span>готово</span>
         </div>
@@ -45,6 +45,19 @@
           <span class="chip">📚 <b>Tutorial 5.1–5.3</b></span>
         </div>
       </header>
+
+      <details class="glossary">
+        <summary>Словарь главы — если забыли термины</summary>
+        <dl>
+          <dt>индекс</dt><dd>Номер элемента с нуля: <code>rows[0]</code>. Доступ по индексу — O(1).</dd>
+          <dt>срез</dt><dd>Часть последовательности: <code>rows[1:3]</code>. У list создаёт новый список.</dd>
+          <dt>алиасинг</dt><dd>Два имени одного объекта. Правка через одно видна через другое.</dd>
+          <dt>неглубокая копия</dt><dd>Копируется верхний уровень, вложенные объекты остаются общими.</dd>
+          <dt>неизменяемость</dt><dd>Объект нельзя поменять после создания: так устроен tuple.</dd>
+          <dt>hashable</dt><dd>Объект с хешем и сравнением — может быть ключом. Tuple hashable, если все элементы тоже.</dd>
+        </dl>
+      </details>
+
 
       <!-- ══════════════════ 1. Зачем ══════════════════ -->
       <section>
@@ -181,7 +194,7 @@
       <section>
         <h2><span class="num">06</span>Лаборатория: запустить и увидеть</h2>
         <p>
-          Фрагменты файла <a title="Открыть файл с номерами строк" href="snippets/view.html?f=03_list_tuple_lab.py"><code class="inl">03_list_tuple_lab.py</code></a>.
+          Фрагменты файла из папки <code class="inl">guide/snippets</code>: <a title="Открыть файл с номерами строк" href="snippets/view.html?f=03_list_tuple_lab.py"><code class="inl">03_list_tuple_lab.py</code></a>.
           Вывод настоящий, получен на Python 3.12; время и id у вас будут другими.
         </p>
 
@@ -262,20 +275,28 @@ TypeError: unhashable type: 'list'</div>
         <h3>Шаг 5. append и insert(0): разница в порядке</h3>
         <div class="code">
           <div class="bar"><span class="file">03_list_tuple_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
-          <pre data-lang="python">n = 100_000
+          <pre data-lang="python">import time
+
+n = 100_000
+
+t0 = time.perf_counter()
 tail = []
 for i in range(n):
     tail.append(i)         # прицепить в конец
+t1 = time.perf_counter()
 
 head = []
 for i in range(n):
-    head.insert(0, i)      # вставить в начало: сдвиг всего состава</pre>
-          <div class="out">append:        2.0 ms
-insert(0):   662.4 ms
-разница ≈ 330x</div>
+    head.insert(0, i)      # вставить в начало: сдвиг всего состава
+t2 = time.perf_counter()
+
+print(f"append:    {(t1 - t0) * 1000:6.1f} ms")
+print(f"insert(0): {(t2 - t1) * 1000:6.1f} ms")</pre>
+          <div class="out">append:       1.8 ms
+insert(0):  673.8 ms</div>
         </div>
         <p>
-          Оба цикла делают одно и то же «по смыслу» — складывают числа в список. Разница в 330 раз возникает
+          Оба цикла делают одно и то же «по смыслу» — складывают числа в список. Разница в сотни раз возникает
           только из-за места вставки. Если нужна очередь с быстрым добавлением в начало — <code class="inl">deque</code>.
         </p>
 
@@ -290,8 +311,9 @@ print(sorted(nums))       # [1, 2, 3] — новый список</pre>
 [1, 2, 3]</div>
         </div>
         <p>
-          Сортировка стабильная: элементы с равным ключом сохраняют относительный порядок. Это пригодится
-          в pandas (<code class="inl">sort_values</code>) и SQL (<code class="inl">ORDER BY</code> по нескольким полям).
+          Сортировка стабильная: элементы с равным ключом сохраняют относительный порядок. В pandas это
+          <code class="inl">sort_values</code> с несколькими колонками. В SQL стабильность не гарантирована:
+          порядок равных строк не определён, поэтому второй ключ задают явно.
         </p>
 
         <h3>Шаг 7. += — это не всегда «прибавить»</h3>
