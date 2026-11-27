@@ -1,5 +1,5 @@
 // Сгенерировано tools/gen_sw.cjs — не править руками.
-const CACHE = "assoc-guide-v61430a9b";
+const CACHE = "assoc-guide-veb5a70c3";
 const PRECACHE = [
   "./appendix-snippets.html",
   "./appendix-types.html",
@@ -76,8 +76,10 @@ const PRECACHE = [
   "./ref-defaultdict.html",
   "./ref-deque.html",
   "./ref-dict.html",
+  "./ref-frozenset.html",
   "./ref-list.html",
   "./ref-set.html",
+  "./ref-str.html",
   "./ref-tuple.html",
   "./snippets/02_dict_lab.py",
   "./snippets/03_list_tuple_lab.py",
@@ -111,8 +113,10 @@ const PRECACHE = [
   "./snippets/ref_defaultdict_lab.py",
   "./snippets/ref_deque_lab.py",
   "./snippets/ref_dict_lab.py",
+  "./snippets/ref_frozenset_lab.py",
   "./snippets/ref_list_lab.py",
   "./snippets/ref_set_lab.py",
+  "./snippets/ref_str_lab.py",
   "./snippets/ref_tuple_lab.py",
   "./snippets/view.html"
 ];

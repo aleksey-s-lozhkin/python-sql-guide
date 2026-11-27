@@ -38,10 +38,12 @@ window.BOOK = {
   // ── Справочник по типам данных (вне 8-недельной программы) ──
   reference: [
     { slug: "appendix-types", file: "appendix-types.html", title: "Справочник по типам данных", n: "◆", hub: true },
+    { slug: "ref-str", file: "ref-str.html", title: "str: бусы из символов", n: "S" },
     { slug: "ref-list", file: "ref-list.html", title: "list: поезд с вагонами", n: "L" },
     { slug: "ref-tuple", file: "ref-tuple.html", title: "tuple: опечатанный контейнер", n: "T" },
     { slug: "ref-dict", file: "ref-dict.html", title: "dict: шкаф с номерками", n: "D" },
     { slug: "ref-set", file: "ref-set.html", title: "set: фейс-контроль", n: "S" },
+    { slug: "ref-frozenset", file: "ref-frozenset.html", title: "frozenset: заламинированный список", n: "F" },
     { slug: "ref-counter", file: "ref-counter.html", title: "Counter: счётчик частот", n: "C" },
     { slug: "ref-defaultdict", file: "ref-defaultdict.html", title: "defaultdict: блокнот с группами", n: "d" },
     { slug: "ref-deque", file: "ref-deque.html", title: "deque: очередь с двумя дверями", n: "Q" }

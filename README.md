@@ -24,7 +24,7 @@ open guide/index.html
 | III. pandas | 12–18 | **готово полностью** |
 | IV. SQL | 19–24 | **готово полностью** |
 | V. Интеграция | 25–26 | **готово** |
-| Справочник по типам данных | хаб + 7 страниц (list, tuple, dict, set, Counter, defaultdict, deque) | **готово** |
+| Справочник по типам данных | хаб + 9 страниц (str, list, tuple, dict, set, frozenset, Counter, defaultdict, deque) | **готово** |
 
 Заготовка — страница с планом главы и рабочей навигацией: оглавление и «мостики» работают
 как карта курса, а не как битые ссылки.
@@ -52,7 +52,7 @@ open http://localhost:8080
 ## Телефон и офлайн
 
 1. Опубликуйте книгу на GitHub Pages (ниже) — нужен `https`, иначе браузер не включит офлайн-кэш.
-2. Откройте ссылку на телефоне и полистайте 2–3 страницы: service worker скачает все 114 файлов.
+2. Откройте ссылку на телефоне и полистайте 2–3 страницы: service worker скачает все 118 файлов.
 3. Safari: «Поделиться → На экран «Домой»»; Chrome: меню → «Установить приложение».
 4. Дальше книга открывается без сети. Прогресс чтения и размер текста (А−/А+) запоминаются.
 
@@ -136,11 +136,11 @@ npx puppeteer browsers install chrome
 Из корня проекта:
 
 ```
-node tools/check-links.cjs       # все 727 ссылок и 41 страница на месте
-node tools/pwa-check.cjs         # SW, кэш из 114 файлов, открытие главы офлайн
+node tools/check-links.cjs       # все 803 ссылки и 43 страницы на месте
+node tools/pwa-check.cjs         # SW, кэш из 118 файлов, открытие главы офлайн
 node tools/reader-check.cjs      # «продолжить чтение», размер текста, мобильное меню
 node tools/verify.cjs light      # скриншоты: десктоп, планшет, мобильный, тёмная тема
-node tools/gen_sw.cjs            # пересобрать sw.js после правок контента (114 файлов)
+node tools/gen_sw.cjs            # пересобрать sw.js после правок контента (118 файлов)
 tools/publish.sh                 # опубликовать guide/ в ветку gh-pages вручную
 node tools/render.cjs guide/assets/maps/*.svg
 python3 guide/snippets/02_dict_lab.py

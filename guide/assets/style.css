@@ -874,3 +874,11 @@ td b { font-weight: 700; }
 .glossary dl { margin: 10px 0 2px; display: grid; gap: 9px; }
 .glossary dt { font-family: var(--mono); font-size: 12.5px; font-weight: 600; }
 .glossary dd { margin: 2px 0 0; color: var(--ink-2); font-size: .94rem; }
+
+/* ── мобильные: длинный инлайн-код не растягивает страницу ─── */
+@media (max-width: 560px) {
+  code.inl { white-space: normal; overflow-wrap: anywhere; }
+  .errors { grid-template-columns: minmax(0, 1fr); }
+  .bridge { flex-wrap: wrap; gap: 6px 12px; }
+  .bridge .what { flex: 1 1 100%; }
+}

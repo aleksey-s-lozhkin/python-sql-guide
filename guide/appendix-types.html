@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Справочник по типам данных — Ассоциативный гайд</title>
-<meta name="description" content="Справочник по семи коллекциям Python из главы 01: карта выбора, сводная таблица сложностей, конвертации и ссылки на страницы типов.">
+<meta name="description" content="Справочник по девяти типам Python: str, list, tuple, dict, set, frozenset, Counter, defaultdict, deque — карта выбора, сложности, конвертации и ссылки на страницы типов.">
 <link rel="stylesheet" href="assets/style.css">
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#fbf8f2" media="(prefers-color-scheme: light)">
@@ -31,18 +31,18 @@
           <span>готово</span>
         </div>
         <h1>Справочник по типам данных
-          <span class="sub">Семь структур из главы 01: описание, методы, цена и примеры</span>
+          <span class="sub">Девять типов: str и frozenset плюс семь структур из главы 01</span>
         </h1>
         <p class="lead">
           Главы объясняют, <em>почему</em> структура работает. Справочник отвечает на другой вопрос:
           <em>как</em> ею пользоваться — какой метод вызвать, что он вернёт, сколько это стоит и где
-          ловушка. Одна страница на тип, в том же порядке, что карта коллекций.
+          ловушка. Одна страница на тип: от строки до очереди.
         </p>
         <div class="meta">
           <span class="chip">⏱ <b>5 минут</b> на выбор</span>
           <span class="chip">🎯 уровень <b>1–2</b></span>
           <span class="chip">🐍 Python <b>3.12</b></span>
-          <span class="chip">📚 <b>глава 01</b></span>
+          <span class="chip">📚 <b>глава 01 · docs</b></span>
         </div>
       </header>
 
@@ -84,10 +84,12 @@
           <table>
             <thead><tr><th>Вопрос о задаче</th><th>Структура</th><th>Где разобрано</th></tr></thead>
             <tbody>
-              <tr><td>Данные — пары «ключ → значение»?</td><td><code class="inl">dict</code></td><td><a href="ch-02-dict.html">глава 02</a> · <a href="ref-dict.html">справочник</a></td></tr>
-              <tr><td>Нужны только уникальные значения?</td><td><code class="inl">set</code></td><td><a href="ch-04-set.html">глава 04</a> · <a href="ref-set.html">справочник</a></td></tr>
+              <tr><td>Нужен текст: нормализация, поиск, разбор?</td><td><code class="inl">str</code></td><td><a href="ref-str.html">справочник</a> · docs: str</td></tr>
               <tr><td>Нужен порядок, индексы и срезы?</td><td><code class="inl">list</code></td><td><a href="ch-03-list-tuple.html">глава 03</a> · <a href="ref-list.html">справочник</a></td></tr>
               <tr><td>Последовательность не должна меняться?</td><td><code class="inl">tuple</code></td><td><a href="ch-03-list-tuple.html">глава 03</a> · <a href="ref-tuple.html">справочник</a></td></tr>
+              <tr><td>Данные — пары «ключ → значение»?</td><td><code class="inl">dict</code></td><td><a href="ch-02-dict.html">глава 02</a> · <a href="ref-dict.html">справочник</a></td></tr>
+              <tr><td>Нужны только уникальные значения?</td><td><code class="inl">set</code></td><td><a href="ch-04-set.html">глава 04</a> · <a href="ref-set.html">справочник</a></td></tr>
+              <tr><td>Множество должно быть ключом словаря?</td><td><code class="inl">frozenset</code></td><td><a href="ch-04-set.html">глава 04</a> · <a href="ref-frozenset.html">справочник</a></td></tr>
               <tr><td>Нужны частоты?</td><td><code class="inl">Counter</code></td><td><a href="ch-06-collections.html">глава 06</a> · <a href="ref-counter.html">справочник</a></td></tr>
               <tr><td>Нужны группы по ключу?</td><td><code class="inl">defaultdict</code></td><td><a href="ch-06-collections.html">глава 06</a> · <a href="ref-defaultdict.html">справочник</a></td></tr>
               <tr><td>Важны оба конца очереди?</td><td><code class="inl">deque</code></td><td><a href="ch-06-collections.html">глава 06</a> · <a href="ref-deque.html">справочник</a></td></tr>
@@ -105,6 +107,8 @@
         <p>
           Средние оценки для CPython: <code class="inl">O(1)</code> — не зависит от размера,
           <code class="inl">O(n)</code> — растёт линейно. «—» значит «не применимо к этой структуре».
+          Сначала семь структур из главы 01, ниже — <code class="inl">str</code> и
+          <code class="inl">frozenset</code>.
         </p>
         <div class="tbl-wrap">
           <table>
@@ -121,6 +125,26 @@
             </tbody>
           </table>
         </div>
+        <h3>str и frozenset</h3>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Операция</th><th>str</th><th>frozenset</th></tr></thead>
+            <tbody>
+              <tr><td>Доступ по индексу</td><td class="mono">O(1)</td><td>—</td></tr>
+              <tr><td>Срез</td><td class="mono">O(k)</td><td>—</td></tr>
+              <tr><td>Поиск вхождения</td><td class="mono">O(n)</td><td class="mono">O(1)*</td></tr>
+              <tr><td>«Изменение»</td><td class="mono">O(n)</td><td class="mono">O(n)</td></tr>
+              <tr><td>Итерация</td><td class="mono">O(n)</td><td class="mono">O(n)</td></tr>
+              <tr><td>Hashable</td><td>да</td><td>да</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="small">
+          У <code class="inl">str</code> любая «правка» — <code class="inl">upper</code>,
+          <code class="inl">replace</code>, конкатенация — создаёт новую строку за O(n).
+          У <code class="inl">frozenset</code> операции над наборами стоят столько же, сколько у
+          <code class="inl">set</code>, но изменить его нельзя: любое «изменение» — новый объект.
+        </p>
         <p class="small">
           * в среднем: при плохом распределении хешей возможно O(n), но это исключение.
           Точные замеры зависят от машины — поэтому в главах цена проверяется лабораторией, а не берётся
@@ -132,8 +156,9 @@
       <section>
         <h2><span class="num">04</span>Конвертации между типами</h2>
         <p>
-          Чаще всего меняют тип, чтобы воспользоваться чужим методом: список → множество для дедупликации,
-          множество → список для вывода, словарь → список пар для сортировки.
+          Чаще всего меняют тип, чтобы воспользоваться чужим методом: строка → список для разбора,
+          список → множество для дедупликации, множество → список для вывода, словарь → список пар
+          для сортировки.
         </p>
         <div class="code">
           <div class="bar"><span class="file">конвертации</span><span class="lang">python</span><button class="copy">копировать</button></div>
@@ -144,13 +169,20 @@ print(set(nums))
 
 print(list({"a": 1, "b": 2}.items()))  # dict → список пар
 print(dict(zip(["a", "b"], [1, 2])))   # две последовательности → dict
-print(tuple([1, 2]))                   # list → tuple</pre>
+print(tuple([1, 2]))                   # list → tuple
+
+print("a,b,c".split(","))              # str → список
+print(",".join(["a", "b", "c"]))       # список → str
+print(frozenset([3, 1, 3]))            # set → frozenset</pre>
           <div class="out">[1, 2, 3]
 [3, 1, 2]
 {1, 2, 3}
 [('a', 1), ('b', 2)]
 {'a': 1, 'b': 2}
-(1, 2)</div>
+(1, 2)
+['a', 'b', 'c']
+a,b,c
+frozenset({1, 3})</div>
         </div>
         <div class="note">
           <span class="t">Правило</span>
@@ -162,19 +194,22 @@ print(tuple([1, 2]))                   # list → tuple</pre>
 
       <!-- ══════════════════ 05. Страницы типов ══════════════════ -->
       <section>
-        <h2><span class="num">05</span>Семь страниц</h2>
+        <h2><span class="num">05</span>Девять страниц</h2>
         <div class="bridges">
-          <a class="bridge" href="ref-list.html"><span class="to">01 · list</span><span>Поезд с вагонами</span><span class="what">→ методы, срезы, копия и алиас, стек</span></a>
-          <a class="bridge" href="ref-tuple.html"><span class="to">02 · tuple</span><span>Опечатанный контейнер</span><span class="what">→ неизменяемость, hashable, распаковка</span></a>
-          <a class="bridge" href="ref-dict.html"><span class="to">03 · dict</span><span>Шкаф с номерками</span><span class="what">→ get, setdefault, views, порядок вставки</span></a>
-          <a class="bridge" href="ref-set.html"><span class="to">04 · set</span><span>Фейс-контроль</span><span class="what">→ уникальность, операции, frozenset</span></a>
-          <a class="bridge" href="ref-counter.html"><span class="to">05 · Counter</span><span>Счётчик частот</span><span class="what">→ most_common, элементы, арифметика</span></a>
-          <a class="bridge" href="ref-defaultdict.html"><span class="to">06 · defaultdict</span><span>Блокнот с группами</span><span class="what">→ фабрика, группировка, вложенность</span></a>
-          <a class="bridge" href="ref-deque.html"><span class="to">07 · deque</span><span>Очередь с двумя дверями</span><span class="what">→ оба конца O(1), maxlen, окно</span></a>
+          <a class="bridge" href="ref-str.html"><span class="to">01 · str</span><span>Бусы из символов</span><span class="what">→ методы, нормализация, разбор строк</span></a>
+          <a class="bridge" href="ref-list.html"><span class="to">02 · list</span><span>Поезд с вагонами</span><span class="what">→ методы, срезы, копия и алиас, стек</span></a>
+          <a class="bridge" href="ref-tuple.html"><span class="to">03 · tuple</span><span>Опечатанный контейнер</span><span class="what">→ неизменяемость, hashable, распаковка</span></a>
+          <a class="bridge" href="ref-dict.html"><span class="to">04 · dict</span><span>Шкаф с номерками</span><span class="what">→ get, setdefault, views, порядок вставки</span></a>
+          <a class="bridge" href="ref-set.html"><span class="to">05 · set</span><span>Фейс-контроль</span><span class="what">→ уникальность, операции, frozenset</span></a>
+          <a class="bridge" href="ref-frozenset.html"><span class="to">06 · frozenset</span><span>Заламинированный список</span><span class="what">→ неизменяемое множество как ключ</span></a>
+          <a class="bridge" href="ref-counter.html"><span class="to">07 · Counter</span><span>Счётчик частот</span><span class="what">→ most_common, элементы, арифметика</span></a>
+          <a class="bridge" href="ref-defaultdict.html"><span class="to">08 · defaultdict</span><span>Блокнот с группами</span><span class="what">→ фабрика, группировка, вложенность</span></a>
+          <a class="bridge" href="ref-deque.html"><span class="to">09 · deque</span><span>Очередь с двумя дверями</span><span class="what">→ оба конца O(1), maxlen, окно</span></a>
         </div>
         <p class="small">
-          Порядок совпадает с главой 01: сначала последовательности, потом хеш-структуры, потом
-          специнструменты. Каждая страница заканчивается мостиком в pandas и SQL.
+          Сначала строка, затем семь структур из главы 01, а <code class="inl">frozenset</code> идёт
+          рядом с <code class="inl">set</code>. Порядок — как в карте выбора: текст → последовательности →
+          хеш-структуры → специнструменты. Каждая страница заканчивается мостиком в pandas и SQL.
         </p>
       </section>
 
@@ -182,6 +217,8 @@ print(tuple([1, 2]))                   # list → tuple</pre>
       <section>
         <h2><span class="num">06</span>Куда дальше</h2>
         <div class="bridges">
+          <a class="bridge" href="ref-str.html"><span class="to">Справочник</span><span>str: бусы из символов</span><span class="what">→ методы строк, нормализация и разбор</span></a>
+          <a class="bridge" href="ref-frozenset.html"><span class="to">Справочник</span><span>frozenset: заламинированный список</span><span class="what">→ множество как ключ и элемент set</span></a>
           <a class="bridge" href="ch-01-python-collections.html"><span class="to">Глава 01</span><span>Карта коллекций: что выбрать и почему</span><span class="what">→ пять вопросов и полная схема выбора</span></a>
           <a class="bridge" href="ch-02-dict.html"><span class="to">Глава 02</span><span>dict: шкаф с номерками</span><span class="what">→ хеш, коллизии и пробирование</span></a>
           <a class="bridge" href="ch-03-list-tuple.html"><span class="to">Глава 03</span><span>list и tuple</span><span class="what">→ изменяемость, копии и view</span></a>
