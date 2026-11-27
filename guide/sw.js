@@ -1,6 +1,7 @@
 // Сгенерировано tools/gen_sw.cjs — не править руками.
-const CACHE = "assoc-guide-v617548d9";
+const CACHE = "assoc-guide-vb17f065e";
 const PRECACHE = [
+  "./appendix-snippets.html",
   "./assets/app.js",
   "./assets/icons/favicon.svg",
   "./assets/icons/icon-180.png",

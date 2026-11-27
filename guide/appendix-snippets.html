@@ -1,0 +1,192 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Приложение · Файлы лабораторий — Ассоциативный гайд</title>
+<meta name="description" content="Все скрипты книги в одном месте: Python-лаборатории, SQL-запросы, схема учебной базы и команды запуска.">
+<link rel="stylesheet" href="assets/style.css">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#fbf8f2" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#14131a" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="assets/icons/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="assets/icons/icon-180.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Гайд Py/SQL">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+</head>
+<body data-slug="appendix-snippets">
+<div class="app">
+  <aside class="sidebar" id="sidebar"></aside>
+  <main>
+    <div class="wrap">
+
+      <header class="chapter-head">
+        <div class="eyebrow">
+          <span class="part">Приложение</span>
+          <span class="dot"></span>
+          <span>Справочник</span>
+          <span class="dot"></span>
+          <span>готово</span>
+        </div>
+        <h1>Файлы лабораторий
+          <span class="sub">Все скрипты книги в одном месте — с командой запуска</span>
+        </h1>
+        <p class="lead">
+          В главах код показан фрагментами. Здесь — полные файлы: открыть с номерами строк, скачать
+          и запустить у себя. Каждый файл соответствует главе и воспроизводит её вывод.
+        </p>
+        <div class="meta">
+          <span class="chip">🐍 <b>Python 3.12</b></span>
+          <span class="chip">🐘 <b>PostgreSQL 14</b></span>
+          <span class="chip">📄 <b>28 файлов</b></span>
+          <span class="chip">📦 <b>numpy · pandas</b></span>
+        </div>
+      </header>
+
+      <section>
+        <h2><span class="num">01</span>Как открыть и запустить</h2>
+        <p>
+          Каждое имя файла — ссылка: она открывает просмотрщик с нумерацией строк, кнопками
+          «Скачать» и «Копировать». Запуск — из корня проекта:
+        </p>
+        <div class="code">
+          <div class="bar"><span class="file">терминал</span><span class="lang">shell</span><button class="copy">копировать</button></div>
+          <pre># Python-лаборатория
+python3 guide/snippets/02_dict_lab.py
+
+# SQL-лаборатория (нужна база learning_shop)
+bash tools/setup_db.sh
+psql -d learning_shop -f guide/snippets/20_select_where.sql</pre>
+        </div>
+        <p class="small">
+          Если книга открыта файлом, просмотрщик не сможет прочитать соседний файл — браузер блокирует
+          такие запросы. Запустите локальный сервер (<code class="inl">start.command</code>) или скачайте
+          файл из просмотрщика.
+        </p>
+      </section>
+
+      <section>
+        <h2><span class="num">02</span>Python · главы 02–06</h2>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Глава</th><th>Файл</th><th>Что внутри</th></tr></thead>
+            <tbody>
+              <tr><td>02 · dict</td><td><a href="snippets/view.html?f=02_dict_lab.py"><code class="inl">02_dict_lab.py</code></a></td><td>ключи и hash, коллизия, get/setdefault, скорость списка и словаря</td></tr>
+              <tr><td>03 · list и tuple</td><td><a href="snippets/view.html?f=03_list_tuple_lab.py"><code class="inl">03_list_tuple_lab.py</code></a></td><td>копия и view, tuple как ключ, sort, append против insert(0)</td></tr>
+              <tr><td>04 · set</td><td><a href="snippets/view.html?f=04_set_lab.py"><code class="inl">04_set_lab.py</code></a></td><td>дедупликация, операции над множествами, frozenset, скорость</td></tr>
+              <tr><td>05 · comprehensions</td><td><a href="snippets/view.html?f=05_comprehensions_lab.py"><code class="inl">05_comprehensions_lab.py</code></a></td><td>три записи одной идеи, память, ленивость, исчерпание генератора</td></tr>
+              <tr><td>06 · collections</td><td><a href="snippets/view.html?f=06_collections_lab.py"><code class="inl">06_collections_lab.py</code></a></td><td>Counter, defaultdict, deque, maxlen и арифметика Counter</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section>
+        <h2><span class="num">03</span>NumPy · главы 07–11</h2>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Глава</th><th>Файл</th><th>Что внутри</th></tr></thead>
+            <tbody>
+              <tr><td>07 · ndarray</td><td><a href="snippets/view.html?f=07_ndarray_lab.py"><code class="inl">07_ndarray_lab.py</code></a></td><td>shape, dtype, strides, память, скорость векторизации</td></tr>
+              <tr><td>08 · индексация</td><td><a href="snippets/view.html?f=08_indexing_lab.py"><code class="inl">08_indexing_lab.py</code></a></td><td>срезы, булевы маски, fancy indexing, np.where</td></tr>
+              <tr><td>09 · axis</td><td><a href="snippets/view.html?f=09_axis_lab.py"><code class="inl">09_axis_lab.py</code></a></td><td>свёртки по осям, keepdims, argmax, трёхмерный массив</td></tr>
+              <tr><td>10 · broadcasting</td><td><a href="snippets/view.html?f=10_broadcasting_lab.py"><code class="inl">10_broadcasting_lab.py</code></a></td><td>выравнивание форм, newaxis, несовместимые формы</td></tr>
+              <tr><td>11 · view и copy</td><td><a href="snippets/view.html?f=11_views_copies_lab.py"><code class="inl">11_views_copies_lab.py</code></a></td><td>base, shares_memory, reshape и транспонирование, CoW</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section>
+        <h2><span class="num">04</span>pandas · главы 12–18</h2>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Глава</th><th>Файл</th><th>Что внутри</th></tr></thead>
+            <tbody>
+              <tr><td>12 · Series/DataFrame</td><td><a href="snippets/view.html?f=12_series_dataframe_lab.py"><code class="inl">12_series_dataframe_lab.py</code></a></td><td>Series и DataFrame, индекс, dtypes, чтение CSV, info</td></tr>
+              <tr><td>13 · loc/iloc</td><td><a href="snippets/view.html?f=13_loc_iloc_lab.py"><code class="inl">13_loc_iloc_lab.py</code></a></td><td>метка против позиции, срезы, at/iat, дубли индекса</td></tr>
+              <tr><td>14 · фильтрация</td><td><a href="snippets/view.html?f=14_filtering_lab.py"><code class="inl">14_filtering_lab.py</code></a></td><td>маски, isin, between, contains, isna</td></tr>
+              <tr><td>15 · groupby</td><td><a href="snippets/view.html?f=15_groupby_lab.py"><code class="inl">15_groupby_lab.py</code></a></td><td>size/sum, agg, transform, filter, сравнение с dict</td></tr>
+              <tr><td>16 · merge</td><td><a href="snippets/view.html?f=16_merge_lab.py"><code class="inl">16_merge_lab.py</code></a></td><td>типы соединений, indicator, validate, many-to-many, NaN в ключе</td></tr>
+              <tr><td>17 · пропуски</td><td><a href="snippets/view.html?f=17_missing_lab.py"><code class="inl">17_missing_lab.py</code></a></td><td>NaN/None/pd.NA, dropna, fillna, ffill/bfill, Int64</td></tr>
+              <tr><td>18 · даты и reshape</td><td><a href="snippets/view.html?f=18_dates_reshape_lab.py"><code class="inl">18_dates_reshape_lab.py</code></a></td><td>to_datetime, .dt, .str, pivot, melt, explode, pivot_table</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section>
+        <h2><span class="num">05</span>SQL · главы 19–24</h2>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Глава</th><th>Файл</th><th>Что внутри</th></tr></thead>
+            <tbody>
+              <tr><td>19 · порядок выполнения</td><td><a href="snippets/view.html?f=19_order_of_execution.sql"><code class="inl">19_order_of_execution.sql</code></a></td><td>алиасы в WHERE и ORDER BY, WHERE против HAVING, LIMIT</td></tr>
+              <tr><td>20 · SELECT и NULL</td><td><a href="snippets/view.html?f=20_select_where.sql"><code class="inl">20_select_where.sql</code></a></td><td>DISTINCT, IS NULL, три значения, IN, BETWEEN, LIKE, COALESCE</td></tr>
+              <tr><td>21 · GROUP BY</td><td><a href="snippets/view.html?f=21_group_by_having.sql"><code class="inl">21_group_by_having.sql</code></a></td><td>агрегаты, HAVING, две колонки, NULL-группа</td></tr>
+              <tr><td>22 · подзапросы и CTE</td><td><a href="snippets/view.html?f=22_subqueries_cte.sql"><code class="inl">22_subqueries_cte.sql</code></a></td><td>скалярный подзапрос, EXISTS, CTE, рекурсия</td></tr>
+              <tr><td>23 · окна</td><td><a href="snippets/view.html?f=23_window_functions.sql"><code class="inl">23_window_functions.sql</code></a></td><td>ROW_NUMBER/RANK, running, LAG, доли, top-1 на группу</td></tr>
+              <tr><td>24 · индексы и EXPLAIN</td><td><a href="snippets/view.html?f=24_indexes_explain.sql"><code class="inl">24_indexes_explain.sql</code></a></td><td>orders_big, Seq и Index Scan, функция на колонке, план join</td></tr>
+              <tr><td>схема</td><td><a href="snippets/view.html?f=learning_shop.sql"><code class="inl">learning_shop.sql</code></a></td><td>таблицы users/products/orders и данные; запуск через <code class="inl">tools/setup_db.sh</code></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section>
+        <h2><span class="num">06</span>Интеграция · главы 25–26</h2>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Глава</th><th>Файл</th><th>Что внутри</th></tr></thead>
+            <tbody>
+              <tr><td>25 · бенчмарк SQL</td><td><a href="snippets/view.html?f=25_benchmark.sql"><code class="inl">25_benchmark.sql</code></a></td><td>агрегат по 100 000 строк с <code class="inl">\timing</code></td></tr>
+              <tr><td>25 · бенчмарк pandas</td><td><a href="snippets/view.html?f=25_benchmark.py"><code class="inl">25_benchmark.py</code></a></td><td>тот же агрегат в pandas; нужен CSV-экспорт из docstring</td></tr>
+              <tr><td>26 · отчёт SQL</td><td><a href="snippets/view.html?f=26_project.sql"><code class="inl">26_project.sql</code></a></td><td>пять запросов проекта: месяцы, топ-3, доли, гости, контроль</td></tr>
+              <tr><td>26 · отчёт pandas</td><td><a href="snippets/view.html?f=26_project.py"><code class="inl">26_project.py</code></a></td><td>динамика по месяцам; нужен экспорт месячной сводки в CSV</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section>
+        <h2><span class="num">07</span>Учебная база и порядок запуска</h2>
+        <div class="code">
+          <div class="bar"><span class="file">терминал</span><span class="lang">shell</span><button class="copy">копировать</button></div>
+          <pre># 1. создать базу и загрузить схему с данными
+bash tools/setup_db.sh
+
+# 2. SQL-главы 19–23
+psql -d learning_shop -f guide/snippets/19_order_of_execution.sql
+psql -d learning_shop -f guide/snippets/20_select_where.sql
+psql -d learning_shop -f guide/snippets/21_group_by_having.sql
+psql -d learning_shop -f guide/snippets/22_subqueries_cte.sql
+psql -d learning_shop -f guide/snippets/23_window_functions.sql
+
+# 3. большая таблица для главы 24 (и её же использует глава 25)
+psql -d learning_shop -f guide/snippets/24_indexes_explain.sql
+
+# 4. проект: SQL и pandas-часть
+psql -d learning_shop -f guide/snippets/26_project.sql</pre>
+        </div>
+        <div class="note">
+          <span class="t">Замечание</span>
+          <p>SQL-файлы предполагают базу <code class="inl">learning_shop</code>. Файлы глав 19–26 можно
+          запускать по одному: каждый начинается с комментария и не меняет данные, кроме
+          <code class="inl">24_indexes_explain.sql</code>, который создаёт <code class="inl">orders_big</code>.</p>
+        </div>
+      </section>
+
+      <div class="pager">
+        <a class="prev" href="index.html?stay=1"><span class="dir">← Назад</span><span class="ttl">Обложка и оглавление</span></a>
+        <a class="next" href="ch-01-python-collections.html"><span class="dir">К главам →</span><span class="ttl">01 · Карта коллекций</span></a>
+      </div>
+
+    </div>
+  </main>
+</div>
+<script src="assets/toc.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>

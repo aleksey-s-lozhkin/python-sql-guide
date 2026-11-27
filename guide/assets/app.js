@@ -57,6 +57,9 @@
         ${parts}
         <div class="nav-part">
           <div class="t"><span>◆</span>Инструменты</div>
+          <a class="nav-ch${slug === "appendix-snippets" ? " active" : ""}" href="appendix-snippets.html">
+            <span class="n">📎</span><span>Файлы лабораторий</span>
+          </a>
           <a class="nav-ch${slug === "diagnostic" ? " active" : ""}" href="diagnostic.html">
             <span class="n">20′</span><span>Диагностика коллекций</span>
           </a>
