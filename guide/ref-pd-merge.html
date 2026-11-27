@@ -1,0 +1,663 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Справочник pandas · merge — Ассоциативный гайд</title>
+<meta name="description" content="Справочник по pandas merge: типы how, validate, indicator, суффиксы, join и concat, кардинальность и типичные ошибки соединений — с выводом pandas 3.0.1.">
+<link rel="stylesheet" href="assets/style.css">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#fbf8f2" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#14131a" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="assets/icons/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="assets/icons/icon-180.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Гайд Py/SQL">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+</head>
+<body data-slug="ref-pd-merge">
+<div class="app">
+  <aside class="sidebar" id="sidebar"></aside>
+  <main>
+    <div class="wrap">
+
+      <header class="chapter-head">
+        <div class="eyebrow">
+          <span class="part">Справочник · pandas</span>
+          <span class="dot"></span>
+          <span>страница 5 из 7</span>
+          <span class="dot"></span>
+          <span>готово</span>
+        </div>
+        <h1>merge: кардинальность важнее синтаксиса
+          <span class="sub">how, validate, indicator и суффиксы — что останется после соединения</span>
+        </h1>
+        <p class="lead">
+          <code class="inl">merge</code> легко написать и легко испортить. Синтаксис запоминается
+          за минуту, а поведение при неуникальных ключах — нет: строки не «добавляются», а
+          перемножаются. Поэтому сначала кардинальность, потом код.
+        </p>
+        <div class="meta">
+          <span class="chip">⏱ <b>12 минут</b></span>
+          <span class="chip">🎯 уровень <b>2</b></span>
+          <span class="chip">🐼 <b>pandas 3.0.1</b></span>
+          <span class="chip">📚 <b>глава 16</b></span>
+        </div>
+      </header>
+
+      <p class="small">
+        Справочник pandas: <a href="appendix-pandas.html">вся карта</a> ·
+        <a href="ref-pd-series.html">01 · Series и DataFrame</a> ·
+        <a href="ref-pd-loc.html">02 · loc/iloc</a> ·
+        <a href="ref-pd-filter.html">03 · фильтрация</a> ·
+        <a href="ref-pd-groupby.html">04 · groupby</a> · <b>05 · merge</b> ·
+        <a href="ref-pd-missing.html">06 · пропуски</a> ·
+        <a href="ref-pd-reshape.html">07 · reshape</a>
+      </p>
+
+      <div class="tldr">
+        <div class="t">Самое главное</div>
+        <ul>
+          <li><code class="inl">merge</code> соединяет строки по ключу; <code class="inl">how</code>
+              решает, что делать с несовпавшими: <code class="inl">inner</code>,
+              <code class="inl">left</code>, <code class="inl">right</code>,
+              <code class="inl">outer</code>.</li>
+          <li>Число строк определяется кардинальностью: many-to-one сохраняет строки слева,
+              many-to-many их <b>перемножает</b>. <code class="inl">validate</code> — дешёвая
+              страховка от этого.</li>
+          <li><code class="inl">indicator</code> показывает, откуда пришла строка,
+              <code class="inl">suffixes</code> разводит одноимённые колонки, а
+              <code class="inl">concat</code> — склейка без ключа.</li>
+        </ul>
+      </div>
+      <section>
+        <h2><span class="num">01</span>Что это и как устроено</h2>
+        <p>
+          <code class="inl">merge</code> — соединение двух таблиц по общему ключу. Для каждой
+          строки левой таблицы pandas ищет строки справа с тем же значением ключа и склеивает их.
+          Внутри — хеш-таблица по ключу, поэтому поиск быстрый; результат зависит только от того,
+          сколько совпадений нашлось.
+        </p>
+        <p>
+          Ключ не обязан быть уникальным. Именно поэтому главный вопрос — не «какой
+          <code class="inl">how</code>», а «сколько строк я ожидаю на выходе». Если ключ справа
+          встречается дважды, одна строка слева даст две; если дважды с обеих сторон — четыре.
+        </p>
+
+        <div class="anchor">
+          <div class="glyph">🧩</div>
+          <div>
+            <div class="t">Держите эту картинку в голове</div>
+            <p class="kick"><strong>Кардинальность важнее синтаксиса.</strong> Склейка двух списков
+            по номеру: у каждой строки слева ищется строка справа с тем же ключом. Нашлась —
+            склеили; не нашлась — зависит от <code class="inl">how</code>.</p>
+            <p>Опасность не в склейке, а в количестве: дубли ключей размножают строки, и отчёт
+            «внезапно» вырастает вдвое. Подробный разбор — в
+            <a href="ch-16-merge.html">главе 16</a>.</p>
+          </div>
+        </div>
+      </section>
+      <section>
+        <h2><span class="num">02</span>Когда брать, а когда нет</h2>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Задача</th><th>merge?</th><th>Что взять вместо</th></tr></thead>
+            <tbody>
+              <tr><td>Добавить к заказам имя и город пользователя</td><td><b>да</b></td><td>—</td></tr>
+              <tr><td>Проверить внешние ключи: заказы без пользователя</td><td><b>да</b></td><td><code class="inl">left</code> + <code class="inl">indicator</code></td></tr>
+              <tr><td>Соединить две таблицы по общему ключу</td><td><b>да</b></td><td>—</td></tr>
+              <tr><td>Склеить одинаковые таблицы «одна под другой»</td><td>нет</td><td><code class="inl">concat(axis=0)</code></td></tr>
+              <tr><td>Склеить таблицы «бок о бок» без ключа</td><td>нет</td><td><code class="inl">concat(axis=1)</code></td></tr>
+              <tr><td>Подставить одно значение из справочника</td><td>короче</td><td><code class="inl">Series.map</code></td></tr>
+              <tr><td>Сводка по категории</td><td>нет</td><td><code class="inl">groupby</code> — страница 04</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="small">
+          <code class="inl">merge</code> меняет число строк по правилам <code class="inl">how</code>,
+          а <code class="inl">concat</code> только добавляет строки или колонки. Это первая развилка.
+        </p>
+      </section>
+      <section>
+        <h2><span class="num">03</span>Как подготовить данные</h2>
+        <p>
+          Сначала определите ключ: одна колонка с обеих сторон (<code class="inl">on</code>),
+          разные имена (<code class="inl">left_on</code>/<code class="inl">right_on</code>) или
+          индекс (<code class="inl">join</code>). Затем проверьте три вещи: совпадают ли типы ключей,
+          уникален ли ключ справа (для many-to-one) и нет ли лишних колонок.
+        </p>
+        <p>
+          Кардинальность фиксируется контрактом: <code class="inl">validate="many_to_one"</code>,
+          если правая сторона — справочник. Без этого дубль в справочнике размножит заказы, и
+          заметить это можно только по форме результата.
+        </p>
+        <div class="code">
+          <div class="bar"><span class="file">ref_pd_merge_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">orders = pd.DataFrame({
+    "order_id": [1, 2, 3, 4, 5],
+    "user_id": [10, 20, 10, 40, 10],
+    "amount": [1200, 800, 500, 2100, 300],
+})
+users = pd.DataFrame({
+    "user_id": [10, 20, 30],
+    "name": ["Anna", "Ivan", "Olga"],
+    "city": ["Москва", "Казань", "Москва"],
+})
+print(orders)
+print(users)</pre>
+          <div class="out">   order_id  user_id  amount
+0         1       10    1200
+1         2       20     800
+2         3       10     500
+3         4       40    2100
+4         5       10     300
+   user_id  name    city
+0       10  Anna  Москва
+1       20  Ivan  Казань
+2       30  Olga  Москва</div>
+        </div>
+        <p class="small">
+          В заказах пять строк: у Anna три заказа (10), у Ivan один (20), один заказ с
+          <code class="inl">user_id=40</code> — «сирота». У Olga (30) заказов нет. Эти две
+          аномалии и покажут различия между <code class="inl">how</code>.
+        </p>
+      </section>
+      <section>
+        <h2><span class="num">04</span>Все параметры и операции</h2>
+        <h3>Параметры merge</h3>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Параметр</th><th>Что делает</th><th>По умолчанию</th></tr></thead>
+            <tbody>
+              <tr><td class="mono">on</td><td>имя общего ключа; список — составной ключ</td><td>—</td></tr>
+              <tr><td class="mono">left_on, right_on</td><td>разные имена ключа слева и справа</td><td>—</td></tr>
+              <tr><td class="mono">how</td><td>что делать с несовпавшими строками</td><td><code class="inl">"inner"</code></td></tr>
+              <tr><td class="mono">suffixes</td><td>суффиксы для одноимённых колонок</td><td><code class="inl">("_x", "_y")</code></td></tr>
+              <tr><td class="mono">indicator</td><td>добавляет колонку <code class="inl">_merge</code>: both, left_only, right_only</td><td><code class="inl">False</code></td></tr>
+              <tr><td class="mono">validate</td><td>проверка ожидаемой кардинальности</td><td><code class="inl">None</code></td></tr>
+              <tr><td class="mono">sort</td><td>сортировать результат по ключу</td><td><code class="inl">False</code></td></tr>
+              <tr><td class="mono">how="cross"</td><td>декартово произведение: каждая строка с каждой</td><td>—</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <h3>how: что остаётся</h3>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>how</th><th>Что остаётся</th><th>SQL-аналог</th><th>Строк в примере</th></tr></thead>
+            <tbody>
+              <tr><td class="mono">inner</td><td>только совпавшие</td><td>INNER JOIN</td><td>4</td></tr>
+              <tr><td class="mono">left</td><td>все левые + совпадения</td><td>LEFT JOIN</td><td>5</td></tr>
+              <tr><td class="mono">right</td><td>все правые + совпадения</td><td>RIGHT JOIN</td><td>5</td></tr>
+              <tr><td class="mono">outer</td><td>все с обеих сторон</td><td>FULL OUTER JOIN</td><td>6</td></tr>
+              <tr><td class="mono">cross</td><td>каждая строка левой с каждой правой</td><td>CROSS JOIN</td><td>15</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <h3>join, concat и map</h3>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Вызов</th><th>Что делает</th><th>Форма</th></tr></thead>
+            <tbody>
+              <tr><td class="mono">df.join(other, how, on=...)</td><td>merge по индексу (или по колонке через on)</td><td>DataFrame</td></tr>
+              <tr><td class="mono">concat([a, b], axis=0, ignore_index=True)</td><td>склейка строк, индекс можно пересобрать</td><td>DataFrame</td></tr>
+              <tr><td class="mono">concat([a, b], axis=1)</td><td>склейка колонок по позиции индекса</td><td>DataFrame</td></tr>
+              <tr><td class="mono">s.map(series)</td><td>подстановка значения по словарю-справочнику</td><td>Series</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="small">
+          <code class="inl">cross</code> осторожен: строк получается <b>n × m</b>. На таблицах по
+          10 000 строк это сто миллионов — обычно cross нужен только для маленьких справочников.
+        </p>
+      </section>
+      <section>
+        <h2><span class="num">05</span>Разбор по группам</h2>
+        <p>
+          Все примеры страницы собраны в файле
+          <a href="snippets/view.html?f=ref_pd_merge_lab.py"><code class="inl">ref_pd_merge_lab.py</code></a> —
+          его можно запустить и менять строки.
+        </p>
+        <h3>Четыре типа соединения</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_pd_merge_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">for how in ["inner", "left", "right", "outer"]:
+    merged = orders.merge(users, on="user_id", how=how)
+    print(f"{how:5} {len(merged)} rows")
+print(orders.merge(users, on="user_id"))</pre>
+          <div class="out">inner 4 rows
+left  5 rows
+right 5 rows
+outer 6 rows
+   order_id  user_id  amount  name    city
+0         1       10    1200  Anna  Москва
+1         2       20     800  Ivan  Казань
+2         3       10     500  Anna  Москва
+3         5       10     300  Anna  Москва</div>
+        </div>
+        <p>
+          <code class="inl">inner</code> теряет заказ с <code class="inl">user_id=40</code>,
+          <code class="inl">left</code> его сохраняет, <code class="inl">right</code> добавляет Olga
+          без заказов, <code class="inl">outer</code> — и то и другое. По умолчанию
+          <code class="inl">how="inner"</code>: пропавшие строки — самая частая неожиданность.
+        </p>
+        <h3>indicator: откуда пришла строка</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_pd_merge_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">left = orders.merge(users, on="user_id", how="left", indicator=True)
+print(left[["order_id", "user_id", "name", "_merge"]])
+print(left["_merge"].value_counts())</pre>
+          <div class="out">   order_id  user_id  name     _merge
+0         1       10  Anna       both
+1         2       20  Ivan       both
+2         3       10  Anna       both
+3         4       40   NaN  left_only
+4         5       10  Anna       both
+_merge
+both          4
+left_only     1
+right_only    0
+Name: count, dtype: int64</div>
+        </div>
+        <p>
+          <code class="inl">_merge</code> — категориальная колонка с тремя значениями:
+          <code class="inl">both</code>, <code class="inl">left_only</code>,
+          <code class="inl">right_only</code>. Поэтому в <code class="inl">value_counts</code> есть
+          <code class="inl">right_only 0</code> — значение категории существует, просто не встретилось.
+          Это готовый анти-джойн: <code class="inl">left[left["_merge"] == "left_only"]</code>.
+        </p>
+        <h3>validate: проверка кардинальности</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_pd_merge_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">try:
+    users.merge(orders, on="user_id", validate="one_to_one")
+except pd.errors.MergeError as err:
+    print("MergeError:", str(err).splitlines()[0])</pre>
+          <div class="out">MergeError: Merge keys are not unique in right dataset; not a one-to-one merge</div>
+        </div>
+        <p>
+          <code class="inl">one_to_one</code> требует уникальности с <b>обеих</b> сторон: в заказах
+          <code class="inl">user_id=10</code> встречается трижды, и соединение падает.
+          <code class="inl">validate="many_to_one"</code> разрешит дубли слева, но запретит справа —
+          это и есть контракт «заказы → справочник пользователей».
+        </p>
+        <h3>Суффиксы и разные имена ключей</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_pd_merge_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">limits = pd.DataFrame({"user_id": [10], "amount": [5000]})
+print(orders.merge(limits, on="user_id", how="left").columns.tolist())
+print(orders.merge(limits, on="user_id", how="left", suffixes=("_order", "_limit")))
+
+buyers = pd.DataFrame({"order_id": [1, 2], "buyer": [10, 20]})
+clients = pd.DataFrame({"client_id": [10, 20], "name": ["Anna", "Ivan"]})
+print(buyers.merge(clients, left_on="buyer", right_on="client_id"))</pre>
+          <div class="out">['order_id', 'user_id', 'amount_x', 'amount_y']
+   order_id  user_id  amount_order  amount_limit
+0         1       10          1200        5000.0
+1         2       20           800           NaN
+2         3       10           500        5000.0
+3         4       40          2100           NaN
+4         5       10           300        5000.0
+   order_id  buyer  client_id  name
+0         1     10         10  Anna
+1         2     20         20  Ivan</div>
+        </div>
+        <p>
+          Одноимённая <code class="inl">amount</code> без суффиксов превращается в
+          <code class="inl">amount_x</code>/<code class="inl">amount_y</code> — в коде их легко
+          перепутать. Осмысленные суффиксы задают явно. С <code class="inl">left_on</code>/<code class="inl">right_on</code>
+          в результате остаются <b>обе</b> ключевые колонки — иногда их потом убирают.
+        </p>
+        <h3>join по индексу и concat</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_pd_merge_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">by_id = users.set_index("user_id")
+print(orders.set_index("user_id").join(by_id, how="left"))
+
+more = pd.DataFrame({"order_id": [6], "user_id": [20], "amount": [400]})
+print(pd.concat([orders, more], ignore_index=True))
+status = pd.DataFrame({"status": ["paid", "paid", "new", "paid", "new"]})
+print(pd.concat([orders, status], axis=1))</pre>
+          <div class="out">         order_id  amount  name    city
+user_id                                
+10              1    1200  Anna  Москва
+20              2     800  Ivan  Казань
+10              3     500  Anna  Москва
+40              4    2100   NaN     NaN
+10              5     300  Anna  Москва
+   order_id  user_id  amount
+0         1       10    1200
+1         2       20     800
+2         3       10     500
+3         4       40    2100
+4         5       10     300
+5         6       20     400
+   order_id  user_id  amount status
+0         1       10    1200   paid
+1         2       20     800   paid
+2         3       10     500    new
+3         4       40    2100   paid
+4         5       10     300    new</div>
+        </div>
+        <p>
+          <code class="inl">join</code> — тот же merge, но ключ берётся из индекса; так быстрее
+          писать, когда индекс уже осмысленный. <code class="inl">concat(axis=0)</code> приставляет
+          строки и не сопоставляет ключи, <code class="inl">concat(axis=1)</code> клеит колонки
+          <em>по индексу</em>: несовпадение индексов даст <code class="inl">NaN</code>.
+        </p>
+        <h3>Кардинальность: many-to-many</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_pd_merge_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">a = pd.DataFrame({"user_id": [10, 10], "order_id": [1, 2]})
+b = pd.DataFrame({"user_id": [10, 10], "city": ["Москва", "Казань"]})
+print(a.merge(b, on="user_id"))
+print("rows:", len(a.merge(b, on="user_id")), "ожидание: 2 × 2 = 4")</pre>
+          <div class="out">   user_id  order_id    city
+0       10         1  Москва
+1       10         1  Казань
+2       10         2  Москва
+3       10         2  Казань
+rows: 4 ожидание: 2 × 2 = 4</div>
+        </div>
+        <p>
+          Две строки на две — четыре результата. Это не ошибка pandas, а честное произведение:
+          каждого заказа по два «города». Проверка — <code class="inl">len(df.merge(...))</code>
+          до и после, <code class="inl">validate</code> или
+          <code class="inl">b["user_id"].is_unique</code>.
+        </p>
+        <h3>Ключи: разные типы и NaN</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_pd_merge_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">users_str = users.assign(user_id=users["user_id"].astype(str))
+try:
+    orders.merge(users_str, on="user_id")
+except ValueError as err:
+    print("ValueError:", str(err).splitlines()[0])
+
+users_null = pd.concat(
+    [users, pd.DataFrame({"user_id": [np.nan], "name": ["гость"], "city": ["—"]})],
+    ignore_index=True,
+)
+orders_null = pd.DataFrame({"user_id": [10, None], "amount": [100, 200]})
+print(orders_null.merge(users_null, on="user_id", how="left", indicator=True))</pre>
+          <div class="out">ValueError: You are trying to merge on int64 and str columns for key 'user_id'. If you wish to proceed you should use pd.concat
+   user_id  amount   name    city _merge
+0     10.0     100   Anna  Москва   both
+1      NaN     200  гость       —   both</div>
+        </div>
+        <p>
+          <code class="inl">int64</code> и <code class="inl">str</code> не соединяются:
+          <code class="inl">ValueError</code> до всякого сравнения. А <code class="inl">NaN</code>
+          в ключе — не «пусто», а значение: обычную строку он не находит, зато находит другую
+          <code class="inl">NaN</code>-строку (в SQL <code class="inl">NULL</code> не равен даже
+          себе). Это отличие стоит проверять на своих данных.
+        </p>
+      </section>
+      <section>
+        <h2><span class="num">06</span>Три сценария из практики</h2>
+        <h3>Заказы + пользователи</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_pd_merge_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">enriched = orders.merge(users, on="user_id", how="left", validate="many_to_one")
+print(enriched[["order_id", "name", "amount"]])</pre>
+          <div class="out">   order_id  name  amount
+0         1  Anna    1200
+1         2  Ivan     800
+2         3  Anna     500
+3         4   NaN    2100
+4         5  Anna     300</div>
+        </div>
+        <p>
+          <code class="inl">left</code> сохраняет все заказы, <code class="inl">validate</code>
+          гарантирует, что справочник не размножит строки. Заказ с
+          <code class="inl">user_id=40</code> получает <code class="inl">NaN</code> в имени — это
+          сигнал, что внешний ключ битый, а не повод выбросить строку.
+        </p>
+        <h3>Пользователи без заказов</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_pd_merge_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">joined = users.merge(orders, on="user_id", how="left", indicator=True)
+print(joined[["user_id", "name", "_merge"]])</pre>
+          <div class="out">   user_id  name     _merge
+0       10  Anna       both
+1       10  Anna       both
+2       10  Anna       both
+3       20  Ivan       both
+4       30  Olga  left_only</div>
+        </div>
+        <p>
+          Анти-джойн: <code class="inl">left</code> + <code class="inl">indicator</code>, затем
+          фильтр по <code class="inl">left_only</code>. Здесь Olga — единственный пользователь без
+          заказов. В SQL это <code class="inl">LEFT JOIN ... WHERE u.user_id IS NULL</code>.
+        </p>
+        <h3>Дедупликация после merge</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_pd_merge_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">users_dup = pd.concat(
+    [users, pd.DataFrame({"user_id": [10], "name": ["Anna (old)"], "city": ["Москва"]})],
+    ignore_index=True,
+)
+inflated = orders.merge(users_dup, on="user_id", how="left")
+print("rows:", len(inflated), "expected:", len(orders))
+clean = users_dup.drop_duplicates("user_id", keep="last")
+print("rows after dedup:", len(orders.merge(clean, on="user_id", how="left")))</pre>
+          <div class="out">rows: 8 expected: 5
+rows after dedup: 5</div>
+        </div>
+        <p>
+          Дубль ключа в справочнике превратил 5 строк в 8: три заказа Anna удвоились.
+          <code class="inl">drop_duplicates</code> возвращает 5 — но выбор <code class="inl">keep</code>
+          («какой дубль правильный») это бизнес-решение, а не техническое.
+        </p>
+      </section>
+      <section>
+        <h2><span class="num">07</span>Пять ошибок, на которых спотыкаются</h2>
+        <div class="errors">
+          <div class="err">
+            <div class="h">Ключи разных dtype</div>
+            <p><code class="inl">int64</code> слева и <code class="inl">str</code> справа —
+            <code class="inl">ValueError: You are trying to merge on int64 and str columns</code>.
+            pandas не приводит типы автоматически: это разные ключи.</p>
+            <div class="fix">Привести до merge: <code class="inl">astype(str)</code> или
+            <code class="inl">astype(int)</code> с обеих сторон, проверить <code class="inl">dtypes</code>.</div>
+          </div>
+          <div class="err">
+            <div class="h">many-to-many раздувает таблицу</div>
+            <p>Дубли ключей с двух сторон перемножают строки: 2 × 2 = 4. Отчёт вырастает, суммы
+            дублируются, а ошибка не видна — join формально «сработал».</p>
+            <div class="fix"><code class="inl">validate="one_to_one"</code> или
+            <code class="inl">many_to_one</code>; до merge —
+            <code class="inl">df["key"].is_unique</code> и <code class="inl">duplicated().sum()</code>.</div>
+          </div>
+          <div class="err">
+            <div class="h">NaN-ключ не находит обычную пару</div>
+            <p>Строка с <code class="inl">NaN</code> в ключе не соединяется с нормальными значениями;
+            в pandas она «находит» только другую <code class="inl">NaN</code>-строку, а в SQL
+            <code class="inl">NULL</code> не равен ничему. Поведение разное — и это ломает перенос
+            отчёта.</p>
+            <div class="fix">Решить заранее: <code class="inl">dropna</code> по ключу,
+            <code class="inl">fillna</code> осмысленным значением или отдельная группа.</div>
+          </div>
+          <div class="err">
+            <div class="h">Забытые суффиксы _x/_y</div>
+            <p>Одноимённые колонки pandas разводит как <code class="inl">amount_x</code> и
+            <code class="inl">amount_y</code>. В коде легко взять не ту — и отчёт посчитается по
+            чужой колонке.</p>
+            <div class="fix"><code class="inl">suffixes=("_order", "_limit")</code> или
+            переименовать колонки до merge.</div>
+          </div>
+          <div class="err">
+            <div class="h">validate не указан — дубли не замечены</div>
+            <p>Без <code class="inl">validate</code> соединение не проверяет кардинальность: лишние
+            строки появляются тихо. Обнаружить их можно только по <code class="inl">shape</code>
+            или внезапно удвоившимся суммам.</p>
+            <div class="fix"><code class="inl">validate=...</code> и явная проверка
+            <code class="inl">assert len(merged) == len(orders)</code>.</div>
+          </div>
+        </div>
+      </section>
+      <section>
+        <h2><span class="num">08</span>Мини-проверка</h2>
+        <p>Пять вопросов и две задачи. Сначала своя попытка — потом спойлер.</p>
+        <div class="qa">
+          <details>
+            <summary>Чем merge отличается от concat?</summary>
+            <div class="a">
+              <p><code class="inl">merge</code> соединяет по ключу и может менять число строк.
+              <code class="inl">concat</code> приставляет таблицы друг к другу — по строкам
+              (<code class="inl">axis=0</code>) или колонкам (<code class="inl">axis=1</code>) —
+              без сопоставления ключей.</p>
+              <div class="verdict">Резюме: соединение по ключу против склейки.</div>
+            </div>
+          </details>
+        </div>
+        <div class="qa">
+          <details>
+            <summary>Какие бывают how и что остаётся в каждом?</summary>
+            <div class="a">
+              <p><code class="inl">inner</code> — только совпадения, <code class="inl">left</code> —
+              все левые, <code class="inl">right</code> — все правые, <code class="inl">outer</code> —
+              все с обеих сторон. <code class="inl">cross</code> — каждая с каждой.</p>
+              <div class="verdict">Резюме: что остаётся — левое, правое, оба или только общее.</div>
+            </div>
+          </details>
+        </div>
+        <div class="qa">
+          <details>
+            <summary>Что будет при many-to-many и как это поймать?</summary>
+            <div class="a">
+              <p>Для каждой пары совпадающих строк появится отдельная строка: 2 × 2 = 4. Поймать —
+              <code class="inl">validate</code> до соединения и
+              <code class="inl">len()</code>/<code class="inl">shape</code> после.</p>
+              <div class="verdict">Резюме: не «больше строк», а произведение.</div>
+            </div>
+          </details>
+        </div>
+        <div class="qa">
+          <details>
+            <summary>Что делают validate и indicator?</summary>
+            <div class="a">
+              <p><code class="inl">validate</code> проверяет ожидаемую кардинальность и бросает
+              <code class="inl">MergeError</code>. <code class="inl">indicator=True</code> добавляет
+              <code class="inl">_merge</code>: <code class="inl">both</code>,
+              <code class="inl">left_only</code>, <code class="inl">right_only</code>.</p>
+              <div class="verdict">Резюме: контракт до соединения и отчёт после.</div>
+            </div>
+          </details>
+        </div>
+        <div class="qa">
+          <details>
+            <summary>Как найти заказы без пользователя и наоборот?</summary>
+            <div class="a">
+              <p>Заказы без пользователя:
+              <code class="inl">orders.merge(users, on="user_id", how="left", indicator=True)</code>
+              и фильтр <code class="inl">left_only</code>. Пользователи без заказов — зеркально:
+              <code class="inl">users.merge(orders, ...)</code>. В SQL — <code class="inl">LEFT JOIN</code>
+              + <code class="inl">IS NULL</code>.</p>
+              <div class="verdict">Резюме: анти-джойн — это left + indicator.</div>
+            </div>
+          </details>
+        </div>
+        <h3><span style="color:var(--muted);font-family:var(--mono);font-size:.8rem">01</span> Имена без потери заказов</h3>
+        <p>Добавьте к заказам имя пользователя, сохранив все пять заказов, и проверьте это кодом.</p>
+        <div class="qa">
+          <details>
+            <summary>Показать решение и разбор</summary>
+            <div class="a">
+              <div class="code" style="margin-top:0">
+                <div class="bar"><span class="file">решение</span><span class="lang">python</span><button class="copy">копировать</button></div>
+                <pre data-lang="python">enriched = orders.merge(users, on="user_id", how="left", validate="many_to_one")
+assert len(enriched) == len(orders)
+print(enriched[["order_id", "name", "amount"]])</pre>
+                <div class="out">   order_id  name  amount
+0         1  Anna    1200
+1         2  Ivan     800
+2         3  Anna     500
+3         4   NaN    2100
+4         5  Anna     300</div>
+              </div>
+              <p><strong>Что важно.</strong> <code class="inl">how="left"</code> не теряет заказы,
+              <code class="inl">validate="many_to_one"</code> запрещает дубли справа, а
+              <code class="inl">assert</code> превращает ожидание в проверку.</p>
+            </div>
+          </details>
+        </div>
+        <h3><span style="color:var(--muted);font-family:var(--mono);font-size:.8rem">02</span> Заказы без пользователя</h3>
+        <p>Найдите заказы, для которых <code class="inl">user_id</code> отсутствует в таблице пользователей.</p>
+        <div class="qa">
+          <details>
+            <summary>Показать решение и разбор</summary>
+            <div class="a">
+              <div class="code" style="margin-top:0">
+                <div class="bar"><span class="file">решение</span><span class="lang">python</span><button class="copy">копировать</button></div>
+                <pre data-lang="python">checked = orders.merge(users, on="user_id", how="left", indicator=True)
+print(checked[checked["_merge"] == "left_only"])</pre>
+                <div class="out">   order_id  user_id  amount name city     _merge
+3         4       40    2100  NaN  NaN  left_only</div>
+              </div>
+              <p><strong>Что важно.</strong> Это анти-джойн: <code class="inl">left</code> сохраняет
+              все заказы, а <code class="inl">left_only</code> оставляет ровно те, которым не нашлось
+              пары. В SQL — <code class="inl">LEFT JOIN</code> + <code class="inl">IS NULL</code>.</p>
+            </div>
+          </details>
+        </div>
+      </section>
+      <section>
+        <h2><span class="num">09</span>Мостик: SQL JOIN и map</h2>
+        <h3>SQL: JOIN и LEFT JOIN</h3>
+        <div class="code">
+          <div class="bar"><span class="file">мост в SQL</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">-- orders.merge(users, on="user_id") — inner
+SELECT o.order_id, u.name
+FROM orders o
+JOIN users u ON u.user_id = o.user_id;
+
+-- заказы без пользователя: left + indicator + фильтр
+SELECT o.order_id
+FROM orders o
+LEFT JOIN users u ON u.user_id = o.user_id
+WHERE u.user_id IS NULL;</pre>
+        </div>
+        <p>
+          <code class="inl">how</code> соответствует типу <code class="inl">JOIN</code>: inner,
+          left, right, full outer. Внутри база тоже строит хеш-таблицу — это
+          <code class="inl">hash join</code>, поэтому соединение по индексу или ключу быстрое
+          (<a href="ch-24-indexes-explain.html">глава 24</a>). Уникальность ключа в SQL проверяют
+          запросом <code class="inl">GROUP BY ... HAVING COUNT(*) &gt; 1</code> — до соединения.
+        </p>
+        <h3>pandas: map для простого справочника</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_pd_merge_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">names = users.set_index("user_id")["name"]
+print(orders["user_id"].map(names))</pre>
+          <div class="out">0    Anna
+1    Ivan
+2    Anna
+3     NaN
+4    Anna
+Name: user_id, dtype: str</div>
+        </div>
+        <p>
+          Если нужна одна колонка из справочника, <code class="inl">map</code> короче merge:
+          справочник индексируется ключом, а map подставляет значения. Ограничение — ровно одна колонка и никакой
+          проверки кардинальности: для отчёта всё равно нужен <code class="inl">merge</code>.
+        </p>
+        <div class="bridges">
+          <a class="bridge" href="ch-15-groupby.html"><span class="to">Глава 15</span><span>groupby: разложить — посчитать — собрать</span><span class="what">→ сводка после соединения</span></a>
+          <a class="bridge" href="ch-16-merge.html"><span class="to">Глава 16</span><span>merge: кардинальность важнее синтаксиса</span><span class="what">→ ядро и метафора склейки</span></a>
+          <a class="bridge" href="ch-21-group-by-having.html"><span class="to">Глава 21</span><span>GROUP BY и HAVING в SQL</span><span class="what">→ соединения и проверки на стороне базы</span></a>
+          <a class="bridge" href="ch-24-indexes-explain.html"><span class="to">Глава 24</span><span>Индексы и EXPLAIN</span><span class="what">→ почему hash join быстрый</span></a>
+          <a class="bridge" href="ch-17-missing.html"><span class="to">Глава 17</span><span>Пропуски: NaN, None и pd.NA</span><span class="what">→ NaN после left join</span></a>
+        </div>
+      </section>
+      <div class="pager">
+        <a class="prev" href="ref-pd-groupby.html"><span class="dir">← Назад</span><span class="ttl">groupby: разложить — посчитать — собрать</span></a>
+        <a class="next" href="ref-pd-missing.html"><span class="dir">Дальше →</span><span class="ttl">Пропуски: NaN, None и pd.NA</span></a>
+      </div>
+    </div>
+  </main>
+</div>
+<script src="assets/toc.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>

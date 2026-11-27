@@ -1,6 +1,7 @@
 // Сгенерировано tools/gen_sw.cjs — не править руками.
-const CACHE = "assoc-guide-veb5a70c3";
+const CACHE = "assoc-guide-v63710307";
 const PRECACHE = [
+  "./appendix-pandas.html",
   "./appendix-snippets.html",
   "./appendix-types.html",
   "./assets/app.js",
@@ -78,6 +79,13 @@ const PRECACHE = [
   "./ref-dict.html",
   "./ref-frozenset.html",
   "./ref-list.html",
+  "./ref-pd-filter.html",
+  "./ref-pd-groupby.html",
+  "./ref-pd-loc.html",
+  "./ref-pd-merge.html",
+  "./ref-pd-missing.html",
+  "./ref-pd-reshape.html",
+  "./ref-pd-series.html",
   "./ref-set.html",
   "./ref-str.html",
   "./ref-tuple.html",
@@ -115,6 +123,13 @@ const PRECACHE = [
   "./snippets/ref_dict_lab.py",
   "./snippets/ref_frozenset_lab.py",
   "./snippets/ref_list_lab.py",
+  "./snippets/ref_pd_filter_lab.py",
+  "./snippets/ref_pd_groupby_lab.py",
+  "./snippets/ref_pd_loc_lab.py",
+  "./snippets/ref_pd_merge_lab.py",
+  "./snippets/ref_pd_missing_lab.py",
+  "./snippets/ref_pd_reshape_lab.py",
+  "./snippets/ref_pd_series_lab.py",
   "./snippets/ref_set_lab.py",
   "./snippets/ref_str_lab.py",
   "./snippets/ref_tuple_lab.py",

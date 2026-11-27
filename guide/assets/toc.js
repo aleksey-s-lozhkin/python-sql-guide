@@ -35,18 +35,27 @@ window.BOOK = {
     { n: "25", slug: "ch-25-sql-vs-pandas", title: "SQL или pandas: что где делать", desc: "Неделя 8", part: 5, ready: true },
     { n: "26", slug: "ch-26-project", title: "Проект: отчёт из нескольких таблиц", desc: "Неделя 8", part: 5, ready: true }
   ],
-  // ── Справочник по типам данных (вне 8-недельной программы) ──
+  // ── Справочники (вне 8-недельной программы) ─────────────────
   reference: [
-    { slug: "appendix-types", file: "appendix-types.html", title: "Справочник по типам данных", n: "◆", hub: true },
-    { slug: "ref-str", file: "ref-str.html", title: "str: бусы из символов", n: "S" },
-    { slug: "ref-list", file: "ref-list.html", title: "list: поезд с вагонами", n: "L" },
-    { slug: "ref-tuple", file: "ref-tuple.html", title: "tuple: опечатанный контейнер", n: "T" },
-    { slug: "ref-dict", file: "ref-dict.html", title: "dict: шкаф с номерками", n: "D" },
-    { slug: "ref-set", file: "ref-set.html", title: "set: фейс-контроль", n: "S" },
-    { slug: "ref-frozenset", file: "ref-frozenset.html", title: "frozenset: заламинированный список", n: "F" },
-    { slug: "ref-counter", file: "ref-counter.html", title: "Counter: счётчик частот", n: "C" },
-    { slug: "ref-defaultdict", file: "ref-defaultdict.html", title: "defaultdict: блокнот с группами", n: "d" },
-    { slug: "ref-deque", file: "ref-deque.html", title: "deque: очередь с двумя дверями", n: "Q" }
+    { slug: "appendix-types", file: "appendix-types.html", title: "Справочник по типам данных", nav: "Python-коллекции", group: "python", hub: true },
+    { slug: "ref-str", file: "ref-str.html", title: "str: бусы из символов", n: "S", group: "python" },
+    { slug: "ref-list", file: "ref-list.html", title: "list: поезд с вагонами", n: "L", group: "python" },
+    { slug: "ref-tuple", file: "ref-tuple.html", title: "tuple: опечатанный контейнер", n: "T", group: "python" },
+    { slug: "ref-dict", file: "ref-dict.html", title: "dict: шкаф с номерками", n: "D", group: "python" },
+    { slug: "ref-set", file: "ref-set.html", title: "set: фейс-контроль", n: "S", group: "python" },
+    { slug: "ref-frozenset", file: "ref-frozenset.html", title: "frozenset: заламинированный список", n: "F", group: "python" },
+    { slug: "ref-counter", file: "ref-counter.html", title: "Counter: счётчик частот", n: "C", group: "python" },
+    { slug: "ref-defaultdict", file: "ref-defaultdict.html", title: "defaultdict: блокнот с группами", n: "d", group: "python" },
+    { slug: "ref-deque", file: "ref-deque.html", title: "deque: очередь с двумя дверями", n: "Q", group: "python" },
+
+    { slug: "appendix-pandas", file: "appendix-pandas.html", title: "Справочник по pandas", nav: "pandas", group: "pandas", hub: true },
+    { slug: "ref-pd-series", file: "ref-pd-series.html", title: "Series и DataFrame: таблица с оглавлением", n: "1", group: "pandas" },
+    { slug: "ref-pd-loc", file: "ref-pd-loc.html", title: "loc и iloc: имя против номера", n: "2", group: "pandas" },
+    { slug: "ref-pd-filter", file: "ref-pd-filter.html", title: "Фильтрация: маска как сито", n: "3", group: "pandas" },
+    { slug: "ref-pd-groupby", file: "ref-pd-groupby.html", title: "groupby: разложить — посчитать — собрать", n: "4", group: "pandas" },
+    { slug: "ref-pd-merge", file: "ref-pd-merge.html", title: "merge: кардинальность важнее синтаксиса", n: "5", group: "pandas" },
+    { slug: "ref-pd-missing", file: "ref-pd-missing.html", title: "Пропуски: NaN, None и pd.NA", n: "6", group: "pandas" },
+    { slug: "ref-pd-reshape", file: "ref-pd-reshape.html", title: "Reshape, даты и строки", n: "7", group: "pandas" }
   ],
   parts: [
     { n: 1, title: "Фундамент Python", range: "Неделя 1" },

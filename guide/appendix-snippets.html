@@ -41,7 +41,7 @@
         <div class="meta">
           <span class="chip">🐍 <b>Python 3.12</b></span>
           <span class="chip">🐘 <b>PostgreSQL 14</b></span>
-          <span class="chip">📄 <b>37 файлов</b></span>
+          <span class="chip">📄 <b>44 файла</b></span>
           <span class="chip">📦 <b>numpy · pandas</b></span>
         </div>
       </header>
@@ -180,7 +180,35 @@ psql -d learning_shop -f guide/snippets/20_select_where.sql</pre>
       </section>
 
       <section>
-        <h2><span class="num">08</span>Учебная база и порядок запуска</h2>
+        <h2><span class="num">08</span>Справочник pandas · лаборатории</h2>
+        <p>
+          Лаборатории <a href="appendix-pandas.html">справочника по pandas</a>. Нужен
+          <b>pandas 3.0.1</b>, как в книге: на более старых версиях отличается вывод для строк
+          (dtype <code class="inl">str</code> вместо <code class="inl">object</code>) и поведение
+          Copy-on-Write.
+        </p>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Страница</th><th>Файл</th><th>Что внутри</th></tr></thead>
+            <tbody>
+              <tr><td><a href="ref-pd-series.html">Series и DataFrame</a></td><td><a href="snippets/view.html?f=ref_pd_series_lab.py"><code class="inl">ref_pd_series_lab.py</code></a></td><td>создание, index/dtypes, info/describe, assign/rename/drop, память</td></tr>
+              <tr><td><a href="ref-pd-loc.html">loc и iloc</a></td><td><a href="snippets/view.html?f=ref_pd_loc_lab.py"><code class="inl">ref_pd_loc_lab.py</code></a></td><td>метка против позиции, срезы, at/iat, присваивание</td></tr>
+              <tr><td><a href="ref-pd-filter.html">фильтрация</a></td><td><a href="snippets/view.html?f=ref_pd_filter_lab.py"><code class="inl">ref_pd_filter_lab.py</code></a></td><td>маски, isin, between, contains, query</td></tr>
+              <tr><td><a href="ref-pd-groupby.html">groupby</a></td><td><a href="snippets/view.html?f=ref_pd_groupby_lab.py"><code class="inl">ref_pd_groupby_lab.py</code></a></td><td>agg, transform, filter, доли, NaN-ключи</td></tr>
+              <tr><td><a href="ref-pd-merge.html">merge</a></td><td><a href="snippets/view.html?f=ref_pd_merge_lab.py"><code class="inl">ref_pd_merge_lab.py</code></a></td><td>how, validate, indicator, суффиксы, concat</td></tr>
+              <tr><td><a href="ref-pd-missing.html">пропуски</a></td><td><a href="snippets/view.html?f=ref_pd_missing_lab.py"><code class="inl">ref_pd_missing_lab.py</code></a></td><td>NaN/None/pd.NA, dropna/fillna, Int64, CoW</td></tr>
+              <tr><td><a href="ref-pd-reshape.html">reshape, даты, строки</a></td><td><a href="snippets/view.html?f=ref_pd_reshape_lab.py"><code class="inl">ref_pd_reshape_lab.py</code></a></td><td>pivot_table, melt, explode, .dt, .str</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="small">
+          Запуск: <code class="inl">python3 guide/snippets/ref_pd_series_lab.py</code> в окружении книги
+          (pandas 3.0.1).
+        </p>
+      </section>
+
+      <section>
+        <h2><span class="num">09</span>Учебная база и порядок запуска</h2>
         <div class="code">
           <div class="bar"><span class="file">терминал</span><span class="lang">shell</span><button class="copy">копировать</button></div>
           <pre># 1. создать базу и загрузить схему с данными

@@ -1,0 +1,743 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Справочник pandas · Series и DataFrame: таблица с оглавлением — Ассоциативный гайд</title>
+<meta name="description" content="Справочник pandas 3.0: Series и DataFrame — создание, индекс, dtype, свойства, колонки, assign/rename/drop, память и Copy-on-Write — с реальным выводом.">
+<link rel="stylesheet" href="assets/style.css">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#fbf8f2" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#14131a" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="assets/icons/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="assets/icons/icon-180.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Гайд Py/SQL">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+</head>
+<body data-slug="ref-pd-series">
+<div class="app">
+  <aside class="sidebar" id="sidebar"></aside>
+  <main>
+    <div class="wrap">
+
+      <header class="chapter-head">
+        <div class="eyebrow">
+          <span class="part">Справочник · pandas</span>
+          <span class="dot"></span>
+          <span>страница 1 из 7</span>
+          <span class="dot"></span>
+          <span>готово</span>
+        </div>
+        <h1>Series и DataFrame: таблица с оглавлением
+          <span class="sub">Индекс, колонки и свой dtype у каждой колонки — от создания до первого обзора</span>
+        </h1>
+        <p class="lead">
+          pandas начинается с двух объектов: <code class="inl">Series</code> — колонка значений
+          с подписями, <code class="inl">DataFrame</code> — таблица с оглавлением-индексом.
+          Дальше — как создать, что вернёт свойство, чем <code class="inl">df["a"]</code>
+          отличается от <code class="inl">df[["a"]]</code> и что нового в pandas 3.0.
+        </p>
+        <div class="meta">
+          <span class="chip">⏱ <b>12 минут</b></span>
+          <span class="chip">🎯 уровень <b>2</b></span>
+          <span class="chip">🐼 <b>pandas 3.0.1</b></span>
+          <span class="chip">📚 <b>глава 12</b></span>
+        </div>
+      </header>
+
+      <p class="small">
+        Справочник pandas: <a href="appendix-pandas.html">вся карта</a> ·
+        <b>01 · Series и DataFrame</b> · <a href="ref-pd-loc.html">02 · loc/iloc</a> ·
+        <a href="ref-pd-filter.html">03 · фильтрация</a> ·
+        <a href="ref-pd-groupby.html">04 · groupby</a> ·
+        <a href="ref-pd-merge.html">05 · merge</a> ·
+        <a href="ref-pd-missing.html">06 · пропуски</a> ·
+        <a href="ref-pd-reshape.html">07 · reshape</a>
+      </p>
+
+      <div class="tldr">
+        <div class="t">Самое главное</div>
+        <ul>
+          <li><code class="inl">Series</code> — колонка с подписями: значения + индекс + имя;
+              <code class="inl">DataFrame</code> — набор колонок с общим индексом, dtype у каждой свой.</li>
+          <li><code class="inl">df["a"]</code> — Series, <code class="inl">df[["a"]]</code> — DataFrame;
+              <code class="inl">assign</code>/<code class="inl">rename</code>/<code class="inl">drop</code>
+              возвращают новую таблицу, <code class="inl">df["c"] = ...</code> меняет текущую.</li>
+          <li>В pandas 3.0 строки — dtype <code class="inl">str</code>, Copy-on-Write всегда:
+              <code class="inl">.copy()</code> независим, цепочка <code class="inl">df["a"][0] = ...</code> исходник не меняет.</li>
+        </ul>
+      </div>
+
+      <!-- ══════════════════ 01. Что это ══════════════════ -->
+      <section>
+        <h2><span class="num">01</span>Что это и как устроено</h2>
+        <p>
+          У pandas два объекта. <code class="inl">Series</code> — одномерная колонка: значения,
+          индекс подписей и имя. <code class="inl">DataFrame</code> — набор колонок с общим
+          индексом; колонка таблицы — это <code class="inl">Series</code> с тем же индексом,
+          а <code class="inl">df["amount"] * 1.2</code> считается векторно, без цикла.
+        </p>
+        <p>
+          В pandas 3.0 строки получают dtype <code class="inl">str</code>, а не
+          <code class="inl">object</code>, и Copy-on-Write включён всегда:
+          <code class="inl">df.copy()</code> независима, цепочка <code class="inl">df["a"][0] = ...</code>
+          таблицу не меняет.
+        </p>
+
+        <div class="anchor">
+          <div class="glyph">📖</div>
+          <div>
+            <div class="t">Держите эту картинку в голове</div>
+            <p class="kick"><strong>DataFrame — это таблица с оглавлением.</strong> Колонки —
+            разделы, а индекс — подписи строк: по ним находят нужную строку, не пересчитывая
+            позиции.</p>
+            <p>Series — одна страница той же книги. У неё те же подписи (индекс), но значения
+            только из одной колонки, поэтому Series — не «просто список», а список с оглавлением.
+            Подробный разбор метафоры — в <a href="ch-12-series-dataframe.html">главе 12</a>.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ══════════════════ 02. Когда брать ══════════════════ -->
+      <section>
+        <h2><span class="num">02</span>Когда брать, а когда нет</h2>
+        <p>
+          DataFrame — когда строк много и типы разные, Series — когда одна величина с подписями.
+        </p>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Задача</th><th>pandas?</th><th>Что взять вместо</th></tr></thead>
+            <tbody>
+              <tr><td>Строки и колонки из CSV, SQL или JSON</td><td><b>да</b></td><td>—</td></tr>
+              <tr><td>Одна величина с подписями: суммы по людям, ряд по дням</td><td><b>да</b>, Series</td><td>—</td></tr>
+              <tr><td>Разные типы по колонкам и векторные вычисления</td><td><b>да</b>, DataFrame</td><td>—</td></tr>
+              <tr><td>Проверить типы и пропуски перед загрузкой в базу</td><td><b>да</b></td><td><code class="inl">info()</code> и <code class="inl">describe()</code></td></tr>
+              <tr><td>Одна запись или одно число</td><td>нет</td><td>обычный <code class="inl">dict</code> или скаляр</td></tr>
+              <tr><td>Данные не влезают в память</td><td>как основа</td><td>чанки <code class="inl">read_csv</code>, база</td></tr>
+              <tr><td>Только сумма или максимум по списку чисел</td><td>нет</td><td><code class="inl">sum</code>, <code class="inl">max</code> или NumPy</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="small">
+          Полный разбор — в <a href="ch-12-series-dataframe.html">главе 12</a>; мостик в SQL будет коротким.
+        </p>
+      </section>
+
+      <!-- ══════════════════ 03. Как создать ══════════════════ -->
+      <section>
+        <h2><span class="num">03</span>Как создать</h2>
+        <p>
+          Series собирается из списка, словаря или скаляра: список даёт индекс 0, 1, 2, словарь —
+          порядок ключей, скаляр растягивается по заданному индексу.
+        </p>
+        <div class="code">
+          <div class="bar"><span class="file">ref_pd_series_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">s = pd.Series([1200, 800, 500], index=["anna", "ivan", "olga"], name="amount")
+print(s)
+print(s.index.tolist(), s.dtype, s.name)
+print(s.values, s.to_numpy())
+print(s["anna"], s.iloc[0], s.loc["ivan"])   # метка, позиция, метка — кратко
+
+by_dict = pd.Series({"anna": 1200, "ivan": 800, "olga": 500})
+print(by_dict.index.tolist())          # порядок ключей сохранён
+print(pd.Series(7, index=["a", "b", "c"]).tolist())</pre>
+          <div class="out">anna    1200
+ivan     800
+olga     500
+Name: amount, dtype: int64
+['anna', 'ivan', 'olga'] int64 amount
+[1200  800  500] [1200  800  500]
+1200 1200 800
+['anna', 'ivan', 'olga']
+[7, 7, 7]</div>
+        </div>
+        <p>
+          <code class="inl">s["anna"]</code>, <code class="inl">s.iloc[0]</code> и
+          <code class="inl">s.loc["ivan"]</code> дают одно число (подробно —
+          <a href="ref-pd-loc.html">страница 02</a>); словарь сохраняет порядок ключей.
+        </p>
+        <p>
+          DataFrame — из словаря колонок одной длины, списка словарей (словарь = строка) или
+          CSV-строки через <code class="inl">read_csv</code> и <code class="inl">io.StringIO</code>.
+        </p>
+        <div class="code">
+          <div class="bar"><span class="file">ref_pd_series_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">df = pd.DataFrame({
+    "user": ["anna", "ivan", "olga"],
+    "amount": [1200, 800, 500],
+    "city": ["Москва", "Казань", "Москва"],
+})
+print(df)
+print(df.shape, df.size, df.columns.tolist(), df.index.tolist())
+print(df.dtypes)
+
+from_rows = pd.DataFrame([
+    {"user": "anna", "amount": 1200},
+    {"user": "ivan", "amount": 800},
+])
+print(from_rows)
+
+csv = """user,amount
+anna,1200
+ivan,800
+"""
+from_csv = pd.read_csv(io.StringIO(csv))
+print(from_csv.dtypes.astype(str).tolist())</pre>
+          <div class="out">   user  amount    city
+0  anna    1200  Москва
+1  ivan     800  Казань
+2  olga     500  Москва
+(3, 3) 9 ['user', 'amount', 'city'] [0, 1, 2]
+user        str
+amount    int64
+city        str
+dtype: object
+   user  amount
+0  anna    1200
+1  ivan     800
+['str', 'int64']</div>
+        </div>
+        <p>
+          <code class="inl">dtypes.astype(str)</code> показывает типы: строки — <code class="inl">str</code>,
+          а не <code class="inl">object</code>; список словарей выравнивается по ключам.
+        </p>
+        <div class="note">
+          <span class="t">Версия важна</span>
+          <p>Страница снята в pandas 3.0.1: в 2.x строки были <code class="inl">object</code>, а
+          Copy-on-Write включали отдельно.</p>
+        </div>
+      </section>
+
+      <!-- ══════════════════ 04. Все операции ══════════════════ -->
+      <section>
+        <h2><span class="num">04</span>Все операции</h2>
+        <p>
+          Три таблицы: Series, DataFrame и колонки. Цена — копия или view, память, меняется ли исходник.
+        </p>
+
+        <h3>Series: свойства и методы</h3>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Операция</th><th>Что делает</th><th>Возвращает</th><th>Примечание</th></tr></thead>
+            <tbody>
+              <tr><td class="mono">s.index</td><td>подписи строк</td><td><code class="inl">Index</code></td><td>подписи, не значения; менять — через <code class="inl">reset_index</code></td></tr>
+              <tr><td class="mono">s.values / s.to_numpy()</td><td>данные как массив</td><td><code class="inl">ndarray</code></td><td>предсказуемый dtype; при смешанных — <code class="inl">object</code></td></tr>
+              <tr><td class="mono">s.name</td><td>имя колонки</td><td><code class="inl">str</code> или <code class="inl">None</code></td><td>пригодится, когда Series станет колонкой</td></tr>
+              <tr><td class="mono">s.dtype</td><td>тип значений</td><td><code class="inl">dtype</code></td><td>в 3.0 строки — <code class="inl">str</code>, не <code class="inl">object</code></td></tr>
+              <tr><td class="mono">s["anna"] / s.loc / s.iloc[0]</td><td>по метке / по позиции</td><td>скаляр</td><td>loc — метка, iloc — номер; запись — через loc</td></tr>
+              <tr><td class="mono">s.map(f)</td><td>применяет f к каждому значению</td><td>Series</td><td>новая Series; dtype может смениться</td></tr>
+              <tr><td class="mono">s.apply(f)</td><td>как map, но даёт больше контекста</td><td>Series или скаляр</td><td>на простом поэлементном медленнее map</td></tr>
+              <tr><td class="mono">s.value_counts()</td><td>частоты значений</td><td>Series</td><td>по убыванию частоты</td></tr>
+              <tr><td class="mono">s.sort_values()</td><td>сортировка по значениям</td><td>Series</td><td>копия; исходник не меняется</td></tr>
+              <tr><td class="mono">s.isna()</td><td>маска пропусков</td><td>Series[bool]</td><td>не меняет; <code class="inl">.sum()</code> считает пропуски</td></tr>
+              <tr><td class="mono">s.astype(t)</td><td>приведение типа</td><td>Series</td><td>копия; пропуск может дать NaN</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>DataFrame: форма и обзор</h3>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Свойство</th><th>Что даёт</th><th>Возвращает</th><th>Примечание</th></tr></thead>
+            <tbody>
+              <tr><td class="mono">df.shape / df.size</td><td>(строки, колонки) / число ячеек</td><td><code class="inl">tuple</code> / <code class="inl">int</code></td><td>shape — пара чисел, size = строки × колонки</td></tr>
+              <tr><td class="mono">df.columns</td><td>имена колонок</td><td><code class="inl">Index</code></td><td><code class="inl">tolist()</code> — обычный список</td></tr>
+              <tr><td class="mono">df.index</td><td>подписи строк</td><td><code class="inl">Index</code></td><td>после сортировки метки остаются</td></tr>
+              <tr><td class="mono">df.dtypes</td><td>тип каждой колонки</td><td>Series</td><td>в 3.0 строки — <code class="inl">str</code></td></tr>
+              <tr><td class="mono">df.head(n) / df.tail(n)</td><td>первые / последние n строк</td><td>DataFrame</td><td>срез; исходник не меняется</td></tr>
+              <tr><td class="mono">df.info()</td><td>число строк, non-null, типы, память</td><td><code class="inl">None</code> (печатает)</td><td>не меняет; <code class="inl">verbose=False</code> — компактно</td></tr>
+              <tr><td class="mono">df.describe()</td><td>статистика числовых колонок</td><td>DataFrame</td><td>строковые колонки не входят</td></tr>
+              <tr><td class="mono">df.T</td><td>транспонирование</td><td>DataFrame</td><td>копия; строки и колонки меняются ролями</td></tr>
+              <tr><td class="mono">df.memory_usage(deep=True)</td><td>байты по колонкам</td><td>Series</td><td><code class="inl">deep=True</code> считает строки; <code class="inl">index=False</code> — без индекса</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>Колонки</h3>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Запись</th><th>Что делает</th><th>Возвращает</th><th>Примечание</th></tr></thead>
+            <tbody>
+              <tr><td class="mono">df["a"]</td><td>одна колонка</td><td>Series</td><td>одни скобки — Series</td></tr>
+              <tr><td class="mono">df[["a", "b"]]</td><td>несколько колонок</td><td>DataFrame</td><td>двойные скобки — таблица</td></tr>
+              <tr><td class="mono">df["c"] = ...</td><td>новая или заменённая колонка</td><td><code class="inl">None</code> (меняет df)</td><td>меняет на месте; много таких — фрагментация</td></tr>
+              <tr><td class="mono">df.assign(c=...)</td><td>таблица с новой колонкой</td><td>DataFrame</td><td>исходник не меняется</td></tr>
+              <tr><td class="mono">df.rename(columns={...})</td><td>переименовать колонки</td><td>DataFrame</td><td>нужно присвоить или <code class="inl">inplace=True</code></td></tr>
+              <tr><td class="mono">df.drop(columns=[...])</td><td>убрать колонки</td><td>DataFrame</td><td>исходник не меняется</td></tr>
+              <tr><td class="mono">df["a"].astype(t)</td><td>тип одной колонки</td><td>Series</td><td>копия; NaN может превратить int в float</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="note">
+          <span class="t">Фрагментация памяти</span>
+          <p>Каждое <code class="inl">df["new"] = ...</code> добавляет блок памяти; десятки таких
+          присваиваний фрагментируют таблицу — лучше собрать колонки сразу или через <code class="inl">assign</code>.</p>
+        </div>
+      </section>
+
+      <!-- ══════════════════ 05. Разбор ══════════════════ -->
+      <section>
+        <h2><span class="num">05</span>Разбор по группам</h2>
+        <p>
+          Все примеры страницы — в файле
+          <a href="snippets/view.html?f=ref_pd_series_lab.py"><code class="inl">ref_pd_series_lab.py</code></a>:
+          запустите и меняйте строки (нужен pandas 3.0.1).
+        </p>
+
+        <h3>Series: map, apply, value_counts, sort_values</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_pd_series_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">s = pd.Series({"anna": 1200, "ivan": 800, "olga": 500}, name="amount")
+print(s.map(lambda v: v // 100))
+print(s.apply(lambda v: v / 1000).tolist())
+print(s.sort_values())
+cities = pd.Series(["Москва", "Казань", "Москва", "Москва"], name="city")
+print(cities.value_counts())
+with_gap = pd.Series([1200, None, 500], name="amount")
+print(with_gap.isna().tolist(), int(with_gap.isna().sum()))
+print(s.astype("float64").dtype, s.astype(str).tolist())</pre>
+          <div class="out">anna    12
+ivan     8
+olga     5
+Name: amount, dtype: int64
+[1.2, 0.8, 0.5]
+olga     500
+ivan     800
+anna    1200
+Name: amount, dtype: int64
+city
+Москва    3
+Казань    1
+Name: count, dtype: int64
+[False, True, False] 1
+float64 ['1200', '800', '500']</div>
+        </div>
+        <p>
+          <code class="inl">map</code> применяет функцию к каждому значению, <code class="inl">apply</code>
+          умеет больше, но медленнее; <code class="inl">value_counts</code> считает частоты, а
+          <code class="inl">sort_values</code>, <code class="inl">isna</code> и <code class="inl">astype</code> — новые объекты.
+        </p>
+
+        <h3>DataFrame: форма, колонки, типы, обзор</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_pd_series_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">print(df.shape, df.size)
+print(df.columns.tolist(), df.index.tolist())
+print(df.dtypes)
+print(df.head(2))
+print(df.tail(2))
+print(df.T)
+print(df.memory_usage(deep=True, index=False))</pre>
+          <div class="out">(3, 3) 9
+['user', 'amount', 'city'] [0, 1, 2]
+user        str
+amount    int64
+city        str
+dtype: object
+   user  amount    city
+0  anna    1200  Москва
+1  ivan     800  Казань
+   user  amount    city
+1  ivan     800  Казань
+2  olga     500  Москва
+             0       1       2
+user      anna    ivan    olga
+amount    1200     800     500
+city    Москва  Казань  Москва
+user      159
+amount     24
+city      234
+dtype: int64</div>
+        </div>
+        <p>
+          <code class="inl">shape</code> — (строки, колонки), <code class="inl">T</code> меняет
+          роли строк и колонок; <code class="inl">iloc[0]</code> — первая строка результата,
+          <code class="inl">loc[0]</code> — строка с меткой 0. А
+          <code class="inl">memory_usage(deep=True)</code>: 24 байта у чисел, 159 и 234 у строк.
+        </p>
+
+        <h3>Колонки: Series, assign, rename, drop</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_pd_series_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">print(type(df["amount"]).__name__, df["amount"].shape)
+print(type(df[["user", "amount"]]).__name__, df[["user", "amount"]].shape)
+print(df[["user", "amount"]])
+df["amount_with_tax"] = df["amount"] * 1.2
+print(df[["user", "amount", "amount_with_tax"]])
+print(df.assign(amount_k=df["amount"] / 1000).columns.tolist())
+print(df.rename(columns={"user": "name"}).columns.tolist())
+print(df.drop(columns=["city"]).columns.tolist())
+print(df["amount"].astype(str).tolist())
+print(df.columns.tolist())       # исходник не изменился</pre>
+          <div class="out">Series (3,)
+DataFrame (3, 2)
+   user  amount
+0  anna    1200
+1  ivan     800
+2  olga     500
+   user  amount  amount_with_tax
+0  anna    1200           1440.0
+1  ivan     800            960.0
+2  olga     500            600.0
+['user', 'amount', 'city', 'amount_with_tax', 'amount_k']
+['name', 'amount', 'city', 'amount_with_tax']
+['user', 'amount', 'amount_with_tax']
+['1200', '800', '500']
+['user', 'amount', 'city', 'amount_with_tax']</div>
+        </div>
+        <p>
+          Одинарные скобки дают Series, двойные — DataFrame: shape <code class="inl">(3,)</code>
+          против <code class="inl">(3, 1)</code>. <code class="inl">assign</code>,
+          <code class="inl">rename</code> и <code class="inl">drop</code> возвращают новую таблицу,
+          <code class="inl">df["c"] = ...</code> меняет на месте, <code class="inl">astype(str)</code> даёт <code class="inl">str</code>.
+        </p>
+
+        <h3>Copy-on-Write: копия, view и chained assignment</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_pd_series_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">df = pd.DataFrame({"user": ["anna", "ivan"], "amount": [1200, 800]})
+df["amount"][0] = 999            # так делать нельзя: в pandas 3 только предупредит
+print(df["amount"].tolist())     # [1200, 800] — исходник не изменился
+df2 = df.copy()                  # CoW: независимая копия
+df2["amount"] = df2["amount"] * 2
+print(df["amount"].tolist(), df2["amount"].tolist())
+col = df["amount"]
+df["amount"] = [1500, 900]
+print(col.tolist())              # [1200, 800] — колонка не «увидела» правку
+s1 = pd.Series([1200, 800], index=["anna", "ivan"])
+s2 = pd.Series([100, 50], index=["ivan", "olga"])
+print(s1 + s2)</pre>
+          <div class="out">[1200, 800]
+[1200, 800] [2400, 1600]
+[1200, 800]
+anna      NaN
+ivan    900.0
+olga      NaN
+dtype: float64</div>
+        </div>
+        <p>
+          Copy-on-Write включён всегда: цепочка <code class="inl">df["amount"][0] = 999</code>
+          не меняет таблицу, а печатает <code class="inl">ChainedAssignmentError</code>.
+          Арифметика выравнивает Series по меткам: у несовпадающих появляется
+          <code class="inl">NaN</code> — спасает <code class="inl">s1.add(s2, fill_value=0)</code>.
+        </p>
+
+        <h3>NaN и dtype колонки</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_pd_series_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">df = pd.DataFrame({"amount": [1200, None, 500]})
+print(df)
+print(df["amount"].dtype)                       # float64: NaN не влез в int64
+print(df["amount"].astype("Int64").tolist())    # nullable: пропуск остаётся &lt;NA&gt;</pre>
+          <div class="out">   amount
+0  1200.0
+1     NaN
+2   500.0
+float64
+[1200, &lt;NA&gt;, 500]</div>
+        </div>
+        <p>
+          <code class="inl">None</code> в целочисленной колонке превращает её в
+          <code class="inl">float64</code>: целые становятся <code class="inl">1200.0</code>.
+          Nullable <code class="inl">Int64</code> сохраняет целые, а пропуск оставляет <code class="inl">&lt;NA&gt;</code>.
+        </p>
+      </section>
+
+      <!-- ══════════════════ 06. Сценарии ══════════════════ -->
+      <section>
+        <h2><span class="num">06</span>Три сценария из практики</h2>
+
+        <h3>Таблица заказов и новая колонка</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_pd_series_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">orders = pd.DataFrame([
+    {"user": "anna", "amount": 1200},
+    {"user": "ivan", "amount": 800},
+    {"user": "olga", "amount": 500},
+])
+orders["amount_with_tax"] = orders["amount"] * 1.2
+top = orders.sort_values("amount", ascending=False).head(2)
+print(top)</pre>
+          <div class="out">   user  amount  amount_with_tax
+0  anna    1200           1440.0
+1  ivan     800            960.0</div>
+        </div>
+        <p>
+          Список словарей — по строке на запись: новая колонка считается векторно, а
+          <code class="inl">sort_values</code> и <code class="inl">head</code> дают топ-2; индекс сохраняет метки.
+        </p>
+
+        <h3>Чтение CSV из строки</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_pd_series_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">csv = """user,amount,city
+anna,1200,Москва
+ivan,800,Казань
+olga,500,Москва
+"""
+df2 = pd.read_csv(io.StringIO(csv))
+print(df2.shape, df2.size)
+print(df2.head(2))</pre>
+          <div class="out">(3, 3) 9
+   user  amount    city
+0  anna    1200  Москва
+1  ivan     800  Казань</div>
+        </div>
+        <p>
+          <code class="inl">io.StringIO</code> подменяет файл; <code class="inl">shape</code> и
+          <code class="inl">size</code> — проверка формы, <code class="inl">head(2)</code> — первые строки.
+        </p>
+
+        <h3>Первый обзор: info и describe</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_pd_series_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">df2.info(verbose=False)
+print(df2.describe())</pre>
+          <div class="out">&lt;class 'pandas.DataFrame'&gt;
+RangeIndex: 3 entries, 0 to 2
+Columns: 3 entries, user to city
+dtypes: int64(1), str(2)
+memory usage: 204.0 bytes
+            amount
+count     3.000000
+mean    833.333333
+std     351.188458
+min     500.000000
+25%     650.000000
+50%     800.000000
+75%    1000.000000
+max    1200.000000</div>
+        </div>
+        <p>
+          <code class="inl">info(verbose=False)</code> — паспорт: строки, типы, память;
+          <code class="inl">describe()</code> — статистика числовых колонок. Пять вызовов
+          первого взгляда: <code class="inl">shape</code>, <code class="inl">dtypes</code>,
+          <code class="inl">head</code>, <code class="inl">info</code>, <code class="inl">describe</code>.
+        </p>
+      </section>
+
+      <!-- ══════════════════ 07. Ошибки ══════════════════ -->
+      <section>
+        <h2><span class="num">07</span>Пять ошибок, на которых спотыкаются</h2>
+        <div class="errors">
+          <div class="err">
+            <div class="h">Путать df["a"] и df[["a"]]</div>
+            <p><code class="inl">df["a"]</code> — Series, <code class="inl">df[["a"]]</code> —
+            DataFrame: shape <code class="inl">(3,)</code> против <code class="inl">(3, 1)</code>,
+            и операции дальше разные.</p>
+            <div class="fix">Расчёт — по Series, таблица формы — по <code class="inl">df[["a"]]</code>.</div>
+          </div>
+
+          <div class="err">
+            <div class="h">Присваивать в цепочку</div>
+            <p><code class="inl">df["amount"][0] = 999</code> пишет во временную Series: в pandas 3.0
+            это только предупреждение <code class="inl">ChainedAssignmentError</code>, а таблица
+            остаётся <code class="inl">[1200, 800]</code>.</p>
+            <div class="fix"><code class="inl">df.loc[0, "amount"] = 999</code> или <code class="inl">df["amount"] = ...</code> для всей колонки.</div>
+          </div>
+
+          <div class="err">
+            <div class="h">Искать значения через in по DataFrame</div>
+            <p><code class="inl">"amount" in df</code> → <code class="inl">True</code> (колонка), а
+            <code class="inl">"anna" in df</code> → <code class="inl">False</code>: проверяются имена
+            колонок, а не ячейки.</p>
+            <div class="fix">Значения — <code class="inl">df["user"].isin(["anna"]).any()</code>.</div>
+          </div>
+
+          <div class="err">
+            <div class="h">Складывать Series с разными индексами</div>
+            <p><code class="inl">s1 + s2</code> выравнивается по меткам: у <code class="inl">anna</code>
+            и <code class="inl">olga</code> метка есть только в одной Series, поэтому там
+            <code class="inl">NaN</code>.</p>
+            <div class="fix">Свести индексы: <code class="inl">s1.add(s2, fill_value=0)</code> или <code class="inl">reindex</code>.</div>
+          </div>
+
+          <div class="err">
+            <div class="h">Забыть, что NaN меняет dtype</div>
+            <p><code class="inl">pd.DataFrame({"amount": [1200, None, 500]})</code> даёт
+            <code class="inl">float64</code>: целые стали <code class="inl">1200.0</code>, проверка
+            «колонка целая» ломается.</p>
+            <div class="fix">Nullable <code class="inl">Int64</code>:
+            <code class="inl">df["amount"].astype("Int64")</code> — пропуск остаётся <code class="inl">&lt;NA&gt;</code>.</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ══════════════════ 08. Мини-проверка ══════════════════ -->
+      <section>
+        <h2><span class="num">08</span>Мини-проверка</h2>
+        <p>Пять вопросов на понимание и две задачи. Сначала своя попытка — потом спойлер.</p>
+
+        <div class="qa">
+          <details>
+            <summary>Чем Series отличается от DataFrame?</summary>
+            <div class="a">
+              <p>Series — одномерный объект: индекс, значения, имя. DataFrame — набор Series
+              с общим индексом и именами колонок, dtype у каждой свой. Ограничение: Series
+              не знает о соседних колонках, а таблица не однородна.</p>
+              <div class="verdict">Резюме: колонка с оглавлением против таблицы.</div>
+            </div>
+          </details>
+        </div>
+
+        <div class="qa">
+          <details>
+            <summary>Что такое индекс и почему он не равен номеру строки?</summary>
+            <div class="a">
+              <p>Индекс — подписи строк, а не позиции: сортировка и фильтрация метки сохраняют.
+              <code class="inl">loc</code> ищет по метке, <code class="inl">iloc</code> — по позиции.
+              Ограничение: метка может повторяться и вернуть несколько строк.</p>
+              <div class="verdict">Резюме: метка живёт дольше позиции.</div>
+            </div>
+          </details>
+        </div>
+
+        <div class="qa">
+          <details>
+            <summary>Чем df["a"] отличается от df[["a"]] и когда какой брать?</summary>
+            <div class="a">
+              <p>Одинарные скобки — Series, двойные — DataFrame: shape <code class="inl">(3,)</code>
+              против <code class="inl">(3, 1)</code>. Для вычислений удобнее Series, для формы —
+              DataFrame. Ограничение: присваивание в <code class="inl">df[["a"]]</code> исходник
+              не меняет — CoW.</p>
+              <div class="verdict">Резюме: одни скобки — вектор, двойные — таблица.</div>
+            </div>
+          </details>
+        </div>
+
+        <div class="qa">
+          <details>
+            <summary>Почему в pandas 3 строки — это str, а не object?</summary>
+            <div class="a">
+              <p>Строковые колонки получают dtype <code class="inl">str</code> — это видно в
+              <code class="inl">dtypes</code> и <code class="inl">info()</code>. Ограничение:
+              проверки <code class="inl">dtype == object</code> не работают, сравнивайте со
+              <code class="inl">str</code>.</p>
+              <div class="verdict">Резюме: в 3.0 строка — это str; старые проверки пересмотрите.</div>
+            </div>
+          </details>
+        </div>
+
+        <div class="qa">
+          <details>
+            <summary>Что делает Copy-on-Write и почему chained assignment не работает?</summary>
+            <div class="a">
+              <p>CoW откладывает копирование до записи: <code class="inl">.copy()</code> независим,
+              а колонка при правке отделяется от исходника. Цепочка
+              <code class="inl">df["a"][0]</code> пишет во временную копию — pandas 3 печатает
+              <code class="inl">ChainedAssignmentError</code>. Ограничение: предупреждение легко
+              не заметить.</p>
+              <div class="verdict">Резюме: запись — одной операцией через <code class="inl">.loc</code>.</div>
+            </div>
+          </details>
+        </div>
+
+        <h3><span style="color:var(--muted);font-family:var(--mono);font-size:.8rem">01</span> Надбавка 10%</h3>
+        <p>Дана Series сумм по людям: <code class="inl">amounts = pd.Series({"anna": 1200, "ivan": 800, "olga": 500})</code>.
+        Начислите надбавку 10% и выведите результат по убыванию, округлив до десятых.</p>
+        <div class="qa">
+          <details>
+            <summary>Показать решение и разбор</summary>
+            <div class="a">
+              <div class="code" style="margin-top:0">
+                <div class="bar"><span class="file">ref_pd_series_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+                <pre data-lang="python">amounts = pd.Series({"anna": 1200, "ivan": 800, "olga": 500})
+bonus = amounts.map(lambda v: v * 1.1)
+print(bonus.sort_values(ascending=False).round(1))</pre>
+                <div class="out">anna    1320.0
+ivan     880.0
+olga     550.0
+dtype: float64</div>
+              </div>
+              <p><strong>Что важно.</strong> <code class="inl">map</code> применяет функцию к каждому
+              значению, <code class="inl">sort_values</code> возвращает копию, а
+              <code class="inl">round(1)</code> округляет. Исходная Series не изменилась.</p>
+            </div>
+          </details>
+        </div>
+
+        <h3><span style="color:var(--muted);font-family:var(--mono);font-size:.8rem">02</span> name и total</h3>
+        <p>Дана таблица заказов с колонками <code class="inl">user</code>, <code class="inl">amount</code>,
+        <code class="inl">qty</code> (две строки). Добавьте колонку <code class="inl">total</code>
+        (сумма × количество), оставьте две колонки и переименуйте <code class="inl">user</code>
+        в <code class="inl">name</code>.</p>
+        <div class="qa">
+          <details>
+            <summary>Показать решение и разбор</summary>
+            <div class="a">
+              <div class="code" style="margin-top:0">
+                <div class="bar"><span class="file">ref_pd_series_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+                <pre data-lang="python">orders = pd.DataFrame([
+    {"user": "anna", "amount": 1200, "qty": 2},
+    {"user": "ivan", "amount": 800, "qty": 1},
+])
+orders["total"] = orders["amount"] * orders["qty"]
+report = orders[["user", "total"]].rename(columns={"user": "name"})
+print(report)</pre>
+                <div class="out">   name  total
+0  anna   2400
+1  ivan    800</div>
+              </div>
+              <p><strong>Что важно.</strong> Новая колонка считается векторно, без цикла.
+              <code class="inl">orders[["user", "total"]]</code> — двойные скобки, а
+              <code class="inl">rename</code> возвращает новый DataFrame — результат присвоен.</p>
+            </div>
+          </details>
+        </div>
+      </section>
+
+      <!-- ══════════════════ 09. Мостик ══════════════════ -->
+      <section>
+        <h2><span class="num">09</span>Мостик: NumPy и SQL</h2>
+
+        <h3>NumPy: на чём стоит Series</h3>
+        <div class="code">
+          <div class="bar"><span class="file">мост в NumPy</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">import pandas as pd
+
+s = pd.Series([1200, 800, 500], index=["anna", "ivan", "olga"])
+s.to_numpy() * 2                  # векторно, как ndarray
+df = pd.DataFrame({"amount": s.values})
+df["amount"].sum()                # агрегат по колонке</pre>
+        </div>
+        <p>
+          Под капотом Series — массив NumPy плюс индекс: <code class="inl">to_numpy()</code> отдаёт
+          массив, и векторные операции работают как в <a href="ch-07-ndarray.html">главе 07</a>.
+        </p>
+
+        <h3>SQL: та же таблица</h3>
+        <div class="code">
+          <div class="bar"><span class="file">мост в SQL</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">-- колонки и строки — почти таблица
+SELECT user, amount FROM orders;          -- df[["user", "amount"]]
+SELECT COUNT(*) FROM orders;              -- df.shape[0]</pre>
+        </div>
+        <p>
+          DataFrame почти повторяет таблицу базы: <code class="inl">columns</code> — поля,
+          <code class="inl">index</code> — ключи строк. Маска — <code class="inl">WHERE</code>,
+          сортировка с <code class="inl">head</code> — <code class="inl">ORDER BY ... LIMIT</code>
+          (<a href="ch-25-sql-vs-pandas.html">глава 25</a>).
+        </p>
+
+        <div class="bridges">
+          <a class="bridge" href="ch-12-series-dataframe.html"><span class="to">Глава 12</span><span>Series и DataFrame: таблица с оглавлением</span><span class="what">→ индекс, колонки и dtype</span></a>
+          <a class="bridge" href="ch-13-loc-iloc.html"><span class="to">Глава 13</span><span>loc и iloc: имя против номера</span><span class="what">→ метка против позиции</span></a>
+          <a class="bridge" href="ch-18-dates-reshape.html"><span class="to">Глава 18</span><span>Даты, строки и форма таблицы</span><span class="what">→ длинная и широкая форма, .str и .dt</span></a>
+          <a class="bridge" href="appendix-pandas.html"><span class="to">Справочник</span><span>Вся карта pandas</span><span class="what">→ семь страниц справочника</span></a>
+        </div>
+      </section>
+
+      <div class="pager">
+        <a class="prev" href="appendix-pandas.html"><span class="dir">← Справочник pandas</span><span class="ttl">Вся карта pandas</span></a>
+        <a class="next" href="ref-pd-loc.html"><span class="dir">Дальше → loc/iloc</span><span class="ttl">loc и iloc: имя против номера</span></a>
+      </div>
+
+    </div>
+  </main>
+</div>
+<script src="assets/toc.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>

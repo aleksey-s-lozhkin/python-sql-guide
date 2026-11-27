@@ -1,0 +1,719 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Справочник pandas · Пропуски: NaN, None и pd.NA — Ассоциативный гайд</title>
+<meta name="description" content="Справочник pandas по пропускам: NaN, None, pd.NA, isna, dropna, fillna, ffill, nullable Int64 и NaN в groupby и merge — с выводом на pandas 3.0.1.">
+<link rel="stylesheet" href="assets/style.css">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#fbf8f2" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#14131a" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="assets/icons/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="assets/icons/icon-180.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Гайд Py/SQL">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+</head>
+<body data-slug="ref-pd-missing">
+<div class="app">
+  <aside class="sidebar" id="sidebar"></aside>
+  <main>
+    <div class="wrap">
+
+      <header class="chapter-head">
+        <div class="eyebrow">
+          <span class="part">Справочник · pandas</span>
+          <span class="dot"></span>
+          <span>страница 6 из 7</span>
+          <span class="dot"></span>
+          <span>готово</span>
+        </div>
+        <h1>Пропуски: NaN, None и pd.NA
+          <span class="sub">Дырка в таблице — это факт, а не ноль</span>
+        </h1>
+        <p class="lead">
+          Пропуск — это не значение: его нельзя сравнивать, с ним нельзя считать, но можно заметить,
+          удалить, заполнить или сохранить флагом. Здесь — что делает каждая операция и где ловушка.
+        </p>
+        <div class="meta">
+          <span class="chip">⏱ <b>12 минут</b></span>
+          <span class="chip">🎯 уровень <b>2</b></span>
+          <span class="chip">🐼 <b>pandas 3.0.1</b></span>
+          <span class="chip">📚 <b>глава 17</b></span>
+        </div>
+      </header>
+
+      <p class="small">
+        Справочник pandas: <a href="appendix-pandas.html">вся карта</a> ·
+        <a href="ref-pd-series.html">01 · Series и DataFrame</a> ·
+        <a href="ref-pd-loc.html">02 · loc/iloc</a> ·
+        <a href="ref-pd-filter.html">03 · фильтрация</a> ·
+        <a href="ref-pd-groupby.html">04 · groupby</a> ·
+        <a href="ref-pd-merge.html">05 · merge</a> · <b>06 · пропуски</b> ·
+        <a href="ref-pd-reshape.html">07 · reshape</a>
+      </p>
+
+      <div class="tldr">
+        <div class="t">Самое главное</div>
+        <ul>
+          <li>Пропуск бывает трёх видов: <code class="inl">NaN</code>, <code class="inl">None</code>
+              (в колонке становится <code class="inl">NaN</code>) и <code class="inl">pd.NA</code>.
+              Ловить все три нужно через <code class="inl">isna()</code>.</li>
+          <li><code class="inl">dropna</code>, <code class="inl">fillna</code>, <code class="inl">ffill</code>
+              возвращают <b>новый</b> объект: без присваивания таблица не меняется (Copy-on-Write).</li>
+          <li>Колонка с <code class="inl">NaN</code> — <code class="inl">float64</code>;
+              <code class="inl">fillna(0)</code> её не исправит. Для целых — <code class="inl">Int64</code>.</li>
+        </ul>
+      </div>
+
+      <!-- ══════════════════ 01. Что это ══════════════════ -->
+      <section>
+        <h2><span class="num">01</span>Что это и как устроено</h2>
+        <p>
+          Пропуск — это отсутствие значения, а не ноль. Носителей несколько:
+          <code class="inl">np.nan</code> (float, не равный себе), <code class="inl">None</code>
+          (в колонке становится <code class="inl">NaN</code>) и <code class="inl">pd.NA</code>
+          (nullable-типы). Снаружи их не различить — <code class="inl">isna()</code> узнаёт все три.
+        </p>
+        <p>
+          В pandas 3.0 текст получает dtype <code class="inl">str</code> (не <code class="inl">object</code>),
+          пропуск в нём печатается как <code class="inl">NaN</code>, а числовая колонка с одним
+          <code class="inl">NaN</code> становится <code class="inl">float64</code>. Плюс включён
+          Copy-on-Write: операции возвращают копию и исходную таблицу не меняют.
+        </p>
+
+        <div class="anchor">
+          <div class="glyph">🕳️</div>
+          <div>
+            <div class="t">Держите эту картинку в голове</div>
+            <p class="kick"><strong>Пропуск — дырка в таблице.</strong> Дырку можно закрыть
+            (заполнить), признать и обойти (удалить строку), можно оставить и отметить флагом.</p>
+            <p><strong>Но нельзя считать дырку нулём по умолчанию:</strong> средняя зарплата по
+            отделу не станет ниже оттого, что у одного сотрудника данных нет. Метафору целиком
+            разбирает <a href="ch-17-missing.html">глава 17</a>.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ══════════════════ 02. Когда брать ══════════════════ -->
+      <section>
+        <h2><span class="num">02</span>Когда брать, а когда нет</h2>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Ситуация</th><th>Стратегия</th><th>Осторожно</th></tr></thead>
+            <tbody>
+              <tr><td>Пропуск в ключевой колонке: id, дата, пользователь</td><td><code class="inl">dropna(subset=[...])</code></td><td>строка не пригодна для анализа — удаление честнее заполнения</td></tr>
+              <tr><td>Числовая метрика, пропусков немного</td><td><code class="inl">fillna</code> медианой или средним</td><td>заполнение сдвигает распределение; сохраните флаг</td></tr>
+              <tr><td>Временной ряд с дырками</td><td><code class="inl">ffill</code>/<code class="inl">bfill</code></td><td>сначала <code class="inl">sort_values</code>, иначе «сосед» случайный</td></tr>
+              <tr><td>Пропуск — отдельная категория</td><td><code class="inl">fillna("неизвестно")</code> или флаг</td><td>не смешивайте «нет данных» и «другое»</td></tr>
+              <tr><td>Пропусков больше половины</td><td>удалить колонку или флаг</td><td>заполнение выдумает данные</td></tr>
+              <tr><td>Нужны целые, а пропуски есть</td><td><code class="inl">Int64</code>, <code class="inl">convert_dtypes()</code></td><td>обычный <code class="inl">int64</code> пропуски не хранит</td></tr>
+              <tr><td>Нужно сравнить или сгруппировать</td><td><code class="inl">isna()</code>, <code class="inl">groupby(dropna=False)</code></td><td>пропуск не равен сам себе</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ══════════════════ 03. Как подготовить ══════════════════ -->
+      <section>
+        <h2><span class="num">03</span>Как создать и подготовить</h2>
+        <div class="code">
+          <div class="bar"><span class="file">ref_pd_missing_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">import numpy as np
+import pandas as pd
+
+df = pd.DataFrame({
+    "user": ["anna", "ivan", "olga", "petr"],
+    "amount": [1200.0, np.nan, 500.0, np.nan],
+    "city": ["Москва", None, "Москва", "Казань"],
+})
+print(df)
+print(df.dtypes)
+print(df.isna().sum())
+print(df.convert_dtypes().dtypes)</pre>
+          <div class="out">   user  amount    city
+0  anna  1200.0  Москва
+1  ivan     NaN     NaN
+2  olga   500.0  Москва
+3  petr     NaN  Казань
+user          str
+amount    float64
+city          str
+dtype: object
+user      0
+amount    2
+city      1
+dtype: int64
+user      string
+amount     Int64
+city      string
+dtype: object</div>
+        </div>
+        <p>
+          <code class="inl">None</code> в текстовой колонке стал <code class="inl">NaN</code> — это
+          нормализация. Числовая с пропусками — <code class="inl">float64</code>, а
+          <code class="inl">convert_dtypes()</code> даёт <code class="inl">Int64</code> и <code class="inl">string</code>.
+        </p>
+      </section>
+
+      <!-- ══════════════════ 04. Все операции ══════════════════ -->
+      <section>
+        <h2><span class="num">04</span>Все операции с пропусками</h2>
+        <p>
+          Пять таблиц по назначению. В «Примечании» — копия или view, меняется ли df и где ловушка.
+          O(...) не привожу: у pandas цена зависит от dtype, размера и числа групп.
+        </p>
+
+        <h3>Обнаружение</h3>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Операция</th><th>Что делает</th><th>Возвращает</th><th>Примечание</th></tr></thead>
+            <tbody>
+              <tr><td class="mono">df.isna() / df.notna()</td><td>маска пропусков по всей таблице</td><td>DataFrame из bool</td><td>копия-маска; df не меняется</td></tr>
+              <tr><td class="mono">df["col"].isna().sum()</td><td>сколько пропусков в колонке</td><td>int</td><td>не меняет данные</td></tr>
+              <tr><td class="mono">df.isna().any() / .all()</td><td>есть ли пропуск в колонке / все ли пропуски</td><td>Series bool</td><td>не меняет данные</td></tr>
+              <tr><td class="mono">df.count()</td><td>непустые значения по колонкам</td><td>Series int</td><td><code class="inl">count ≠ size</code>: size — все ячейки</td></tr>
+              <tr><td class="mono">pd.isna(x)</td><td>пропуск ли отдельное значение</td><td>bool</td><td>понимает NaN, None и pd.NA</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>Удаление</h3>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Операция</th><th>Что делает</th><th>Возвращает</th><th>Примечание</th></tr></thead>
+            <tbody>
+              <tr><td class="mono">df.dropna()</td><td>убирает строку, если пропуск есть хоть где-то</td><td>новый DataFrame</td><td>копия; исходный df цел</td></tr>
+              <tr><td class="mono">df.dropna(how="all")</td><td>убирает только полностью пустые строки</td><td>новый DataFrame</td><td>копия</td></tr>
+              <tr><td class="mono">df.dropna(subset=["col"])</td><td>смотрит только на указанные колонки</td><td>новый DataFrame</td><td>копия</td></tr>
+              <tr><td class="mono">df.dropna(thresh=k)</td><td>оставляет строки с ≥ k непустыми значениями</td><td>новый DataFrame</td><td>не то же, что subset: считает непустые ячейки</td></tr>
+              <tr><td class="mono">df.dropna(inplace=True)</td><td>удаляет на месте</td><td>None</td><td>меняет df; в 3.0 не рекомендуется</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>Заполнение</h3>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Операция</th><th>Что делает</th><th>Возвращает</th><th>Примечание</th></tr></thead>
+            <tbody>
+              <tr><td class="mono">df.fillna(value)</td><td>заменяет пропуски скаляром, словарём или Series</td><td>новый DataFrame</td><td>копия; без присваивания df не меняется (CoW)</td></tr>
+              <tr><td class="mono">df["col"].fillna(value)</td><td>то же для одной колонки</td><td>Series</td><td>копия; df не меняется</td></tr>
+              <tr><td class="mono">s.ffill()</td><td>протягивает последнее известное значение вперёд</td><td>Series</td><td>копия; нужен порядок по времени</td></tr>
+              <tr><td class="mono">s.bfill()</td><td>протягивает следующее известное назад</td><td>Series</td><td>копия; последний пропуск останется</td></tr>
+              <tr><td class="mono">s.ffill(limit=k)</td><td>не более k подряд заполненных значений</td><td>Series</td><td>limit считает подряд, не всего</td></tr>
+              <tr><td class="mono">s.interpolate()</td><td>линейно между известными значениями</td><td>Series</td><td>копия; на краях ведёт себя отдельно</td></tr>
+              <tr><td class="mono">df.fillna(method="ffill")</td><td>старый способ — удалён в pandas 3.0</td><td>—</td><td>TypeError; используйте <code class="inl">.ffill()</code>/<code class="inl">.bfill()</code></td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>Типы</h3>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Операция</th><th>Что делает</th><th>Возвращает</th><th>Примечание</th></tr></thead>
+            <tbody>
+              <tr><td class="mono">s.astype("Int64")</td><td>nullable-целые: числа и <code class="inl">pd.NA</code></td><td>Series Int64</td><td>новая Series; fillna(0) по-прежнему даёт float64</td></tr>
+              <tr><td class="mono">df.convert_dtypes()</td><td>подбирает nullable-типы по данным</td><td>новый DataFrame</td><td>копия; текст → string, целые → Int64</td></tr>
+              <tr><td class="mono">s.astype("boolean")</td><td>nullable-логический тип</td><td>Series boolean</td><td>копия; True/False/<code class="inl">&lt;NA&gt;</code></td></tr>
+              <tr><td class="mono">s.astype("string")</td><td>nullable-строка</td><td>Series string</td><td>копия; пропуск хранится как <code class="inl">&lt;NA&gt;</code></td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>Пропуск в операциях</h3>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Операция</th><th>Что происходит</th><th>Возвращает</th><th>Примечание</th></tr></thead>
+            <tbody>
+              <tr><td class="mono">s == np.nan</td><td>сравнение с пропуском всегда False</td><td>Series bool</td><td><code class="inl">NaN != NaN</code>; для pd.NA — <code class="inl">pd.NA</code></td></tr>
+              <tr><td class="mono">df.groupby(key)</td><td>строки с NaN в ключе отбрасываются</td><td>GroupBy</td><td><code class="inl">dropna=True</code> по умолчанию</td></tr>
+              <tr><td class="mono">df.groupby(key, dropna=False)</td><td>NaN становится отдельной группой</td><td>GroupBy</td><td>группа печатается как NaN</td></tr>
+              <tr><td class="mono">df.merge(..., on=key)</td><td>NaN-ключи совпадают сами с собой</td><td>новый DataFrame</td><td>в SQL NULL с NULL не совпадает — строки размножаются</td></tr>
+              <tr><td class="mono">df.sort_values(col)</td><td>пропуски уходят в конец</td><td>новый DataFrame</td><td>копия; <code class="inl">na_position</code> меняет край</td></tr>
+              <tr><td class="mono">s.value_counts(dropna=False)</td><td>считает и пропуски тоже</td><td>Series</td><td>по умолчанию NaN не считается</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ══════════════════ 05. Разбор ══════════════════ -->
+      <section>
+        <h2><span class="num">05</span>Разбор по группам</h2>
+        <p>
+          Все примеры страницы — в файле
+          <a href="snippets/view.html?f=ref_pd_missing_lab.py"><code class="inl">ref_pd_missing_lab.py</code></a>.
+          Нужен pandas 3.0.1 — на других версиях отличаются dtype и оформление таблиц.
+        </p>
+
+        <h3>Три вида пропусков</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_pd_missing_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">for value in (np.nan, None, pd.NA):
+    print(repr(value), type(value).__name__, pd.isna(value))</pre>
+          <div class="out">nan float True
+None NoneType True
+&lt;NA&gt; NAType True</div>
+        </div>
+        <p>
+          Три объекта разные, но <code class="inl">pd.isna</code> отвечает <code class="inl">True</code>
+          на каждый: для анализа это один и тот же «нет значения». Разница только в dtype:
+          <code class="inl">float64</code> хранит <code class="inl">NaN</code>, nullable-типы — <code class="inl">pd.NA</code>.
+        </p>
+
+        <h3>isna и count против size</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_pd_missing_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">df = pd.DataFrame({
+    "user": ["anna", "ivan", "olga", "petr"],
+    "amount": [1200.0, np.nan, 500.0, np.nan],
+    "city": ["Москва", None, "Москва", "Казань"],
+})
+print(df.isna().sum())
+print(len(df), df.count().tolist())
+print(df.isna().any().tolist())</pre>
+          <div class="out">user      0
+amount    2
+city      1
+dtype: int64
+4 [4, 2, 3]
+[False, True, True]</div>
+        </div>
+        <p>
+          <code class="inl">isna().sum()</code> — «сколько пропусков», <code class="inl">len(df)</code> —
+          «сколько строк», <code class="inl">count()</code> — «сколько значений есть». В отчёте это
+          три разных числа: среднее считается по непустым, а доля — по строкам.
+        </p>
+
+        <h3>dropna: any, subset, thresh</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_pd_missing_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">df = pd.DataFrame({
+    "user": ["anna", "ivan", "olga", "petr"],
+    "amount": [1200.0, np.nan, 500.0, np.nan],
+    "city": ["Москва", "Казань", None, "Казань"],
+})
+print(df.dropna())
+print(df.dropna(subset=["amount"]))
+print(df.dropna(thresh=2))</pre>
+          <div class="out">   user  amount    city
+0  anna  1200.0  Москва
+   user  amount    city
+0  anna  1200.0  Москва
+2  olga   500.0     NaN
+   user  amount    city
+0  anna  1200.0  Москва
+1  ivan     NaN  Казань
+2  olga   500.0     NaN
+3  petr     NaN  Казань</div>
+        </div>
+        <p>
+          Без аргументов <code class="inl">dropna()</code> требует, чтобы строка была заполнена
+          целиком. <code class="inl">subset</code> сужает проверку до нужных колонок, а
+          <code class="inl">thresh=k</code> оставляет строку с хотя бы k непустыми ячейками.
+        </p>
+
+        <h3>fillna, ffill, bfill, interpolate</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_pd_missing_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">ts = pd.DataFrame({
+    "day": [1, 2, 3, 4, 5],
+    "amount": [1200.0, np.nan, np.nan, 900.0, np.nan],
+})
+print(ts["amount"].fillna(ts["amount"].mean()).tolist())
+print(ts["amount"].ffill(limit=1).tolist())
+print(ts["amount"].bfill().tolist())
+print(ts["amount"].interpolate().tolist())
+print(ts["amount"].fillna(0).dtype)</pre>
+          <div class="out">[1200.0, 1050.0, 1050.0, 900.0, 1050.0]
+[1200.0, 1200.0, nan, 900.0, 900.0]
+[1200.0, 900.0, 900.0, 900.0, nan]
+[1200.0, 1100.0, 1000.0, 900.0, 900.0]
+float64</div>
+        </div>
+        <p>
+          <code class="inl">fillna(mean())</code> подставляет одно число, <code class="inl">ffill(limit=1)</code>
+          тянет предыдущее не больше чем на строку, <code class="inl">interpolate</code> строит линию
+          между точками. Последняя строка вывода важна: <code class="inl">fillna(0)</code> не сделал
+          колонку целой — тип остался <code class="inl">float64</code>.
+        </p>
+        <p class="small">
+          В pandas 3.0 у <code class="inl">fillna</code> нет параметра <code class="inl">method</code>,
+          а <code class="inl">pad()</code>/<code class="inl">backfill()</code> удалены: только <code class="inl">.ffill()</code> и <code class="inl">.bfill()</code>.
+        </p>
+
+        <h3>Nullable-типы и тип после fillna</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_pd_missing_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">df = pd.DataFrame({
+    "user": ["anna", "ivan", "olga", "petr"],
+    "amount": [1200.0, np.nan, 500.0, np.nan],
+    "city": ["Москва", None, "Москва", "Казань"],
+})
+amount_int = df["amount"].astype("Int64")
+print(amount_int.dtype, amount_int.tolist())
+print(amount_int.isna().tolist())
+print(df["amount"].fillna(0).dtype)
+print(df.convert_dtypes().to_string())</pre>
+          <div class="out">Int64 [1200, &lt;NA&gt;, 500, &lt;NA&gt;]
+[False, True, False, True]
+float64
+   user  amount    city
+0  anna    1200  Москва
+1  ivan    &lt;NA&gt;    &lt;NA&gt;
+2  olga     500  Москва
+3  petr    &lt;NA&gt;  Казань</div>
+        </div>
+        <p>
+          <code class="inl">Int64</code> хранит и целые, и <code class="inl">&lt;NA&gt;</code>;
+          <code class="inl">convert_dtypes()</code> делает так для всей таблицы. Но
+          <code class="inl">fillna(0)</code> у <code class="inl">float64</code>-колонки оставляет
+          <code class="inl">float64</code>: замена пропуска dtype не меняет.
+        </p>
+
+        <h3>NaN в сравнениях и ключах</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_pd_missing_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">df = pd.DataFrame({
+    "user": ["anna", "ivan", "olga", "petr"],
+    "amount": [1200.0, np.nan, 500.0, np.nan],
+    "city": ["Москва", None, "Москва", "Казань"],
+})
+print((df["amount"] &gt; 500).tolist())
+print((df["amount"] == np.nan).tolist())
+print(df.groupby("city").size().to_dict())
+print(df.groupby("city", dropna=False).size().to_dict())
+print(df.sort_values("amount")["user"].tolist())
+
+left = pd.DataFrame({"city": ["Москва", np.nan], "orders": [2, 1]})
+right = pd.DataFrame({"city": [np.nan, np.nan, "Москва"], "manager": ["A", "B", "C"]})
+merged = left.merge(right, on="city", how="inner")
+print(merged)
+print(len(left), len(merged))</pre>
+          <div class="out">[True, False, False, False]
+[False, False, False, False]
+{'Казань': 1, 'Москва': 2}
+{'Казань': 1, 'Москва': 2, nan: 1}
+['olga', 'anna', 'ivan', 'petr']
+     city  orders manager
+0  Москва       2       C
+1     NaN       1       A
+2     NaN       1       B
+2 3</div>
+        </div>
+        <p>
+          Сравнение с <code class="inl">np.nan</code> всегда даёт <code class="inl">False</code>:
+          пропуск не равен себе. <code class="inl">groupby</code> молча выбрасывает строки с NaN
+          в ключе, а <code class="inl">merge</code> считает NaN равными — в отличие от SQL, где
+          <code class="inl">NULL</code> с <code class="inl">NULL</code> не совпадает.
+        </p>
+      </section>
+
+      <!-- ══════════════════ 06. Сценарии ══════════════════ -->
+      <section>
+        <h2><span class="num">06</span>Три сценария из практики</h2>
+
+        <h3>Чистка CSV</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_pd_missing_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">df = pd.DataFrame({
+    "user": ["anna", None, "olga", "petr"],
+    "amount": [1200.0, 800.0, np.nan, 500.0],
+    "city": ["Москва", None, "Москва", "Казань"],
+})
+clean = df.dropna(subset=["user"])
+clean["city"] = clean["city"].fillna("неизвестно")
+clean["amount_missing"] = clean["amount"].isna()
+print(clean.to_string(index=False))
+print(len(df), len(clean))</pre>
+          <div class="out">user  amount   city  amount_missing
+anna  1200.0 Москва           False
+olga     NaN Москва            True
+petr   500.0 Казань           False
+4 3</div>
+        </div>
+        <p>
+          Порядок важен: сначала убираем строки без пользователя, потом заполняем город и только
+          затем ставим флаг. Флаг после заполнения потерял бы информацию о дырке навсегда.
+        </p>
+
+        <h3>Заполнение средним по группе</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_pd_missing_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">df = pd.DataFrame({
+    "user": ["anna", "ivan", "olga", "petr"],
+    "city": ["Москва", "Москва", "Казань", "Казань"],
+    "amount": [1200.0, np.nan, 800.0, np.nan],
+})
+df["amount"] = df["amount"].fillna(df.groupby("city")["amount"].transform("mean"))
+print(df.to_string(index=False))</pre>
+          <div class="out">user   city  amount
+anna Москва  1200.0
+ivan Москва  1200.0
+olga Казань   800.0
+petr Казань   800.0</div>
+        </div>
+        <p>
+          <code class="inl">groupby(...).transform("mean")</code> возвращает Series той же длины:
+          значение группы подставляется в каждую строку. Это среднее по городу, а не по всей таблице.
+        </p>
+
+        <h3>Forward fill временного ряда</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_pd_missing_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">ts = pd.DataFrame({
+    "date": ["2024-01-03", "2024-01-01", "2024-01-02", "2024-01-04"],
+    "amount": [300.0, 1200.0, np.nan, np.nan],
+})
+ts["date"] = pd.to_datetime(ts["date"])
+ts = ts.sort_values("date").reset_index(drop=True)
+print(ts["date"].dt.day.tolist())
+print(ts["amount"].tolist())
+print(ts["amount"].ffill().tolist())</pre>
+          <div class="out">[1, 2, 3, 4]
+[1200.0, nan, 300.0, nan]
+[1200.0, 1200.0, 300.0, 300.0]</div>
+        </div>
+        <p>
+          Сначала <code class="inl">sort_values("date")</code>, только потом <code class="inl">ffill</code>:
+          «сосед» определяется порядком строк, а не датой. На несортированных данных ffill протянет
+          мартовскую сумму в февраль — молчаливая ошибка.
+        </p>
+      </section>
+
+      <!-- ══════════════════ 07. Ошибки ══════════════════ -->
+      <section>
+        <h2><span class="num">07</span>Пять ошибок, на которых спотыкаются</h2>
+        <div class="errors">
+          <div class="err">
+            <div class="h">fillna(0) не даёт int</div>
+            <p>Колонка с <code class="inl">NaN</code> уже <code class="inl">float64</code>:
+            <code class="inl">fillna(0)</code> заменяет пропуски, но dtype не меняет.</p>
+            <div class="fix">Сначала <code class="inl">astype("Int64")</code> или
+            <code class="inl">convert_dtypes()</code>. И спросите, правда ли ноль — правильное значение.</div>
+          </div>
+
+          <div class="err">
+            <div class="h">dropna() по умолчанию — any</div>
+            <p>Без параметров удаляется строка, у которой пропуск <em>в любой</em> колонке, —
+            на широкой таблице можно потерять почти всё.</p>
+            <div class="fix"><code class="inl">subset=[...]</code> для нужных колонок,
+            <code class="inl">how="all"</code> для полных пустышек, <code class="inl">thresh</code> для порога.</div>
+          </div>
+
+          <div class="err">
+            <div class="h">Сравнение с NaN</div>
+            <p><code class="inl">df[df["amount"] == np.nan]</code> всегда пуст: <code class="inl">NaN</code>
+            не равен даже себе, а с <code class="inl">pd.NA</code> сравнение вернёт <code class="inl">pd.NA</code>.</p>
+            <div class="fix">Маска — <code class="inl">df["amount"].isna()</code>; для «не пропуск» —
+            <code class="inl">notna()</code>.</div>
+          </div>
+
+          <div class="err">
+            <div class="h">NaN-ключ в merge</div>
+            <p>pandas соединяет <code class="inl">NaN</code> с <code class="inl">NaN</code>, а SQL
+            <code class="inl">NULL</code> с <code class="inl">NULL</code> — нет: join размножит строки,
+            а вы будете ждать пустого результата.</p>
+            <div class="fix">Перед join решите судьбу пропусков: <code class="inl">dropna(subset=[key])</code>,
+            <code class="inl">fillna("неизвестно")</code> или <code class="inl">indicator=True</code>
+            и проверка результата.</div>
+          </div>
+
+          <div class="err">
+            <div class="h">fillna без присваивания</div>
+            <p><code class="inl">df.fillna(0)</code> возвращает новую таблицу: запись без присваивания
+            ничего не меняет — в pandas 3.0 это Copy-on-Write.</p>
+            <div class="fix"><code class="inl">df["amount"] = df["amount"].fillna(0)</code> или
+            <code class="inl">df = df.fillna(0)</code>. <code class="inl">inplace=True</code> работает,
+            но в 3.0 не рекомендуется.</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ══════════════════ 08. Мини-проверка ══════════════════ -->
+      <section>
+        <h2><span class="num">08</span>Мини-проверка</h2>
+        <p>Пять вопросов и две задачи. Сначала своя попытка — потом спойлер.</p>
+
+        <div class="qa">
+          <details>
+            <summary>Чем NaN отличается от None и pd.NA?</summary>
+            <div class="a">
+              <p><code class="inl">NaN</code> — float «не число», <code class="inl">None</code> —
+              объект (в колонке становится <code class="inl">NaN</code>), <code class="inl">pd.NA</code> —
+              единый пропуск nullable-типов. Проверять всё равно через <code class="inl">isna()</code>.</p>
+              <div class="verdict">Резюме: разные носители, один смысл — «значения нет».</div>
+            </div>
+          </details>
+        </div>
+
+        <div class="qa">
+          <details>
+            <summary>Почему целая колонка с NaN стала float64 и как вернуть целые?</summary>
+            <div class="a">
+              <p><code class="inl">NaN</code> — float, поэтому колонка приводится к <code class="inl">float64</code>,
+              а <code class="inl">fillna(0)</code> dtype не меняет. Nullable <code class="inl">Int64</code>
+              хранит и целые, и <code class="inl">pd.NA</code>; <code class="inl">convert_dtypes()</code> подбирает его сам.</p>
+              <div class="verdict">Резюме: «целое с пропуском» — это Int64, а не float64 после fillna(0).</div>
+            </div>
+          </details>
+        </div>
+
+        <div class="qa">
+          <details>
+            <summary>Чем dropna(how="any") отличается от thresh?</summary>
+            <div class="a">
+              <p><code class="inl">how="any"</code> — порог «ноль пропусков»: строка остаётся, только
+              если заполнены все колонки из <code class="inl">subset</code>. <code class="inl">thresh=k</code> —
+              порог «k непустых значений» в любых колонках.</p>
+              <div class="verdict">Резюме: any смотрит на пропуски, thresh — на заполненные ячейки.</div>
+            </div>
+          </details>
+        </div>
+
+        <div class="qa">
+          <details>
+            <summary>Что делает ffill и почему без sort_values он врёт?</summary>
+            <div class="a">
+              <p><code class="inl">ffill()</code> копирует последнее известное значение вниз по строкам:
+              «последнее» — предыдущая строка таблицы, а не предыдущая по времени. На несортированных
+              данных это значение из будущего, поэтому сначала <code class="inl">sort_values</code>.</p>
+              <div class="verdict">Резюме: ffill — про порядок строк, а не про время; сортируйте сами.</div>
+            </div>
+          </details>
+        </div>
+
+        <div class="qa">
+          <details>
+            <summary>Почему df[df["amount"] == np.nan] всегда пустой?</summary>
+            <div class="a">
+              <p>По определению <code class="inl">NaN != NaN</code>, поэтому сравнение с
+              <code class="inl">np.nan</code> даёт <code class="inl">False</code>; у nullable-значений
+              <code class="inl">pd.NA == pd.NA</code> возвращает <code class="inl">pd.NA</code>.</p>
+              <div class="verdict">Резюме: пропуск ищут маской <code class="inl">isna()</code>, а не равенством.</div>
+            </div>
+          </details>
+        </div>
+
+        <h3><span style="color:var(--muted);font-family:var(--mono);font-size:.8rem">01</span> Портрет пропусков</h3>
+        <p>Для таблицы выведите число пропусков по каждой колонке и их долю в процентах.</p>
+        <div class="code">
+          <div class="bar"><span class="file">условие</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">df = pd.DataFrame({
+    "user": ["anna", "ivan", "olga", "petr"],
+    "amount": [1200.0, np.nan, 500.0, np.nan],
+    "city": ["Москва", None, "Москва", "Казань"],
+})
+# ожидается: число пропусков по колонкам и доля в процентах</pre>
+        </div>
+        <div class="qa">
+          <details>
+            <summary>Показать решение и разбор</summary>
+            <div class="a">
+              <div class="code" style="margin-top:0">
+                <div class="bar"><span class="file">решение</span><span class="lang">python</span><button class="copy">копировать</button></div>
+                <pre data-lang="python">df = pd.DataFrame({
+    "user": ["anna", "ivan", "olga", "petr"],
+    "amount": [1200.0, np.nan, 500.0, np.nan],
+    "city": ["Москва", None, "Москва", "Казань"],
+})
+print(df.isna().sum().to_dict())
+print((df.isna().mean() * 100).round(1).tolist())</pre>
+                <div class="out">{'user': 0, 'amount': 2, 'city': 1}
+[0.0, 50.0, 25.0]</div>
+              </div>
+              <p><strong>Что важно.</strong> <code class="inl">isna()</code> даёт маску True/False,
+              <code class="inl">sum()</code> считает True как 1, <code class="inl">mean()</code> — долю;
+              умножение на 100 и <code class="inl">round(1)</code> дают проценты.</p>
+            </div>
+          </details>
+        </div>
+
+        <h3><span style="color:var(--muted);font-family:var(--mono);font-size:.8rem">02</span> Медиана и флаг</h3>
+        <p>Сохраните флаг пропуска в amount и заполните пропуски медианой. Порядок операций важен.</p>
+        <div class="code">
+          <div class="bar"><span class="file">условие</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">df = pd.DataFrame({
+    "user": ["anna", "ivan", "olga", "petr"],
+    "amount": [1200.0, np.nan, 500.0, np.nan],
+})
+# ожидается: флаг сохранён, amount заполнен медианой</pre>
+        </div>
+        <div class="qa">
+          <details>
+            <summary>Показать решение и разбор</summary>
+            <div class="a">
+              <div class="code" style="margin-top:0">
+                <div class="bar"><span class="file">решение</span><span class="lang">python</span><button class="copy">копировать</button></div>
+                <pre data-lang="python">df = pd.DataFrame({
+    "user": ["anna", "ivan", "olga", "petr"],
+    "amount": [1200.0, np.nan, 500.0, np.nan],
+})
+missing = df["amount"].isna()
+df["amount"] = df["amount"].fillna(df["amount"].median())
+print(missing.tolist())
+print(df["amount"].tolist())</pre>
+                <div class="out">[False, True, False, True]
+[1200.0, 850.0, 500.0, 850.0]</div>
+              </div>
+              <p><strong>Что важно.</strong> Флаг создаётся <em>до</em> заполнения, иначе информация
+              исчезнет. Медиана считается по известным значениям и не зависит от выбросов так, как среднее.</p>
+            </div>
+          </details>
+        </div>
+      </section>
+
+      <!-- ══════════════════ 09. Мостик ══════════════════ -->
+      <section>
+        <h2><span class="num">09</span>Мостик: NULL и COALESCE в SQL</h2>
+
+        <h3>Прямые соответствия</h3>
+        <div class="code">
+          <div class="bar"><span class="file">мост в SQL</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">-- пропуски: как isna()
+SELECT * FROM orders WHERE amount IS NULL;
+
+-- count против size: COUNT(*) — строки, COUNT(col) — непустые значения
+SELECT COUNT(*) AS rows, COUNT(amount) AS known FROM orders;
+
+-- заполнение: как fillna(0), среднее: как skipna=True
+SELECT COALESCE(amount, 0) AS amount FROM orders;
+SELECT AVG(amount) FROM orders;
+
+-- NaN-ключ в merge: в SQL NULL с NULL не соединяется
+SELECT a.city, a.orders, b.manager
+FROM a JOIN b ON a.city = b.city;</pre>
+        </div>
+        <p>
+          В SQL <code class="inl">NULL</code> — состояние, а не значение: <code class="inl">NULL = NULL</code>
+          даёт <code class="inl">UNKNOWN</code>, поэтому join по пропущенному ключу ничего не найдёт.
+          В pandas <code class="inl">NaN</code> при merge совпадает сам с собой — отсюда разные результаты.
+        </p>
+        <p>
+          <code class="inl">COUNT(*)</code> — по строкам, <code class="inl">COUNT(col)</code> — по непустым
+          значениям: это <code class="inl">len(df)</code> против <code class="inl">df.count()</code>.
+          <code class="inl">COALESCE</code> — тот же <code class="inl">fillna</code>, но в базе.
+        </p>
+
+        <div class="bridges">
+          <a class="bridge" href="ch-17-missing.html"><span class="to">Глава 17</span><span>Пропуски: NaN, None и pd.NA</span><span class="what">→ метафора дырки и три стратегии</span></a>
+          <a class="bridge" href="ch-16-merge.html"><span class="to">Глава 16</span><span>merge: соединение таблиц</span><span class="what">→ откуда NaN после left join</span></a>
+          <a class="bridge" href="ch-20-select-where-null.html"><span class="to">Глава 20</span><span>WHERE и NULL: трёхзначная логика</span><span class="what">→ почему NULL = NULL не работает</span></a>
+          <a class="bridge" href="ch-25-sql-vs-pandas.html"><span class="to">Глава 25</span><span>SQL или pandas: что где делать</span><span class="what">→ где чистить пропуски</span></a>
+        </div>
+      </section>
+
+      <div class="pager">
+        <a class="prev" href="ref-pd-merge.html"><span class="dir">← Назад</span><span class="ttl">05 · merge: кардинальность важнее синтаксиса</span></a>
+        <a class="next" href="ref-pd-reshape.html"><span class="dir">Дальше →</span><span class="ttl">07 · Reshape, даты и строки</span></a>
+      </div>
+
+    </div>
+  </main>
+</div>
+<script src="assets/toc.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>

@@ -42,10 +42,11 @@
     const done = BOOK.chapters.filter(chapterDone).length;
     const pct = Math.round((done / total) * 100);
 
+    const currentRef = (BOOK.reference || []).find(r => r.slug === slug);
     const ref = (BOOK.reference || []).filter(r => r.hub).map(r => {
-      const act = (slug === r.slug || slug.startsWith("ref-")) ? " active" : "";
+      const act = (currentRef && currentRef.group === r.group) ? " active" : "";
       return `<a class="nav-ch${act}" href="${r.file}">`
-        + `<span class="n">📖</span><span>${r.title}</span></a>`;
+        + `<span class="n">📖</span><span>${r.nav || r.title}</span></a>`;
     }).join("");
 
     return `
@@ -61,7 +62,7 @@
       <div class="nav-wrap">
         <div class="reader-bar"><span>Размер текста</span><button data-rs="-0.05" title="Мельче">А−</button><button data-rs="0.05" title="Крупнее">А+</button></div>
         <div class="nav-part">
-          <div class="t"><span>◆</span>Справочник</div>
+          <div class="t"><span>◆</span>Справочники</div>
           ${ref}
         </div>
         ${parts}
@@ -88,7 +89,7 @@
         </div>
       </div>
       <div class="side-foot">
-        Демо-выпуск: готовы обложка и глава 02.<br>
+        Гайд: 26 глав, проверочные и справочники.<br>
         <span class="net" id="net">проверяю офлайн-копию…</span>
       </div>`;
   }
