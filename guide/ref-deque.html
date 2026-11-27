@@ -1,0 +1,813 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Справочник · deque: очередь с двумя дверями — Ассоциативный гайд</title>
+<meta name="description" content="Справочник по deque: оба конца за O(1), maxlen, rotate, очередь, BFS и скользящее окно — с примерами и реальным выводом.">
+<link rel="stylesheet" href="assets/style.css">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#fbf8f2" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#14131a" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="assets/icons/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="assets/icons/icon-180.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Гайд Py/SQL">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+</head>
+<body data-slug="ref-deque">
+<div class="app">
+  <aside class="sidebar" id="sidebar"></aside>
+  <main>
+    <div class="wrap">
+
+      <header class="chapter-head">
+        <div class="eyebrow">
+          <span class="part">Справочник · Python-коллекции</span>
+          <span class="dot"></span>
+          <span>тип 7 из 7</span>
+          <span class="dot"></span>
+          <span>готово</span>
+        </div>
+        <h1>deque: очередь с двумя дверями
+          <span class="sub">Оба конца за O(1), окно на maxlen и полная таблица методов</span>
+        </h1>
+        <p class="lead">
+          <code class="inl">deque</code> — двусторонняя очередь: добавлять и снимать можно с любого конца,
+          и обе операции стоят O(1). Здесь — все методы с ценой, <code class="inl">maxlen</code> как
+          готовое скользящее окно и места, где deque вытесняет список.
+        </p>
+        <div class="meta">
+          <span class="chip">⏱ <b>12 минут</b></span>
+          <span class="chip">🎯 уровень <b>1–2</b></span>
+          <span class="chip">🐍 Python <b>3.12</b></span>
+          <span class="chip">📚 <b>глава 06</b></span>
+        </div>
+      </header>
+
+      <p class="small">
+        Типы справочника: <a href="appendix-types.html">вся карта</a> ·
+        <a href="ref-list.html">list</a> · <a href="ref-tuple.html">tuple</a> ·
+        <a href="ref-dict.html">dict</a> · <a href="ref-set.html">set</a> ·
+        <a href="ref-counter.html">Counter</a> ·
+        <a href="ref-defaultdict.html">defaultdict</a> · <b>deque</b>
+      </p>
+
+      <div class="tldr">
+        <div class="t">Самое главное</div>
+        <ul>
+          <li><code class="inl">deque</code> — двусторонняя очередь: <code class="inl">append</code>,
+              <code class="inl">appendleft</code>, <code class="inl">pop</code>,
+              <code class="inl">popleft</code> — O(1), а индексация и <code class="inl">insert</code>
+              в середине — O(n).</li>
+          <li><code class="inl">maxlen</code> задаётся при создании: при переполнении
+              <code class="inl">append</code> молча вытесняет элемент с другого конца. Это готовое
+              скользящее окно.</li>
+          <li>У deque нет срезов, он не hashable и дороже по памяти; зато оба конца — полноценные
+              «двери», в отличие от списка, где быстрый только правый край.</li>
+        </ul>
+      </div>
+
+      <!-- ══════════════════ 01. Что это ══════════════════ -->
+      <section>
+        <h2><span class="num">01</span>Что это и как устроено</h2>
+        <p>
+          <code class="inl">deque</code> («deck») — упорядоченная последовательность, как список,
+          но оптимизированная под два края. Добавить в начало, добавить в конец, снять с начала,
+          снять с конца — все четыре операции стоят O(1). У списка операции с левым краем тянут
+          на O(n): элементы лежат подряд, и вставка сдвигает весь массив.
+        </p>
+        <p>
+          Внутри CPython это не непрерывный массив, а связная структура из блоков. Поэтому левый
+          край не «сдвигает» остальные элементы, а просто подцепляет новый блок. Обратная сторона:
+          доступ по индексу в середине — O(n); срезов нет; deque не hashable;
+          память на элемент больше, чем у списка.
+        </p>
+
+        <div class="anchor">
+          <div class="glyph">🚪</div>
+          <div>
+            <div class="t">Держите эту картинку в голове</div>
+            <p class="kick"><strong>Вагон с двумя дверями.</strong> Войти и выйти можно с любого конца,
+            и обе двери работают одинаково быстро. У списка задняя дверь быстрая, а передняя — нет:
+            чтобы поставить кого-то в начало, приходится пересаживать весь вагон.</p>
+            <p>Из того же ящика с инструментами главы 06: Counter считает, defaultdict группирует,
+            а deque держит очередь. Подробный разбор метафоры — в
+            <a href="ch-06-collections.html">главе 06</a>.</p>
+          </div>
+        </div>
+        <p class="small">
+          Если оба конца не нужны — берите <code class="inl">list</code>: он проще, экономнее и умеет
+          срезы. deque выигрывает только там, где важны две двери.
+        </p>
+      </section>
+
+      <!-- ══════════════════ 02. Когда брать ══════════════════ -->
+      <section>
+        <h2><span class="num">02</span>Когда брать, а когда нет</h2>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Задача</th><th>deque?</th><th>Что взять вместо</th></tr></thead>
+            <tbody>
+              <tr><td>Очередь FIFO: пришло — обработал по порядку</td><td><b>да</b></td><td>—</td></tr>
+              <tr><td>Стек LIFO</td><td>можно</td><td><code class="inl">list</code>: <code class="inl">append</code> + <code class="inl">pop</code></td></tr>
+              <tr><td>Добавлять и снимать с двух концов в цикле</td><td><b>да</b></td><td>—</td></tr>
+              <tr><td>Последние N событий, скользящее окно</td><td><b>да</b></td><td>— (<code class="inl">maxlen</code>)</td></tr>
+              <tr><td>Обход в ширину, буфер BFS</td><td><b>да</b></td><td>—</td></tr>
+              <tr><td>Частый доступ по индексу и срезы</td><td>нет</td><td><code class="inl">list</code> — O(1) по индексу, срезы</td></tr>
+              <tr><td>Сортировка, двоичный поиск</td><td>нет</td><td><code class="inl">list</code> + <code class="inl">sorted</code> / <code class="inl">bisect</code></td></tr>
+              <tr><td>Ключ словаря или элемент множества</td><td>нет</td><td><code class="inl">tuple</code> — hashable</td></tr>
+              <tr><td>Уникальность, частоты</td><td>нет</td><td><code class="inl">set</code>, <code class="inl">Counter</code></td></tr>
+              <tr><td>Столбцы чисел и векторные операции</td><td>нет</td><td><code class="inl">numpy</code>, <code class="inl">Series</code></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="small">
+          Короткое правило: «работаю с краями» — deque; «работаю с позициями и кусками» — list.
+          Карта выбора целиком — в <a href="appendix-types.html">справочнике по типам</a>.
+        </p>
+      </section>
+
+      <!-- ══════════════════ 03. Как создать ══════════════════ -->
+      <section>
+        <h2><span class="num">03</span>Как создать</h2>
+        <div class="code">
+          <div class="bar"><span class="file">ref_deque_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">from collections import deque
+
+empty = deque()
+numbers = deque([10, 20, 30])
+chars = deque("abc")
+bounded = deque(range(6), maxlen=4)
+
+print(empty)
+print(numbers)
+print(chars)
+print(bounded)
+print(bounded.maxlen)</pre>
+          <div class="out">deque([])
+deque([10, 20, 30])
+deque(['a', 'b', 'c'])
+deque([2, 3, 4, 5], maxlen=4)
+4</div>
+        </div>
+        <p>
+          Конструктор принимает любой итерируемый объект: список, строку (разберёт по символам),
+          генератор, диапазон. Второй аргумент <code class="inl">maxlen</code> ограничивает длину
+          сразу при создании — лишние элементы отбрасываются, остаются последние.
+        </p>
+        <div class="note">
+          <span class="t">maxlen — часть конструкции</span>
+          <p>У готового deque <code class="inl">maxlen</code> только читается: присвоить новое значение
+          нельзя. Нужен другой размер окна — создавайте новый deque.</p>
+        </div>
+      </section>
+
+      <!-- ══════════════════ 04. Все методы ══════════════════ -->
+      <section>
+        <h2><span class="num">04</span>Все методы и операции</h2>
+        <p>
+          Четыре таблицы по назначению. «Цена» — средняя сложность в CPython, где
+          <code class="inl">n</code> — длина deque, <code class="inl">k</code> — размер
+          добавляемого куска.
+        </p>
+
+        <h3>Оба конца</h3>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Метод</th><th>Что делает</th><th>Возвращает</th><th>Цена</th></tr></thead>
+            <tbody>
+              <tr><td class="mono">append(x)</td><td>добавляет элемент в правый конец</td><td><code class="inl">None</code></td><td>O(1)</td></tr>
+              <tr><td class="mono">appendleft(x)</td><td>добавляет элемент в левый конец</td><td><code class="inl">None</code></td><td>O(1)</td></tr>
+              <tr><td class="mono">pop()</td><td>снимает и возвращает правый элемент</td><td>элемент</td><td>O(1)</td></tr>
+              <tr><td class="mono">popleft()</td><td>снимает и возвращает левый элемент</td><td>элемент</td><td>O(1)</td></tr>
+              <tr><td class="mono">extend(iterable)</td><td>добавляет элементы итерируемого справа по порядку</td><td><code class="inl">None</code></td><td>O(k)</td></tr>
+              <tr><td class="mono">extendleft(iterable)</td><td>добавляет элементы слева — <b>разворачивая</b> их порядок</td><td><code class="inl">None</code></td><td>O(k)</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="small">
+          <code class="inl">pop</code> и <code class="inl">popleft</code> на пустом deque бросают
+          <code class="inl">IndexError</code> — как <code class="inl">list.pop</code>.
+        </p>
+
+        <h3>Окно, копия и служебное</h3>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Метод</th><th>Что делает</th><th>Возвращает</th><th>Цена</th></tr></thead>
+            <tbody>
+              <tr><td class="mono">rotate(n=1)</td><td>сдвигает элементы вправо на n; отрицательное n — влево</td><td><code class="inl">None</code></td><td>O(k), k = |n|</td></tr>
+              <tr><td class="mono">q.maxlen</td><td>предел длины или <code class="inl">None</code>; только чтение</td><td>int / None</td><td>O(1)</td></tr>
+              <tr><td class="mono">clear()</td><td>удаляет все элементы</td><td><code class="inl">None</code></td><td>O(n)</td></tr>
+              <tr><td class="mono">copy()</td><td>поверхностная копия</td><td>новый deque</td><td>O(n)</td></tr>
+              <tr><td class="mono">reverse()</td><td>разворачивает на месте</td><td><code class="inl">None</code></td><td>O(n)</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="small">
+          <code class="inl">copy.deepcopy</code> для полной независимости вложенных объектов —
+          обычная оговорка, как у списка.
+        </p>
+
+        <h3>Чтение и поиск</h3>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Запись</th><th>Что делает</th><th>Возвращает</th><th>Цена</th></tr></thead>
+            <tbody>
+              <tr><td class="mono">q[0], q[-1]</td><td>элемент у левого или правого края</td><td>элемент</td><td>O(1)</td></tr>
+              <tr><td class="mono">q[i]</td><td>элемент по индексу; середина — перебор</td><td>элемент</td><td>O(n)*</td></tr>
+              <tr><td class="mono">len(q)</td><td>длина</td><td>int</td><td>O(1)</td></tr>
+              <tr><td class="mono">x in q</td><td>проверка входа перебором</td><td>bool</td><td>O(n)</td></tr>
+              <tr><td class="mono">for x in q</td><td>итерация слева направо</td><td>—</td><td>O(n)</td></tr>
+              <tr><td class="mono">reversed(q)</td><td>итератор справа налево</td><td>iterator</td><td>O(n) на обход</td></tr>
+              <tr><td class="mono">q.count(x)</td><td>сколько раз встречается x</td><td>int</td><td>O(n)</td></tr>
+              <tr><td class="mono">q.index(x)</td><td>позиция первого вхождения</td><td>int</td><td>O(n)</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="small">* у самых краёв — O(1); чем ближе к середине, тем дороже. Срезов нет: <code class="inl">q[1:3]</code> — <code class="inl">TypeError</code>.</p>
+
+        <h3>Середина: есть, но дорого</h3>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Запись</th><th>Что делает</th><th>Возвращает</th><th>Цена</th></tr></thead>
+            <tbody>
+              <tr><td class="mono">insert(i, x)</td><td>вставляет x на позицию i</td><td><code class="inl">None</code></td><td>O(n)</td></tr>
+              <tr><td class="mono">remove(x)</td><td>удаляет первое вхождение значения x</td><td><code class="inl">None</code></td><td>O(n)</td></tr>
+              <tr><td class="mono">del q[i]</td><td>удаляет элемент по индексу</td><td>—</td><td>O(n)</td></tr>
+              <tr><td class="mono">q[i] = x</td><td>заменяет элемент по индексу</td><td>—</td><td>O(1) у краёв, O(n) в середине</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="note">
+          <span class="t">Шесть операций, которые нужны каждый день</span>
+          <p><code class="inl">appendleft</code> — положить слева, <code class="inl">append</code> — справа,
+          <code class="inl">popleft</code> — взять слева, <code class="inl">pop</code> — справа,
+          <code class="inl">maxlen</code> — окно, <code class="inl">rotate</code> — прокрутка.
+          Этого хватает в девяти случаях из десяти.</p>
+        </div>
+      </section>
+
+      <!-- ══════════════════ 05. Разбор ══════════════════ -->
+      <section>
+        <h2><span class="num">05</span>Разбор по группам</h2>
+        <p>
+          Все примеры страницы собраны в файле
+          <a href="snippets/view.html?f=ref_deque_lab.py"><code class="inl">ref_deque_lab.py</code></a> —
+          его можно запустить и менять строки.
+        </p>
+
+        <h3>Оба конца: append, appendleft, pop, popleft</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_deque_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">q = deque([10, 20, 30])
+q.appendleft(0)
+q.append(40)
+print(q)
+print(q.popleft(), q.pop())
+print(q)</pre>
+          <div class="out">deque([0, 10, 20, 30, 40])
+0 40
+deque([10, 20, 30])</div>
+        </div>
+        <p>
+          Четыре операции — два готовых шаблона. <b>Очередь:</b> <code class="inl">append</code> +
+          <code class="inl">popleft</code> — пришло справа, ушло слева, порядок FIFO.
+          <b>Стек:</b> <code class="inl">append</code> + <code class="inl">pop</code> — пришло и ушло
+          справа, порядок LIFO. Оба шаблона стоят O(1) на операцию.
+        </p>
+
+        <h3>extend и extendleft: направление важно</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_deque_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">left = deque([3, 4])
+left.extend([5, 6])
+right = deque([3, 4])
+right.extendleft([1, 2])
+print(left)
+print(right)</pre>
+          <div class="out">deque([3, 4, 5, 6])
+deque([2, 1, 3, 4])</div>
+        </div>
+        <p>
+          <code class="inl">extendleft</code> идёт по итерируемому слева направо и каждый элемент
+          кладёт в левый конец. Первый элемент оказывается дальше всех от края, поэтому итоговый
+          порядок обратный. Это не баг, а следствие «двери»: <code class="inl">extendleft([1, 2])</code>
+          делает то же, что два <code class="inl">appendleft</code> подряд.
+        </p>
+
+        <h3>rotate: прокрутка</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_deque_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">q = deque([1, 2, 3, 4, 5])
+q.rotate(2)
+print(q)
+q.rotate(-2)
+print(q)</pre>
+          <div class="out">deque([4, 5, 1, 2, 3])
+deque([1, 2, 3, 4, 5])</div>
+        </div>
+        <p>
+          <code class="inl">rotate(2)</code> сдвигает всё вправо на два шага: правые элементы
+          переезжают в начало. <code class="inl">rotate(-2)</code> — влево, возвращает как было.
+          <code class="inl">rotate(len(q))</code> не меняет ничего. Метод возвращает
+          <code class="inl">None</code> и крутит deque на месте.
+        </p>
+
+        <h3>maxlen: окно, которое само себя чистит</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_deque_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">recent = deque(maxlen=3)
+for value in [10, 20, 30, 40]:
+    recent.append(value)
+    print(value, "→", list(recent))
+
+recent.appendleft(5)
+print(recent, len(recent), recent.maxlen)</pre>
+          <div class="out">10 → [10]
+20 → [10, 20]
+30 → [10, 20, 30]
+40 → [20, 30, 40]
+deque([5, 20, 30], maxlen=3) 3 3</div>
+        </div>
+        <p>
+          Как только длина упирается в <code class="inl">maxlen</code>, каждый <code class="inl">append</code>
+          вытесняет самый левый элемент, а <code class="inl">appendleft</code> — самый правый.
+          Следить за размером и вручную вызывать <code class="inl">popleft</code> не нужно.
+          Одна тонкость: <code class="inl">insert</code> при полном окне не вытесняет, а бросает
+          <code class="inl">IndexError</code> — поведение у методов разное.
+        </p>
+
+        <h3>Доступ: индексы, len, in, итерация</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_deque_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">q = deque([10, 20, 30, 20])
+print(q[0], q[-1])
+print(len(q), 20 in q)
+print(list(q))
+print(list(reversed(q)))
+print(q.count(20), q.index(20))</pre>
+          <div class="out">10 20
+4 True
+[10, 20, 30, 20]
+[20, 30, 20, 10]
+2 1</div>
+        </div>
+        <p>
+          Индексация работает, но это не массив: у краёв O(1), в середине O(n). Перебор
+          <code class="inl">in</code>, <code class="inl">count</code> и <code class="inl">index</code>
+          идёт по всем элементам. <code class="inl">reversed(q)</code> возвращает итератор и ничего
+          не копирует. Заметьте: <code class="inl">q[0]</code> и <code class="inl">q[-1]</code> —
+          это двери, они дешёвые.
+        </p>
+
+        <h3>Середина: insert и remove</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_deque_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">q = deque([10, 20, 30])
+q.insert(1, 99)
+print(q)
+print(q.remove(20))
+print(q)
+print(q.index(30))</pre>
+          <div class="out">deque([10, 99, 20, 30])
+None
+deque([10, 99, 30])
+2</div>
+        </div>
+        <p>
+          Методы из мира списков у deque тоже есть — <code class="inl">insert</code>,
+          <code class="inl">remove</code>, <code class="inl">del q[i]</code>, но каждый ищет или
+          сдвигает середину и стоит O(n). Если такие операции нужны постоянно, структура выбрана
+          неверно: берите <code class="inl">list</code>.
+        </p>
+
+        <h3>Копия, разворот, очистка</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_deque_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">q = deque([1, 2, 3])
+copy = q.copy()
+copy.append(4)
+print(q, copy)
+q.reverse()
+print(q)
+q.clear()
+print(q, len(q))</pre>
+          <div class="out">deque([1, 2, 3]) deque([1, 2, 3, 4])
+deque([3, 2, 1])
+deque([]) 0</div>
+        </div>
+        <p>
+          <code class="inl">copy()</code> — поверхностная копия, как у списка: вложенные списки
+          и словари остаются общими. <code class="inl">reverse()</code> разворачивает на месте
+          и возвращает <code class="inl">None</code>; нужен итератор — <code class="inl">reversed(q)</code>.
+          <code class="inl">clear()</code> освобождает все блоки.
+        </p>
+
+        <h3>Чего у deque нет: срезы и hash</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_deque_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">q = deque([1, 2, 3])
+try:
+    print(q[1:3])
+except TypeError as error:
+    print("срез:", error)
+try:
+    print(hash(q))
+except TypeError as error:
+    print("hash:", error)
+print(list(q)[1:3])</pre>
+          <div class="out">срез: sequence index must be integer, not 'slice'
+hash: unhashable type: 'collections.deque'
+[2, 3]</div>
+        </div>
+        <p>
+          Два ограничения сразу: срезов нет, потому что кусок deque — это не непрерывный массив;
+          hash нет, потому что deque изменяемый. Хотите кусок — <code class="inl">list(q)[1:3]</code>
+          создаст копию; без копии всего deque — <code class="inl">itertools.islice(q, 1, 3)</code>
+          (ленивый итератор, но до нужного места он всё равно дойдёт перебором).
+          Нужен hashable-снимок — <code class="inl">tuple(q)</code>, если элементы сами hashable.
+        </p>
+      </section>
+
+      <!-- ══════════════════ 06. Сценарии ══════════════════ -->
+      <section>
+        <h2><span class="num">06</span>Три сценария из практики</h2>
+
+        <h3>Очередь задач: FIFO</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_deque_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">tasks = deque(["заказ #101", "заказ #102", "заказ #103"])
+tasks.append("заказ #104")
+while tasks:
+    print("обработан:", tasks.popleft())</pre>
+          <div class="out">обработан: заказ #101
+обработан: заказ #102
+обработан: заказ #103
+обработан: заказ #104</div>
+        </div>
+        <p>
+          Классическая очередь: новые задачи добавляются справа, обработчик забирает слева.
+          На списке тот же код через <code class="inl">pop(0)</code> был бы O(n²) на всю очередь.
+          Нужен стек — тот же deque, только <code class="inl">pop()</code> вместо
+          <code class="inl">popleft()</code>; для стека подойдёт и <code class="inl">list</code>
+          (<a href="ref-list.html">справочник по list</a>).
+        </p>
+
+        <h3>Обход в ширину (BFS)</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_deque_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">graph = {
+    "Anna": ["Ivan", "Olga"],
+    "Ivan": ["Olga"],
+    "Olga": ["Petr"],
+    "Petr": [],
+}
+
+
+def bfs(start):
+    queue = deque([start])
+    seen = {start}
+    order = []
+    while queue:
+        node = queue.popleft()
+        order.append(node)
+        for nxt in graph.get(node, []):
+            if nxt not in seen:
+                seen.add(nxt)
+                queue.append(nxt)
+    return order
+
+
+print(bfs("Anna"))</pre>
+          <div class="out">['Anna', 'Ivan', 'Olga', 'Petr']</div>
+        </div>
+        <p>
+          BFS — это очередь по определению: соседи текущего узла встают в конец, а следующий узел
+          берётся из начала. Помечать <code class="inl">seen</code> нужно в момент постановки в
+          очередь, иначе узел попадёт туда дважды. С deque каждая операция O(1), со списком
+          <code class="inl">pop(0)</code> обход стал бы O(V²).
+        </p>
+
+        <h3>Скользящее окно и rate limiter</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_deque_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">prices = [1200, 800, 1500, 900, 1100]
+window = deque(maxlen=3)
+for price in prices:
+    window.append(price)
+    print(list(window), "→", round(sum(window) / len(window), 2))</pre>
+          <div class="out">[1200] → 1200.0
+[1200, 800] → 1000.0
+[1200, 800, 1500] → 1166.67
+[800, 1500, 900] → 1066.67
+[1500, 900, 1100] → 1166.67</div>
+        </div>
+        <p>
+          <code class="inl">maxlen=3</code> — это и есть окно: старый чек уходит сам, когда приходит
+          новый. Здесь среднее каждый раз считается заново (<code class="inl">sum</code> по окну,
+          O(k)); если окно большое, поддерживают бегущую сумму и вычитают вытесненный элемент.
+        </p>
+        <div class="code">
+          <div class="bar"><span class="file">ref_deque_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">class RateLimiter:
+    def __init__(self, limit, window):
+        self.limit = limit
+        self.window = window
+        self.hits = deque()
+
+    def allow(self, now):
+        while self.hits and now - self.hits[0] &gt;= self.window:
+            self.hits.popleft()
+        if len(self.hits) &gt;= self.limit:
+            return False
+        self.hits.append(now)
+        return True
+
+
+limiter = RateLimiter(limit=2, window=10)
+for moment in [0, 1, 2, 9, 10, 11]:
+    print(moment, limiter.allow(moment))</pre>
+          <div class="out">0 True
+1 True
+2 False
+9 False
+10 True
+11 True</div>
+        </div>
+        <p>
+          Ограничитель запросов: в deque хранятся моменты последних обращений. Старые вычищаются
+          через <code class="inl">popleft</code>, пока не выйдут из окна; если в окне уже
+          <code class="inl">limit</code> обращений — отказ. Каждый вызов амортизированно O(1).
+          В лаборатории момент передаётся аргументом, чтобы вывод не зависел от машины; в реальном
+          коде на этом месте стоит <code class="inl">time.monotonic()</code>.
+        </p>
+      </section>
+
+      <!-- ══════════════════ 07. Ошибки ══════════════════ -->
+      <section>
+        <h2><span class="num">07</span>Пять ошибок, на которых спотыкаются</h2>
+        <div class="errors">
+          <div class="err">
+            <div class="h">Ждать от extendleft прежнего порядка</div>
+            <p><code class="inl">deque([3, 4]).extendleft([1, 2])</code> даёт <code class="inl">deque([2, 1, 3, 4])</code>, а не <code class="inl">[1, 2, 3, 4]</code>: каждый элемент кладётся в левый конец и выталкивает предыдущий вправо.</p>
+            <div class="fix">Нужен прямой порядок — добавьте по одному в обратном порядке: <code class="inl">q.appendleft(2)</code>, затем <code class="inl">q.appendleft(1)</code>. Или соберите список и разверните его через <code class="inl">reversed</code>.</div>
+          </div>
+
+          <div class="err">
+            <div class="h">Индексировать середину в цикле</div>
+            <p><code class="inl">for i in range(len(q)): q[i]</code> и <code class="inl">insert</code> в середину — это O(n) на операцию и O(n²) на цикл. deque быстрый только у краёв.</p>
+            <div class="fix">Работайте через <code class="inl">append/popleft</code>; если нужен произвольный доступ — <code class="inl">list</code>.</div>
+          </div>
+
+          <div class="err">
+            <div class="h">maxlen молча выбрасывает данные</div>
+            <p><code class="inl">deque(history, maxlen=10)</code> оставит только последние десять элементов — без предупреждения. При переполнении <code class="inl">append</code> вытесняет край, а <code class="inl">insert</code> вообще бросает <code class="inl">IndexError</code>: поведение разное.</p>
+            <div class="fix">Это допустимо, только если окно — часть замысла. Нужна полная история — <code class="inl">list</code>; нужна проверка — сравните <code class="inl">len(q)</code> с <code class="inl">maxlen</code> до вставки.</div>
+          </div>
+
+          <div class="err">
+            <div class="h">Пытаться срезать deque</div>
+            <p><code class="inl">q[1:3]</code> бросает <code class="inl">TypeError</code>: срезов у deque нет, есть только индексация. Код, перенесённый со списка, падает на первом же срезе.</p>
+            <div class="fix">Копия куска — <code class="inl">list(q)[1:3]</code> или <code class="inl">itertools.islice(q, 1, 3)</code>.</div>
+          </div>
+
+          <div class="err">
+            <div class="h">Класть deque в set или в ключ словаря</div>
+            <p><code class="inl">hash(deque(...))</code> — <code class="inl">TypeError: unhashable type</code>. deque изменяемый, поэтому не может быть ключом.</p>
+            <div class="fix">Снимок для ключа — <code class="inl">tuple(q)</code>, если элементы hashable. Либо храните индекс и не делайте deque ключом.</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ══════════════════ 08. Мини-проверка ══════════════════ -->
+      <section>
+        <h2><span class="num">08</span>Мини-проверка</h2>
+        <p>Пять вопросов на понимание и две задачи. Сначала своя попытка — потом спойлер.</p>
+
+        <div class="qa">
+          <details>
+            <summary>Чем deque отличается от list?</summary>
+            <div class="a">
+              <p>deque оптимизирован под оба конца: <code class="inl">appendleft</code>/<code class="inl">popleft</code>
+              — O(1), у списка вставка и удаление в начале — O(n). Зато у списка доступ по индексу
+              O(1) и есть срезы, а у deque индексация в середине O(n), срезов нет, и он не hashable.</p>
+              <div class="verdict">Резюме: очередь с двумя дверями против массива с индексами.</div>
+            </div>
+          </details>
+        </div>
+
+        <div class="qa">
+          <details>
+            <summary>Что делает rotate(1) и rotate(-1)?</summary>
+            <div class="a">
+              <p><code class="inl">rotate(1)</code> сдвигает все элементы на шаг вправо: последний
+              переезжает в начало. <code class="inl">rotate(-1)</code> — на шаг влево: первый уходит
+              в конец. Возвращается <code class="inl">None</code>, deque меняется на месте.</p>
+              <div class="verdict">Резюме: положительное n — вправо, отрицательное — влево.</div>
+            </div>
+          </details>
+        </div>
+
+        <div class="qa">
+          <details>
+            <summary>Что происходит при добавлении в полный deque с maxlen?</summary>
+            <div class="a">
+              <p><code class="inl">append</code> добавляет справа и вытесняет левый элемент,
+              <code class="inl">appendleft</code> — наоборот. Длина остаётся равной
+              <code class="inl">maxlen</code>. Исключение — <code class="inl">insert</code>:
+              при полном окне он бросает <code class="inl">IndexError</code>.</p>
+              <div class="verdict">Резюме: окно фиксированного размера, старые данные уходят сами.</div>
+            </div>
+          </details>
+        </div>
+
+        <div class="qa">
+          <details>
+            <summary>Как взять «кусок» deque, если срезов нет?</summary>
+            <div class="a">
+              <p>Скопировать в список: <code class="inl">list(q)[1:3]</code> — просто, но копирует
+              весь deque. Без копии всего deque — <code class="inl">itertools.islice(q, 1, 3)</code>,
+              ленивый итератор.</p>
+              <div class="verdict">Резюме: срез делается через list или islice, не через q[1:3].</div>
+            </div>
+          </details>
+        </div>
+
+        <div class="qa">
+          <details>
+            <summary>Почему deque нельзя положить в set?</summary>
+            <div class="a">
+              <p>Потому что deque изменяемый и не hashable: его хеш менялся бы при каждом
+              <code class="inl">append</code>, и множество сломалось бы. Для ключа нужен неизменяемый
+              снимок — <code class="inl">tuple(q)</code>.</p>
+              <div class="verdict">Резюме: изменяемое — не ключ; сначала снимок.</div>
+            </div>
+          </details>
+        </div>
+
+        <h3><span style="color:var(--muted);font-family:var(--mono);font-size:.8rem">01</span> Палиндром</h3>
+        <p>Проверьте, читается ли строка одинаково в обе стороны. Регистр и пробелы не важны.</p>
+        <div class="code">
+          <div class="bar"><span class="file">условие</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">print(is_palindrome("А роза упала на лапу Азора"))
+print(is_palindrome("python"))
+# ожидается: True, затем False</pre>
+        </div>
+        <div class="qa">
+          <details>
+            <summary>Показать решение и разбор</summary>
+            <div class="a">
+              <div class="code" style="margin-top:0">
+                <div class="bar"><span class="file">решение</span><span class="lang">python</span><button class="copy">копировать</button></div>
+                <pre data-lang="python">def is_palindrome(text):
+    chars = deque(ch for ch in text.lower() if ch.isalnum())
+    while len(chars) &gt; 1:
+        if chars.popleft() != chars.pop():
+            return False
+    return True
+
+
+print(is_palindrome("А роза упала на лапу Азора"))
+print(is_palindrome("python"))</pre>
+                <div class="out">True
+False</div>
+              </div>
+              <p><strong>Что важно.</strong> Сравниваем две двери: левый символ с правым. deque здесь
+              идеален, потому что оба конца снимаются за O(1), а середина не нужна вовсе. Пустая
+              строка и строка из одного символа — палиндромы: цикл просто не выполняется.</p>
+            </div>
+          </details>
+        </div>
+
+        <h3><span style="color:var(--muted);font-family:var(--mono);font-size:.8rem">02</span> Скользящее среднее</h3>
+        <p>Посчитайте среднее по окну из трёх последних значений для каждого шага.</p>
+        <div class="code">
+          <div class="bar"><span class="file">условие</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">values = [1200, 800, 1500, 900, 1100]
+# ожидается: [1166.67, 1066.67, 1166.67]</pre>
+        </div>
+        <div class="qa">
+          <details>
+            <summary>Показать решение и разбор</summary>
+            <div class="a">
+              <div class="code" style="margin-top:0">
+                <div class="bar"><span class="file">решение</span><span class="lang">python</span><button class="copy">копировать</button></div>
+                <pre data-lang="python">def moving_average(values, size):
+    window = deque(maxlen=size)
+    result = []
+    for value in values:
+        window.append(value)
+        if len(window) == size:
+            result.append(round(sum(window) / size, 2))
+    return result
+
+
+print(moving_average([1200, 800, 1500, 900, 1100], 3))</pre>
+                <div class="out">[1166.67, 1066.67, 1166.67]</div>
+              </div>
+              <p><strong>Что важно.</strong> <code class="inl">maxlen=size</code> сам вытесняет старый
+              элемент, ручной <code class="inl">popleft</code> не нужен. Среднее считается за O(size)
+              на шаг; на большом окне поддерживают бегущую сумму и вычитают выбывший элемент — тогда
+              O(1) на шаг.</p>
+            </div>
+          </details>
+        </div>
+      </section>
+
+      <!-- ══════════════════ 09. Мостик ══════════════════ -->
+      <section>
+        <h2><span class="num">09</span>Мостик: та же идея в pandas и SQL</h2>
+        <p>
+          Прямого аналога deque в pandas и SQL нет: у таблицы нет двух концов, к которым
+          «двери» открываются за O(1). Но три идеи переносятся один в один — скользящее окно,
+          «последние N» и буфер в памяти сервиса.
+        </p>
+
+        <h3>pandas: окно вместо maxlen</h3>
+        <div class="code">
+          <div class="bar"><span class="file">мост в pandas</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">import pandas as pd
+
+s = pd.Series([1200, 800, 1500, 900, 1100])
+s.rolling(3).mean()     # окно из трёх последних — как deque(maxlen=3)
+s.shift(1)              # «предыдущее значение» вместо popleft
+s.diff()                # разница с предыдущим — вытесненный и новый</pre>
+        </div>
+        <p>
+          <code class="inl">rolling(3)</code> — то же скользящее окно, только векторно и с обработкой
+          краёв: первые строки получат <code class="inl">NaN</code>, потому что окна ещё нет.
+          В deque вы бы просто ждали, пока <code class="inl">len(window)</code> достигнет размера.
+        </p>
+
+        <h3>SQL: LIMIT и «последние N»</h3>
+        <div class="code">
+          <div class="bar"><span class="file">мост в SQL</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">-- последние 5 событий: то же окно, но на стороне базы
+SELECT *
+FROM events
+ORDER BY created_at DESC
+LIMIT 5;
+
+-- окно по строкам задаётся ROW_NUMBER, а не размером буфера
+SELECT * FROM (
+  SELECT *, ROW_NUMBER() OVER (ORDER BY created_at DESC) AS rn
+  FROM events
+) t
+WHERE rn &lt;= 5;</pre>
+        </div>
+        <p>
+          <code class="inl">LIMIT</code> отрезает строки после <code class="inl">ORDER BY</code>:
+          без сортировки это «первые попавшиеся N», а не «последние». База не держит кольцевой буфер
+          между запросами — окно каждый раз строится заново, поэтому для «последних N» нужен
+          правильный порядок и подходящий индекс.
+        </p>
+
+        <h3>Backend: буфер последних событий</h3>
+        <div class="code">
+          <div class="bar"><span class="file">buffers.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">from collections import deque
+
+
+class LastEvents:
+    def __init__(self, size=100):
+        self.events = deque(maxlen=size)
+
+    def add(self, event):
+        self.events.append(event)
+
+
+last = LastEvents(3)
+for event in ["login", "buy", "logout", "buy"]:
+    last.add(event)
+print(list(last.events))</pre>
+          <div class="out">['buy', 'logout', 'buy']</div>
+        </div>
+        <p>
+          В сервисах так хранят последние N логов, метрик или запросов: буфер не растёт, старые
+          записи исчезают сами, а память ограничена <code class="inl">maxlen</code>. deque здесь —
+          не «структура данных из учебника», а рабочий инструмент backend-разработчика.
+        </p>
+
+        <div class="bridges">
+          <a class="bridge" href="ch-06-collections.html"><span class="to">Глава 06</span><span>Counter, defaultdict, deque: три специнструмента</span><span class="what">→ ящик с инструментами и вагон с двумя дверями</span></a>
+          <a class="bridge" href="ch-03-list-tuple.html"><span class="to">Глава 03</span><span>list и tuple: массив и опечатанная запись</span><span class="what">→ почему insert(0) в списке дорогой</span></a>
+          <a class="bridge" href="ref-list.html"><span class="to">Справочник</span><span>list: поезд с вагонами</span><span class="what">→ когда deque не нужен</span></a>
+          <a class="bridge" href="appendix-types.html"><span class="to">Справочник</span><span>Карта типов: что выбрать</span><span class="what">→ вернуться к сравнению всех типов</span></a>
+        </div>
+      </section>
+
+      <div class="pager">
+        <a class="prev" href="ref-defaultdict.html"><span class="dir">← Назад</span><span class="ttl">defaultdict: блокнот с группами</span></a>
+        <a class="next" href="appendix-types.html"><span class="dir">Дальше →</span><span class="ttl">Справочник по типам</span></a>
+      </div>
+
+    </div>
+  </main>
+</div>
+<script src="assets/toc.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>

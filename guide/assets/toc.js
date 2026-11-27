@@ -35,6 +35,17 @@ window.BOOK = {
     { n: "25", slug: "ch-25-sql-vs-pandas", title: "SQL или pandas: что где делать", desc: "Неделя 8", part: 5, ready: true },
     { n: "26", slug: "ch-26-project", title: "Проект: отчёт из нескольких таблиц", desc: "Неделя 8", part: 5, ready: true }
   ],
+  // ── Справочник по типам данных (вне 8-недельной программы) ──
+  reference: [
+    { slug: "appendix-types", file: "appendix-types.html", title: "Справочник по типам данных", n: "◆", hub: true },
+    { slug: "ref-list", file: "ref-list.html", title: "list: поезд с вагонами", n: "L" },
+    { slug: "ref-tuple", file: "ref-tuple.html", title: "tuple: опечатанный контейнер", n: "T" },
+    { slug: "ref-dict", file: "ref-dict.html", title: "dict: шкаф с номерками", n: "D" },
+    { slug: "ref-set", file: "ref-set.html", title: "set: фейс-контроль", n: "S" },
+    { slug: "ref-counter", file: "ref-counter.html", title: "Counter: счётчик частот", n: "C" },
+    { slug: "ref-defaultdict", file: "ref-defaultdict.html", title: "defaultdict: блокнот с группами", n: "d" },
+    { slug: "ref-deque", file: "ref-deque.html", title: "deque: очередь с двумя дверями", n: "Q" }
+  ],
   parts: [
     { n: 1, title: "Фундамент Python", range: "Неделя 1" },
     { n: 2, title: "NumPy", range: "Неделя 2" },

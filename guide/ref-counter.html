@@ -1,0 +1,709 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Справочник · Counter: счётчик частот — Ассоциативный гайд</title>
+<meta name="description" content="Справочник по Counter: частоты, most_common, elements, total, update и subtract, арифметика + − &amp; |, нули и отрицательные счётчики — с реальным выводом.">
+<link rel="stylesheet" href="assets/style.css">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#fbf8f2" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#14131a" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="assets/icons/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="assets/icons/icon-180.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Гайд Py/SQL">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+</head>
+<body data-slug="ref-counter">
+<div class="app">
+  <aside class="sidebar" id="sidebar"></aside>
+  <main>
+    <div class="wrap">
+
+      <header class="chapter-head">
+        <div class="eyebrow">
+          <span class="part">Справочник · Python-коллекции</span>
+          <span class="dot"></span>
+          <span>тип 5 из 7</span>
+          <span class="dot"></span>
+          <span>готово</span>
+        </div>
+        <h1>Counter: счётчик частот
+          <span class="sub">Частоты, топ-N и арифметика над мультимножествами</span>
+        </h1>
+        <p class="lead">
+          <code class="inl">Counter</code> — словарь, который сам считает повторы: элемент → сколько раз.
+          Здесь — все методы с ценой, поведение отсутствующих ключей и арифметика, которая ведёт себя
+          не совсем как сложение чисел.
+        </p>
+        <div class="meta">
+          <span class="chip">⏱ <b>12 минут</b></span>
+          <span class="chip">🎯 уровень <b>1–2</b></span>
+          <span class="chip">🐍 Python <b>3.12</b></span>
+          <span class="chip">📚 <b>глава 06</b></span>
+        </div>
+      </header>
+
+      <p class="small">
+        Типы справочника: <a href="appendix-types.html">вся карта</a> ·
+        <a href="ref-list.html">list</a> · <a href="ref-tuple.html">tuple</a> ·
+        <a href="ref-dict.html">dict</a> · <a href="ref-set.html">set</a> ·
+        <b>Counter</b> · <a href="ref-defaultdict.html">defaultdict</a> ·
+        <a href="ref-deque.html">deque</a>
+      </p>
+
+      <div class="tldr">
+        <div class="t">Самое главное</div>
+        <ul>
+          <li><code class="inl">Counter</code> — подкласс <code class="inl">dict</code>: ключ — элемент,
+              значение — число повторов. Чтение отсутствующего ключа даёт <code class="inl">0</code>
+              и <b>не создаёт</b> пару.</li>
+          <li><code class="inl">most_common(k)</code> — топ-N за O(m log k);
+              <code class="inl">total()</code> — сумма счётчиков, <code class="inl">elements()</code> —
+              развернуть обратно в повторы.</li>
+          <li>Арифметика <code class="inl">+</code>, <code class="inl">-</code>,
+              <code class="inl">&amp;</code>, <code class="inl">|</code> работает как над мультимножествами
+              и <b>выбрасывает</b> нулевые и отрицательные счётчики.</li>
+        </ul>
+      </div>
+
+      <!-- ══════════════════ 01. Что это ══════════════════ -->
+      <section>
+        <h2><span class="num">01</span>Что это и как устроено</h2>
+        <p>
+          <code class="inl">Counter</code> наследуется от <code class="inl">dict</code> и не меняет
+          его устройство: внутри та же хеш-таблица, ключи должны быть hashable. Разница — в том,
+          <em>что</em> лежит в значениях и какие операции разрешены по умолчанию.
+        </p>
+        <p>
+          Ключ — элемент, значение — сколько раз он встретился. Главную работу делает
+          <code class="inl">__missing__</code>: обращение к отсутствующему ключу возвращает
+          <code class="inl">0</code>, а не <code class="inl">KeyError</code>. При этом ключ
+          <b>не появляется</b> в словаре — поэтому «прочитать» и «записать» здесь строго разные
+          действия: <code class="inl">c[k]</code> ничего не меняет, а <code class="inl">c[k] += 1</code>
+          создаёт пару.
+        </p>
+
+        <div class="anchor">
+          <div class="glyph">🧰</div>
+          <div>
+            <div class="t">Держите эту картинку в голове</div>
+            <p class="kick"><strong>Счётчик с табло.</strong> Каждый раз, когда видите слово, щёлкаете
+            по нему — и на табло прибавляется единица. Потом можно спросить: «что чаще всего?»,
+            «сколько всего?», «чего больше, чем вчера?».</p>
+            <p>Это первый инструмент из «ящика с инструментами» <a href="ch-06-collections.html">главы 06</a>.
+            Табло — обычный <code class="inl">dict</code>, просто с готовыми кнопками.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ══════════════════ 02. Когда брать ══════════════════ -->
+      <section>
+        <h2><span class="num">02</span>Когда брать, а когда нет</h2>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Задача</th><th>Counter?</th><th>Что взять вместо</th></tr></thead>
+            <tbody>
+              <tr><td>Частоты слов, статусов, городов, ошибок</td><td><b>да</b></td><td>—</td></tr>
+              <tr><td>Топ-N без полной сортировки</td><td><b>да</b></td><td>—</td></tr>
+              <tr><td>Сравнить два набора с кратностями: остатки, дефицит</td><td><b>да</b></td><td>—</td></tr>
+              <tr><td>Нужны все ключи, включая нулевые и отрицательные</td><td>нет</td><td><code class="inl">dict</code> и явная арифметика</td></tr>
+              <tr><td>Группировка «ключ → список значений»</td><td>нет</td><td><code class="inl">defaultdict(list)</code></td></tr>
+              <tr><td>Суммы по ключу, а не количества</td><td>нет</td><td><code class="inl">defaultdict(int)</code> или <code class="inl">sum</code></td></tr>
+              <tr><td>Только уникальные значения</td><td>нет</td><td><code class="inl">set</code></td></tr>
+              <tr><td>Порядок, индексы, срезы</td><td>нет</td><td><code class="inl">list</code></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="small">
+          Если элемента нет в счётчике, это не авария: <code class="inl">0</code> — корректный ответ.
+          А если ноль и минус важны как данные — Counter не подходит, он их не хранит без
+          <code class="inl">subtract</code>.
+        </p>
+      </section>
+
+      <!-- ══════════════════ 03. Как создать ══════════════════ -->
+      <section>
+        <h2><span class="num">03</span>Как создать</h2>
+        <div class="code">
+          <div class="bar"><span class="file">ref_counter_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">from collections import Counter
+
+print(dict(Counter(["a", "b", "a"])))     # из итерируемого
+print(dict(Counter({"a": 2, "b": 1})))    # из словаря
+print(dict(Counter(a=3, b=1)))            # из именованных аргументов
+print(dict(Counter("abracadabra")))       # строка — тоже итерируемое
+print(Counter())                          # пустой счётчик</pre>
+          <div class="out">{'a': 2, 'b': 1}
+{'a': 2, 'b': 1}
+{'a': 3, 'b': 1}
+{'a': 5, 'b': 2, 'r': 2, 'c': 1, 'd': 1}
+Counter()</div>
+        </div>
+        <p>
+          Из итерируемого Counter <em>считает</em> элементы. Из словаря он берёт готовые значения
+          как счётчики: <code class="inl">Counter({"a": 2})</code> — это «a встретился дважды»,
+          а не «есть один элемент a».
+        </p>
+        <div class="note">
+          <span class="t">Строка — это последовательность символов</span>
+          <p><code class="inl">Counter("abracadabra")</code> считает буквы. Нужны слова —
+          сначала <code class="inl">text.split()</code>: <code class="inl">Counter(text.split())</code>.
+          Для пар «ключ → счётчик» из списка используйте <code class="inl">Counter(dict(pairs))</code>,
+          иначе Counter посчитает сами кортежи.</p>
+        </div>
+      </section>
+
+      <!-- ══════════════════ 04. Все методы ══════════════════ -->
+      <section>
+        <h2><span class="num">04</span>Все методы и операции</h2>
+        <p>
+          Четыре таблицы по назначению. «Цена» — средняя сложность в CPython, где
+          <code class="inl">m</code> — число различных элементов, <code class="inl">k</code> —
+          сколько элементов просят у <code class="inl">most_common</code>, <code class="inl">N</code> —
+          длина входной последовательности.
+        </p>
+
+        <h3>Создание и данные</h3>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Метод</th><th>Что делает</th><th>Возвращает</th><th>Цена</th></tr></thead>
+            <tbody>
+              <tr><td class="mono">Counter()</td><td>пустой счётчик: любой элемент читается как 0</td><td>Counter</td><td>O(1)</td></tr>
+              <tr><td class="mono">Counter(iterable)</td><td>считает элементы итерируемого</td><td>Counter</td><td>O(N)</td></tr>
+              <tr><td class="mono">Counter(mapping)</td><td>берёт значения как готовые счётчики</td><td>Counter</td><td>O(m)</td></tr>
+              <tr><td class="mono">Counter(**kwargs)</td><td>счётчики из именованных аргументов</td><td>Counter</td><td>O(m)</td></tr>
+              <tr><td class="mono">c.copy()</td><td>поверхностная копия, независимый счётчик</td><td>Counter</td><td>O(m)</td></tr>
+              <tr><td class="mono">c.clear()</td><td>удаляет все пары</td><td><code class="inl">None</code></td><td>O(m)</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>Подсчёт</h3>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Запись</th><th>Что делает</th><th>Возвращает</th><th>Цена</th></tr></thead>
+            <tbody>
+              <tr><td class="mono">c[k]</td><td>счётчик элемента; нет ключа → 0, ключ не создаётся</td><td>int</td><td>O(1)*</td></tr>
+              <tr><td class="mono">c[k] += 1</td><td>инкремент; создаёт пару, если её не было</td><td>—</td><td>O(1)*</td></tr>
+              <tr><td class="mono">c.update(x)</td><td>прибавляет счётчики из iterable/mapping/kwargs</td><td><code class="inl">None</code></td><td>O(len(x))</td></tr>
+              <tr><td class="mono">c.subtract(x)</td><td>вычитает счётчики; может уйти в ноль и минус</td><td><code class="inl">None</code></td><td>O(len(x))</td></tr>
+              <tr><td class="mono">len(c)</td><td>сколько различных элементов</td><td>int</td><td>O(1)</td></tr>
+              <tr><td class="mono">k in c</td><td>есть ли элемент среди посчитанных</td><td>bool</td><td>O(1)*</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>Выборка</h3>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Метод</th><th>Что делает</th><th>Возвращает</th><th>Цена</th></tr></thead>
+            <tbody>
+              <tr><td class="mono">most_common(k)</td><td>k самых частых пар в порядке убывания</td><td>list[tuple]</td><td>O(m log k)</td></tr>
+              <tr><td class="mono">most_common()</td><td>все пары, полная сортировка по частоте</td><td>list[tuple]</td><td>O(m log m)</td></tr>
+              <tr><td class="mono">elements()</td><td>итератор по элементам с повторами; счётчики ≤ 0 пропускаются</td><td>iterator</td><td>O(total)</td></tr>
+              <tr><td class="mono">total()</td><td>сумма всех счётчиков (с 3.10)</td><td>int</td><td>O(m)</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>Арифметика</h3>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Запись</th><th>Что делает</th><th>Возвращает</th><th>Цена</th></tr></thead>
+            <tbody>
+              <tr><td class="mono">c + d</td><td>складывает счётчики, неположительные пары отбрасывает</td><td>Counter</td><td>O(m + n)</td></tr>
+              <tr><td class="mono">c - d</td><td>вычитает, оставляет только положительные</td><td>Counter</td><td>O(m + n)</td></tr>
+              <tr><td class="mono">c &amp; d</td><td>минимум счётчиков по общим ключам</td><td>Counter</td><td>O(m + n)</td></tr>
+              <tr><td class="mono">c | d</td><td>максимум счётчиков по всем ключам</td><td>Counter</td><td>O(m + n)</td></tr>
+              <tr><td class="mono">+c</td><td> только положительные счётчики</td><td>Counter</td><td>O(m)</td></tr>
+              <tr><td class="mono">-c</td><td>меняет знак, положительными становятся минусы</td><td>Counter</td><td>O(m)</td></tr>
+              <tr><td class="mono">c == d</td><td>равенство частот; нулевые счётчики не учитываются</td><td>bool</td><td>O(m)</td></tr>
+              <tr><td class="mono">c += d, c -= d, c &amp;= d, c |= d</td><td>те же операции на месте, неположительные удаляются</td><td><code class="inl">None</code></td><td>O(m + n)</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="small">* в среднем; при плохом распределении хешей возможно O(m), но это исключение.</p>
+      </section>
+
+      <!-- ══════════════════ 05. Разбор ══════════════════ -->
+      <section>
+        <h2><span class="num">05</span>Разбор по группам</h2>
+        <p>
+          Все примеры страницы собраны в файле
+          <a href="snippets/view.html?f=ref_counter_lab.py"><code class="inl">ref_counter_lab.py</code></a> —
+          его можно запустить и менять строки.
+        </p>
+
+        <h3>Частоты и отсутствующий ключ</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_counter_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">from collections import Counter
+
+counts = Counter("abracadabra")
+print(counts["a"])
+print(counts["z"])               # нет ключа — 0, без KeyError
+print("z" in counts)             # но ключ не создан
+counts["a"] += 100               # запись как в обычном dict
+print(dict(counts))</pre>
+          <div class="out">5
+0
+False
+{'a': 105, 'b': 2, 'r': 2, 'c': 1, 'd': 1}</div>
+        </div>
+        <p>
+          Строка <code class="inl">0 False</code> и есть главная тонкость: значение по умолчанию
+          отдаётся, но пара не появляется. Поэтому <code class="inl">in</code> отвечает на вопрос
+          «считали ли этот элемент», а не «больше ли нуля».
+        </p>
+
+        <h3>most_common: топ-N</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_counter_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">from collections import Counter
+
+cities = ["Москва", "Казань", "Москва", "Омск", "Казань", "Москва", "Сочи"]
+counts = Counter(cities)
+print(counts.most_common(2))
+print(counts.most_common())      # полная сортировка по убыванию
+print(counts.most_common(10))    # больше, чем ключей — вернутся все</pre>
+          <div class="out">[('Москва', 3), ('Казань', 2)]
+[('Москва', 3), ('Казань', 2), ('Омск', 1), ('Сочи', 1)]
+[('Москва', 3), ('Казань', 2), ('Омск', 1), ('Сочи', 1)]</div>
+        </div>
+        <p>
+          <code class="inl">most_common(k)</code> — это не полная сортировка: внутри
+          <code class="inl">heapq.nlargest</code>, поэтому O(m log k) вместо O(m log m). При равных
+          частотах порядок — «кто встретился раньше». Без аргумента метод сортирует всё — на большом
+          словаре это заметно.
+        </p>
+
+        <h3>elements и total</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_counter_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">from collections import Counter
+
+counts = Counter({"a": 2, "b": 1, "c": 0, "d": -1})
+print(list(counts.elements()))   # только положительные счётчики
+print(counts.total())            # сумма всех счётчиков</pre>
+          <div class="out">['a', 'a', 'b']
+2</div>
+        </div>
+        <p>
+          <code class="inl">elements()</code> разворачивает счётчик обратно в повторы: два «a», одна «b».
+          Нулевые и отрицательные значения он молча пропускает, а <code class="inl">total()</code>
+          их суммирует — <code class="inl">2 + 1 + 0 + (−1) = 2</code>. Эти две операции отвечают
+          на разные вопросы, не путайте.
+        </p>
+
+        <h3>update и subtract</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_counter_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">from collections import Counter
+
+counts = Counter({"python": 2, "sql": 1})
+counts.update(["python", "pandas"])   # складывает, а не заменяет
+counts.update({"sql": 2})
+print(dict(counts))
+
+counts.subtract({"python": 3, "sql": 10})   # вычитает и уходит в минус
+print(dict(counts))</pre>
+          <div class="out">{'python': 3, 'sql': 3, 'pandas': 1}
+{'python': 0, 'sql': -7, 'pandas': 1}</div>
+        </div>
+        <p>
+          Оба метода меняют счётчик на месте и возвращают <code class="inl">None</code>.
+          <code class="inl">update</code> прибавляет, <code class="inl">subtract</code> вычитает —
+          в отличие от оператора <code class="inl">-</code>, они <b>оставляют</b> нули и минусы.
+          В <code class="inl">update</code> можно передать итерируемое (тогда считаются элементы)
+          или mapping (тогда складываются счётчики).
+        </p>
+
+        <h3>Арифметика: +, -, &amp;, |</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_counter_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">from collections import Counter
+
+a = Counter({"python": 3, "sql": 1})
+b = Counter({"python": 1, "sql": 2})
+print(dict(a + b))    # складывает счётчики
+print(dict(a - b))    # вычитает, неположительные выбрасывает
+print(dict(a &amp; b))    # минимум по каждому ключу
+print(dict(a | b))    # максимум по каждому ключу</pre>
+          <div class="out">{'python': 4, 'sql': 3}
+{'python': 2}
+{'python': 1, 'sql': 1}
+{'python': 3, 'sql': 2}</div>
+        </div>
+        <p>
+          Это операции над мультимножествами: у каждого элемента есть кратность, и
+          <code class="inl">&amp;</code> — пересечение (минимум), <code class="inl">|</code> —
+          объединение (максимум). Практический смысл: <code class="inl">a - b</code> — «чего
+          не хватает», <code class="inl">a &amp; b</code> — «что есть у обоих».
+        </p>
+
+        <h3>Нули, минусы и унарные операторы</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_counter_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">from collections import Counter
+
+a = Counter({"python": 4, "sql": 1})
+b = Counter({"python": 1, "sql": 5})
+print(dict(a - b))            # sql ушёл в минус — пара исчезла
+
+a.subtract(b)                 # subtract меняет на месте
+print(dict(a))                # нули и минусы остаются
+print(a.total())              # total() суммирует всё, включая минусы
+
+c = Counter({"a": 2, "b": 0, "c": -3})
+print(dict(+c))               # унарный + — только положительные
+print(dict(-c))               # унарный - — знак меняется, мусор отброшен
+print(Counter({"a": 0}) == Counter())</pre>
+          <div class="out">{'python': 3}
+{'python': 3, 'sql': -4}
+-1
+{'a': 2}
+{'c': 3}
+True</div>
+        </div>
+        <p>
+          Три разных поведения, которые легко перепутать: оператор <code class="inl">-</code>
+          создаёт новый Counter и <b>выбрасывает</b> неположительные пары;
+          <code class="inl">subtract()</code> меняет на месте и <b>сохраняет</b> нули и минусы;
+          унарные <code class="inl">+</code> и <code class="inl">-</code> оставляют только
+          положительные. А равенство игнорирует нулевые счётчики: <code class="inl">Counter({"a": 0})</code>
+          и пустой Counter — равны.
+        </p>
+
+        <h3>copy и clear</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_counter_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">from collections import Counter
+
+counts = Counter("abracadabra")
+copy = counts.copy()
+counts.clear()
+print(copy["a"], len(counts), len(copy))</pre>
+          <div class="out">5 0 5</div>
+        </div>
+        <p>
+          <code class="inl">copy()</code> даёт независимый счётчик: очистка исходного на копию
+          не влияет. Копия поверхностная — как у <code class="inl">dict</code>, но значения здесь
+          числа, так что на практике этого достаточно.
+        </p>
+      </section>
+
+      <!-- ══════════════════ 06. Сценарии ══════════════════ -->
+      <section>
+        <h2><span class="num">06</span>Три сценария из практики</h2>
+
+        <h3>Частоты статусов заказов</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_counter_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">from collections import Counter
+
+statuses = ["new", "paid", "new", "shipped", "paid", "new", "cancelled"]
+by_status = Counter(statuses)
+print(dict(by_status))
+print(by_status.most_common(2))
+print(by_status.total())</pre>
+          <div class="out">{'new': 3, 'paid': 2, 'shipped': 1, 'cancelled': 1}
+[('new', 3), ('paid', 2)]
+7</div>
+        </div>
+        <p>
+          Один проход по данным — и есть и распределение, и топ, и общее число. В pandas это
+          <code class="inl">value_counts()</code>, в SQL — <code class="inl">GROUP BY … COUNT(*)</code>.
+          <code class="inl">total()</code> здесь заодно проверяет, что ничего не потеряли: сумма
+          частот равна длине списка.
+        </p>
+
+        <h3>Топ-N городов</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_counter_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">from collections import Counter
+
+city_orders = ["Москва", "Казань", "Москва", "Омск", "Казань",
+               "Москва", "Сочи", "Москва", "Омск", "Казань"]
+top = Counter(city_orders).most_common(3)
+print(top)
+for city, n in top:
+    print(f"{city}: {n}")</pre>
+          <div class="out">[('Москва', 4), ('Казань', 3), ('Омск', 2)]
+Москва: 4
+Казань: 3
+Омск: 2</div>
+        </div>
+        <p>
+          <code class="inl">most_common(3)</code> не сортирует весь список городов — берёт три
+          максимума. Для миллионов различных ключей это разница между секундами и миллисекундами.
+          Дальше пары уже готовы к выводу или к вставке в отчёт.
+        </p>
+
+        <h3>Сравнение двух наборов</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_counter_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">from collections import Counter
+
+warehouse = Counter({"яблоко": 10, "груша": 5, "слива": 8})
+sold = Counter({"яблоко": 12, "груша": 3, "слива": 8})
+print(dict(warehouse - sold))   # чего не хватает на складе
+print(dict(sold - warehouse))   # переизбыток
+print(dict(warehouse &amp; sold))   # пересечение мультимножеств
+print(warehouse == sold)        # равенство частот</pre>
+          <div class="out">{'груша': 2}
+{'яблоко': 2}
+{'яблоко': 10, 'груша': 3, 'слива': 8}
+False</div>
+        </div>
+        <p>
+          Мультимножество — это «сколько чего»: <code class="inl">warehouse - sold</code> показывает,
+          чего не хватило, <code class="inl">sold - warehouse</code> — что продали сверх остатка.
+          Нули и минусы в результат не попадают, поэтому «слива» исчезла из разности: её ровно
+          столько же.
+        </p>
+      </section>
+
+      <!-- ══════════════════ 07. Ошибки ══════════════════ -->
+      <section>
+        <h2><span class="num">07</span>Пять ошибок, на которых спотыкаются</h2>
+        <div class="errors">
+          <div class="err">
+            <div class="h">most_common() без n на больших данных</div>
+            <p>Без аргумента метод сортирует <b>все</b> ключи — O(m log m). «Дай топ-10» из миллиона
+            различных элементов превращается в полную сортировку.</p>
+            <div class="fix">Всегда указывайте <code class="inl">most_common(10)</code>: внутри heapq, O(m log k).</div>
+          </div>
+
+          <div class="err">
+            <div class="h">Нехешируемые элементы</div>
+            <p><code class="inl">Counter([[1], [2]])</code> падает с
+            <code class="inl">TypeError: unhashable type: 'list'</code>: Counter — словарь, а ключ
+            должен быть hashable.</p>
+            <div class="fix">Кортежи вместо списков: <code class="inl">Counter([(1, 2), (3, 4)])</code>.</div>
+          </div>
+
+          <div class="err">
+            <div class="h">Отрицательные счётчики после subtract</div>
+            <p><code class="inl">c.subtract(d)</code> может увести значение в минус. Дальше
+            <code class="inl">elements()</code> такие пары пропускает, <code class="inl">most_common()</code>
+            ставит их в конец, а <code class="inl">in</code> продолжает говорить «ключ есть».</p>
+            <div class="fix">Проверяйте значение: <code class="inl">c.get(k, 0) &gt; 0</code>; обнулить хвост — <code class="inl">c = +c</code>.</div>
+          </div>
+
+          <div class="err">
+            <div class="h">Ждать от <code>c - d</code> нулей</div>
+            <p>Оператор <code class="inl">-</code> не оставляет пару со счётчиком 0 — он её удаляет.
+            Код, который потом делает <code class="inl">c[k] == 0</code> или рассчитывает на все ключи,
+            получает <code class="inl">KeyError</code> или неполный словарь.</p>
+            <div class="fix">Нужны нули — <code class="inl">subtract()</code> (меняет на месте) или обычный dict с явной арифметикой.</div>
+          </div>
+
+          <div class="err">
+            <div class="h">Путать update и subtract</div>
+            <p><code class="inl">update</code> складывает, <code class="inl">subtract</code> вычитает.
+            Вторая тонкость: <code class="inl">update</code> с итерируемым считает <b>элементы</b>, а не
+            пары — список <code class="inl">[("a", 1)]</code> добавит ключ-кортеж, а не прибавит
+            единицу к «a».</p>
+            <div class="fix">Пары передавайте словарём: <code class="inl">c.update({"a": 1})</code>; элементы — итерируемым.</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ══════════════════ 08. Мини-проверка ══════════════════ -->
+      <section>
+        <h2><span class="num">08</span>Мини-проверка</h2>
+        <p>Пять вопросов на понимание и две задачи. Сначала своя попытка — потом спойлер.</p>
+
+        <div class="qa">
+          <details>
+            <summary>Чем Counter отличается от обычного dict?</summary>
+            <div class="a">
+              <p>Counter — подкласс <code class="inl">dict</code>, но с счётной семантикой: отсутствующий
+              ключ на чтение даёт <code class="inl">0</code> без <code class="inl">KeyError</code>,
+              есть <code class="inl">most_common</code>, <code class="inl">elements</code>,
+              <code class="inl">total</code> и арифметика над мультимножествами.</p>
+              <div class="verdict">Резюме: dict + готовые операции счёта.</div>
+            </div>
+          </details>
+        </div>
+
+        <div class="qa">
+          <details>
+            <summary>Почему counts["missing"] не бросает KeyError и появляется ли ключ?</summary>
+            <div class="a">
+              <p>Counter переопределяет <code class="inl">__missing__</code>: чтение отсутствующего
+              ключа возвращает <code class="inl">0</code>, но <b>не вставляет</b> пару. Ключ появится,
+              только если записать явно: <code class="inl">counts["missing"] += 1</code>.</p>
+              <div class="verdict">Резюме: 0 на чтение — да, ключ в словаре — нет.</div>
+            </div>
+          </details>
+        </div>
+
+        <div class="qa">
+          <details>
+            <summary>Что делает most_common(k) и сколько это стоит?</summary>
+            <div class="a">
+              <p>Возвращает k самых частых пар по убыванию. Внутри — <code class="inl">heapq.nlargest</code>,
+              то есть O(m log k); без аргумента — полная сортировка O(m log m). При равных частотах
+              порядок определяется первым появлением элемента.</p>
+              <div class="verdict">Резюме: есть k — дешёвый топ; нет k — дорогая сортировка.</div>
+            </div>
+          </details>
+        </div>
+
+        <div class="qa">
+          <details>
+            <summary>Чем subtract() отличается от оператора -?</summary>
+            <div class="a">
+              <p><code class="inl">subtract()</code> меняет счётчик на месте, возвращает
+              <code class="inl">None</code> и сохраняет нули и отрицательные значения. Оператор
+              <code class="inl">-</code> возвращает новый Counter и выбрасывает все неположительные пары.
+              Иногда именно это и нужно, но ожидать «ключа со значением 0» от оператора нельзя.</p>
+              <div class="verdict">Резюме: subtract — «оставить историю», минус — «оставить только плюсы».</div>
+            </div>
+          </details>
+        </div>
+
+        <div class="qa">
+          <details>
+            <summary>Как Counter сравнивает два набора?</summary>
+            <div class="a">
+              <p>Как мультимножества: сравнение <code class="inl">==</code> учитывает счётчики, но
+              игнорирует нулевые. <code class="inl">a - b</code> — «чего не хватает», <code class="inl">a &amp; b</code> —
+              «что есть у обоих в минимальном количестве», <code class="inl">a | b</code> — максимум
+              по каждому элементу.</p>
+              <div class="verdict">Резюме: те же операции, что у set, только с кратностями.</div>
+            </div>
+          </details>
+        </div>
+
+        <h3><span style="color:var(--muted);font-family:var(--mono);font-size:.8rem">01</span> Топ-3 слова</h3>
+        <p>Найдите три самых частых слова в тексте. Регистр не важен.</p>
+        <div class="code">
+          <div class="bar"><span class="file">условие</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">text = "SQL python sql pandas python SQL"
+# ожидается: [('sql', 3), ('python', 2), ('pandas', 1)]</pre>
+        </div>
+        <div class="qa">
+          <details>
+            <summary>Показать решение и разбор</summary>
+            <div class="a">
+              <div class="code" style="margin-top:0">
+                <div class="bar"><span class="file">решение</span><span class="lang">python</span><button class="copy">копировать</button></div>
+                <pre data-lang="python">from collections import Counter
+
+text = "SQL python sql pandas python SQL"
+counts = Counter(text.lower().split())
+print(counts.most_common(3))</pre>
+                <div class="out">[('sql', 3), ('python', 2), ('pandas', 1)]</div>
+              </div>
+              <p><strong>Что важно.</strong> <code class="inl">lower()</code> нормализует регистр до
+              подсчёта, а не после. <code class="inl">most_common(3)</code> сразу даёт топ и не сортирует
+              весь словарь. Если нужны доли, делите на <code class="inl">total()</code>.</p>
+            </div>
+          </details>
+        </div>
+
+        <h3><span style="color:var(--muted);font-family:var(--mono);font-size:.8rem">02</span> Анаграммы</h3>
+        <p>Проверьте, являются ли две строки анаграммами: те же буквы с теми же кратностями.</p>
+        <div class="code">
+          <div class="bar"><span class="file">условие</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">def is_anagram(a, b):
+    ...
+
+# is_anagram("listen", "Silent") → True
+# is_anagram("abc", "abbc")      → False</pre>
+        </div>
+        <div class="qa">
+          <details>
+            <summary>Показать решение и разбор</summary>
+            <div class="a">
+              <div class="code" style="margin-top:0">
+                <div class="bar"><span class="file">решение</span><span class="lang">python</span><button class="copy">копировать</button></div>
+                <pre data-lang="python">from collections import Counter
+
+def is_anagram(a: str, b: str) -&gt; bool:
+    return Counter(a.lower()) == Counter(b.lower())
+
+print(is_anagram("listen", "Silent"))
+print(is_anagram("abc", "abbc"))</pre>
+                <div class="out">True
+False</div>
+              </div>
+              <p><strong>Что важно.</strong> Сравнение Counter — это сравнение мультимножеств:
+              «abc» и «abbc» дают разные счётчики, поэтому <code class="inl">False</code>.
+              <code class="inl">lower()</code> делает проверку регистронезависимой; пробелы и
+              пунктуацию при необходимости убирают до подсчёта.</p>
+            </div>
+          </details>
+        </div>
+      </section>
+
+      <!-- ══════════════════ 09. Мостик ══════════════════ -->
+      <section>
+        <h2><span class="num">09</span>Мостик: та же идея в pandas и SQL</h2>
+
+        <h3>pandas: value_counts</h3>
+        <div class="code">
+          <div class="bar"><span class="file">мост в pandas</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">import pandas as pd
+
+df = pd.DataFrame({"city": ["Москва", "Казань", "Москва"], "amount": [1200, 800, 500]})
+
+df["city"].value_counts()                 # Counter: ключ → частота, уже по убыванию
+df["city"].value_counts(normalize=True)   # то же, но доли от суммы
+df.groupby("city").size()                 # Counter через groupby</pre>
+        </div>
+        <p>
+          <code class="inl">value_counts()</code> — это <code class="inl">most_common()</code>,
+          который сразу возвращает Series: индекс — значения, данные — частоты. Параметр
+          <code class="inl">normalize=True</code> заменяет деление на <code class="inl">total()</code>.
+        </p>
+
+        <h3>SQL: GROUP BY и COUNT(*)</h3>
+        <div class="code">
+          <div class="bar"><span class="file">мост в SQL</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">-- Counter: частоты и топ-N
+SELECT city, COUNT(*) AS orders
+FROM orders
+GROUP BY city
+ORDER BY orders DESC
+LIMIT 3;
+
+-- то же, но только те, что встречаются чаще двух раз
+SELECT city, COUNT(*) AS orders
+FROM orders
+GROUP BY city
+HAVING COUNT(*) &gt; 2;</pre>
+        </div>
+        <p>
+          <code class="inl">GROUP BY</code> — это Counter на стороне базы: ключ — группа, значение —
+          агрегат. <code class="inl">ORDER BY … DESC LIMIT</code> повторяет
+          <code class="inl">most_common(k)</code>, а <code class="inl">HAVING</code> — фильтр по
+          счётчику, аналог <code class="inl">c[k] &gt; 2</code>.
+        </p>
+
+        <div class="bridges">
+          <a class="bridge" href="ch-06-collections.html"><span class="to">Глава 06</span><span>Counter, defaultdict, deque: три специнструмента</span><span class="what">→ ящик с инструментами целиком</span></a>
+          <a class="bridge" href="ch-02-dict.html"><span class="to">Глава 02</span><span>dict: хеш, коллизии и пробирование</span><span class="what">→ база, на которой стоит Counter</span></a>
+          <a class="bridge" href="ch-15-groupby.html"><span class="to">Глава 15</span><span>groupby: разложить — посчитать — собрать</span><span class="what">→ value_counts и groupby в pandas</span></a>
+          <a class="bridge" href="ch-21-group-by-having.html"><span class="to">Глава 21</span><span>GROUP BY и HAVING</span><span class="what">→ COUNT(*) и фильтр по частоте</span></a>
+          <a class="bridge" href="ref-defaultdict.html"><span class="to">Справочник</span><span>defaultdict: блокнот с группами</span><span class="what">→ следующий тип: группировка без проверок</span></a>
+        </div>
+      </section>
+
+      <div class="pager">
+        <a class="prev" href="ref-set.html"><span class="dir">← Назад</span><span class="ttl">set: фейс-контроль</span></a>
+        <a class="next" href="ref-defaultdict.html"><span class="dir">Дальше →</span><span class="ttl">defaultdict: блокнот с группами</span></a>
+      </div>
+
+    </div>
+  </main>
+</div>
+<script src="assets/toc.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>

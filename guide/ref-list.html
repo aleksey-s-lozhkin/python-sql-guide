@@ -1,0 +1,640 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Справочник · list: поезд с вагонами — Ассоциативный гайд</title>
+<meta name="description" content="Справочник по list: устройство, все методы с ценой, срезы, копии, стек и топ-N — с примерами и реальным выводом.">
+<link rel="stylesheet" href="assets/style.css">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#fbf8f2" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#14131a" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="assets/icons/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="assets/icons/icon-180.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Гайд Py/SQL">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+</head>
+<body data-slug="ref-list">
+<div class="app">
+  <aside class="sidebar" id="sidebar"></aside>
+  <main>
+    <div class="wrap">
+
+      <header class="chapter-head">
+        <div class="eyebrow">
+          <span class="part">Справочник · Python-коллекции</span>
+          <span class="dot"></span>
+          <span>тип 1 из 7</span>
+          <span class="dot"></span>
+          <span>готово</span>
+        </div>
+        <h1>list: поезд с вагонами
+          <span class="sub">Все методы списка, их цена и сценарии, где он незаменим</span>
+        </h1>
+        <p class="lead">
+          <code class="inl">list</code> — рабочая лошадка Python: упорядоченная, изменяемая, с доступом по индексу.
+          Здесь собрано то, что обычно ищут в документации: полная таблица методов, цена каждой операции
+          и пять ошибок, на которых спотыкаются даже опытные.
+        </p>
+        <div class="meta">
+          <span class="chip">⏱ <b>12 минут</b></span>
+          <span class="chip">🎯 уровень <b>1–2</b></span>
+          <span class="chip">🐍 Python <b>3.12</b></span>
+          <span class="chip">📚 <b>глава 03</b></span>
+        </div>
+      </header>
+
+      <p class="small">
+        Типы справочника: <a href="appendix-types.html">вся карта</a> · <b>list</b> ·
+        <a href="ref-tuple.html">tuple</a> · <a href="ref-dict.html">dict</a> ·
+        <a href="ref-set.html">set</a> · <a href="ref-counter.html">Counter</a> ·
+        <a href="ref-defaultdict.html">defaultdict</a> · <a href="ref-deque.html">deque</a>
+      </p>
+
+      <div class="tldr">
+        <div class="t">Самое главное</div>
+        <ul>
+          <li><code class="inl">list</code> — упорядоченный изменяемый массив: доступ по индексу O(1),
+              <code class="inl">append</code> амортизированно O(1), вставка в середину O(n).</li>
+          <li><code class="inl">append</code> ≠ <code class="inl">extend</code>, <code class="inl">sort()</code>
+              возвращает <code class="inl">None</code>, <code class="inl">a[:]</code> — копия,
+              а <code class="inl">b = a</code> — второе имя того же списка.</li>
+          <li>Нужны уникальность, ключи или быстрые оба конца — это <code class="inl">set</code>,
+              <code class="inl">dict</code>, <code class="inl">tuple</code> или <code class="inl">deque</code>,
+              а не список.</li>
+        </ul>
+      </div>
+
+      <!-- ══════════════════ 01. Что это ══════════════════ -->
+      <section>
+        <h2><span class="num">01</span>Что это и как устроено</h2>
+        <p>
+          Список хранит <em>упорядоченный набор объектов</em> и позволяет менять его после создания:
+          добавлять, удалять, переставлять. Порядок — часть данных: <code class="inl">[1, 2]</code>
+          и <code class="inl">[2, 1]</code> — разные списки.
+        </p>
+        <p>
+          Внутри CPython это массив указателей на объекты. Элементы не «разбросаны по памяти»: адрес
+          i-го вычисляется как <code class="inl">начало + i × размер указателя</code>. Поэтому
+          <code class="inl">a[5000]</code> стоит столько же, сколько <code class="inl">a[0]</code>. А вот
+          вставка в середину двигает весь хвост — отсюда O(n).
+        </p>
+
+        <div class="anchor">
+          <div class="glyph">🚃</div>
+          <div>
+            <div class="t">Держите эту картинку в голове</div>
+            <p class="kick"><strong>Поезд с вагонами.</strong> Вагоны пронумерованы — можно сразу открыть
+            нужный, не проходя состав. В конец вагон прицепить дёшево, а вот вставить в середину — значит
+            перецепить все вагоны после него.</p>
+            <p>Срез — это «пересадить пассажиров в новый состав»: копия, а не окно в старый.
+            Подробный разбор метафоры — в <a href="ch-03-list-tuple.html">главе 03</a>.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ══════════════════ 02. Когда брать ══════════════════ -->
+      <section>
+        <h2><span class="num">02</span>Когда брать, а когда нет</h2>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Задача</th><th>list?</th><th>Что взять вместо</th></tr></thead>
+            <tbody>
+              <tr><td>Нужен порядок, индексы и срезы</td><td><b>да</b></td><td>—</td></tr>
+              <tr><td>Стек: добавить и снять с конца</td><td><b>да</b></td><td>—</td></tr>
+              <tr><td>Проверять «есть ли элемент» в цикле</td><td>нет</td><td><code class="inl">set</code> или <code class="inl">dict</code> — O(1)</td></tr>
+              <tr><td>Доступ по ключу: id, имя, артикул</td><td>нет</td><td><code class="inl">dict</code></td></tr>
+              <tr><td>Только уникальные значения</td><td>нет</td><td><code class="inl">set</code></td></tr>
+              <tr><td>Добавлять и удалять с двух концов</td><td>нет</td><td><code class="inl">deque</code> — оба конца O(1)</td></tr>
+              <tr><td>Фиксированная запись, ключ словаря</td><td>нет</td><td><code class="inl">tuple</code> — неизменяемый и hashable</td></tr>
+              <tr><td>Частоты и группировки</td><td>как основа</td><td><code class="inl">Counter</code>, <code class="inl">defaultdict</code></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="small">
+          Если сомневаетесь — вернитесь к <a href="ch-01-python-collections.html">карте коллекций</a>:
+          пять вопросов о задаче почти всегда дают ответ без перебора вариантов.
+        </p>
+      </section>
+
+      <!-- ══════════════════ 03. Как создать ══════════════════ -->
+      <section>
+        <h2><span class="num">03</span>Как создать</h2>
+        <div class="code">
+          <div class="bar"><span class="file">ref_list_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">rows = [10, 20, 30]                       # литерал
+empty = []                                # пустой список
+squares = [x * x for x in range(1, 5)]    # list comprehension
+names = ["Anna", "Olga"]
+pairs = list(zip(names, [1200, 900]))     # из итерируемого
+
+print(rows, empty, squares, pairs, sep="\n")</pre>
+          <div class="out">[10, 20, 30]
+[]
+[1, 4, 9, 16]
+[('Anna', 1200), ('Olga', 900)]</div>
+        </div>
+        <p>
+          Из строки список получается по символам: <code class="inl">list("abc")</code> →
+          <code class="inl">['a', 'b', 'c']</code>. Повторить значение —
+          <code class="inl">[0] * 5</code> → <code class="inl">[0, 0, 0, 0, 0]</code>.
+        </p>
+        <div class="note">
+          <span class="t">Ловушка умножения</span>
+          <p><code class="inl">[[0] * 3] * 2</code> даёт два указателя на <em>один и тот же</em> внутренний
+          список: изменив <code class="inl">a[0][0]</code>, вы измените и <code class="inl">a[1][0]</code>.
+          Для вложенных структур — comprehension:
+          <code class="inl">[[0] * 3 for _ in range(2)]</code>.</p>
+        </div>
+      </section>
+
+      <!-- ══════════════════ 04. Все методы ══════════════════ -->
+      <section>
+        <h2><span class="num">04</span>Все методы и операции</h2>
+        <p>
+          Пять таблиц по назначению. «Цена» — средняя сложность в CPython, где <code class="inl">n</code>
+          — длина списка, <code class="inl">k</code> — размер добавляемого куска.
+        </p>
+
+        <h3>Изменение</h3>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Метод</th><th>Что делает</th><th>Возвращает</th><th>Цена</th></tr></thead>
+            <tbody>
+              <tr><td class="mono">append(x)</td><td>добавляет <b>один</b> элемент в конец</td><td><code class="inl">None</code></td><td>O(1)*</td></tr>
+              <tr><td class="mono">extend(iterable)</td><td>добавляет все элементы итерируемого</td><td><code class="inl">None</code></td><td>O(k)</td></tr>
+              <tr><td class="mono">insert(i, x)</td><td>вставляет x на позицию i, сдвигая хвост</td><td><code class="inl">None</code></td><td>O(n)</td></tr>
+              <tr><td class="mono">pop()</td><td>удаляет и возвращает последний элемент</td><td>элемент</td><td>O(1)</td></tr>
+              <tr><td class="mono">pop(i)</td><td>удаляет и возвращает элемент с индексом i</td><td>элемент</td><td>O(n)</td></tr>
+              <tr><td class="mono">remove(x)</td><td>удаляет <b>первое</b> вхождение значения x</td><td><code class="inl">None</code></td><td>O(n)</td></tr>
+              <tr><td class="mono">clear()</td><td>удаляет все элементы</td><td><code class="inl">None</code></td><td>O(n)</td></tr>
+              <tr><td class="mono">sort(*, key=None, reverse=False)</td><td>сортирует на месте</td><td><code class="inl">None</code></td><td>O(n log n)</td></tr>
+              <tr><td class="mono">reverse()</td><td>разворачивает на месте</td><td><code class="inl">None</code></td><td>O(n)</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="small">* амортизированно: иногда список расширяется и копируется, но редкие дорогие вставки окупаются.</p>
+
+        <h3>Чтение и поиск</h3>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Запись</th><th>Что делает</th><th>Возвращает</th><th>Цена</th></tr></thead>
+            <tbody>
+              <tr><td class="mono">a[i]</td><td>элемент по индексу; отрицательный — с конца</td><td>элемент</td><td>O(1)</td></tr>
+              <tr><td class="mono">a[i:j:k]</td><td>срез — <b>копия</b> куска</td><td>новый list</td><td>O(k)</td></tr>
+              <tr><td class="mono">a.index(x)</td><td>позиция первого вхождения</td><td>int</td><td>O(n)</td></tr>
+              <tr><td class="mono">a.count(x)</td><td>сколько раз встречается</td><td>int</td><td>O(n)</td></tr>
+              <tr><td class="mono">x in a</td><td>проверка входа перебором</td><td>bool</td><td>O(n)</td></tr>
+              <tr><td class="mono">len(a)</td><td>длина</td><td>int</td><td>O(1)</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>Копирование</h3>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Запись</th><th>Что делает</th><th>Возвращает</th><th>Цена</th></tr></thead>
+            <tbody>
+              <tr><td class="mono">a.copy()</td><td>поверхностная копия</td><td>новый list</td><td>O(n)</td></tr>
+              <tr><td class="mono">a[:]</td><td>то же самое — копия целиком</td><td>новый list</td><td>O(n)</td></tr>
+              <tr><td class="mono">list(a)</td><td>копия из итерируемого</td><td>новый list</td><td>O(n)</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>Операторы</h3>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Запись</th><th>Что делает</th><th>Возвращает</th><th>Цена</th></tr></thead>
+            <tbody>
+              <tr><td class="mono">a + b</td><td>склеивает в новый список</td><td>новый list</td><td>O(len(a) + len(b))</td></tr>
+              <tr><td class="mono">a * n</td><td>повторяет элементы</td><td>новый list</td><td>O(len(a) · n)</td></tr>
+              <tr><td class="mono">a += b</td><td>дописывает на месте, как <code class="inl">extend</code></td><td>тот же list</td><td>O(len(b))</td></tr>
+              <tr><td class="mono">del a[i]</td><td>удаляет элемент по индексу</td><td>—</td><td>O(n)</td></tr>
+              <tr><td class="mono">del a[i:j]</td><td>удаляет кусок</td><td>—</td><td>O(n)</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="note">
+          <span class="t">Шесть методов, которые нужны каждый день</span>
+          <p><code class="inl">append</code> — добавить, <code class="inl">pop</code> — снять с конца,
+          <code class="inl">sort(key=...)</code> — упорядочить, <code class="inl">in</code> — проверить,
+          <code class="inl">len</code> — длина, срез — взять кусок. Этого хватает в девяти случаях из десяти.</p>
+        </div>
+      </section>
+
+      <!-- ══════════════════ 05. Разбор ══════════════════ -->
+      <section>
+        <h2><span class="num">05</span>Разбор по группам</h2>
+        <p>
+          Все примеры страницы собраны в файле
+          <a href="snippets/view.html?f=ref_list_lab.py"><code class="inl">ref_list_lab.py</code></a> —
+          его можно запустить и менять строки.
+        </p>
+
+        <h3>Добавление: append, extend, insert</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_list_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">a = [1, 2]
+a.append(3)              # один элемент
+a.extend([4, 5])         # несколько элементов
+a.insert(0, 0)           # в начало — сдвиг всех элементов, O(n)
+print(a)</pre>
+          <div class="out">[0, 1, 2, 3, 4, 5]</div>
+        </div>
+        <p>
+          <code class="inl">extend</code> разбирает любой итерируемый объект: <code class="inl">a.extend("ab")</code>
+          добавит две строки <code class="inl">'a'</code> и <code class="inl">'b'</code>, а не одну строку
+          <code class="inl">"ab"</code>. Если нужен один элемент — <code class="inl">append</code>.
+        </p>
+
+        <h3>Удаление: pop, remove, clear</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_list_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">a = [10, 20, 30, 20]
+print(a.pop())            # последний элемент
+print(a.pop(0))           # по индексу
+print(a.remove(30))       # None — remove ничего не возвращает
+print(a)</pre>
+          <div class="out">20
+10
+None
+[20]</div>
+        </div>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Что нужно</th><th>Чем</th><th>Если элемента нет</th></tr></thead>
+            <tbody>
+              <tr><td>снять последний</td><td class="mono">a.pop()</td><td><code class="inl">IndexError</code>, если список пуст</td></tr>
+              <tr><td>снять по позиции</td><td class="mono">a.pop(i)</td><td><code class="inl">IndexError</code></td></tr>
+              <tr><td>удалить по значению</td><td class="mono">a.remove(x)</td><td><code class="inl">ValueError</code></td></tr>
+              <tr><td>удалить по позиции без возврата</td><td class="mono">del a[i]</td><td><code class="inl">IndexError</code></td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>Сортировка: sort на месте и sorted</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_list_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">amounts = [1200, 800, 1500]
+result = amounts.sort(reverse=True)
+print(amounts)
+print(result)                  # None — сортировка на месте
+
+orders = [("Anna", 1200), ("Ivan", 800), ("Olga", 1500)]
+orders.sort(key=lambda o: o[1])
+print(orders)</pre>
+          <div class="out">[1500, 1200, 800]
+None
+[('Ivan', 800), ('Anna', 1200), ('Olga', 1500)]</div>
+        </div>
+        <p>
+          Сортировка <b>стабильная</b>: элементы с одинаковым ключом сохраняют исходный порядок. Поэтому
+          можно сортировать в два прохода — сначала по второстепенному признаку, потом по главному.
+          Нужен новый список вместо изменения исходного — <code class="inl">sorted(a, key=...)</code>.
+        </p>
+
+        <h3>Копия и алиас</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_list_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">a = [1, 2]
+alias = a
+copy = a.copy()           # то же самое: a[:] или list(a)
+alias.append(3)
+print(a, copy)
+copy.append(4)
+print(a, copy)</pre>
+          <div class="out">[1, 2, 3] [1, 2]
+[1, 2, 3] [1, 2, 4]</div>
+        </div>
+        <p>
+          Копия поверхностная: вложенные списки и словари остаются общими.
+        </p>
+        <div class="code">
+          <div class="bar"><span class="file">ref_list_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">nested = [[1], [2]]
+shallow = nested.copy()
+shallow[0].append(99)
+print(nested)             # вложенные объекты общие</pre>
+          <div class="out">[[1, 99], [2]]</div>
+        </div>
+        <p class="small">
+          Для полной независимости — <code class="inl">copy.deepcopy</code> из модуля <code class="inl">copy</code>.
+        </p>
+
+        <h3>Срезы</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_list_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">a = [10, 20, 30, 40, 50]
+print(a[:2])        # копия первых двух
+print(a[1:4])
+print(a[::2])       # каждый второй
+print(a[::-1])      # разворот
+a[1:3] = [0]        # замена куска
+print(a)
+del a[1]            # del по индексу
+print(a)</pre>
+          <div class="out">[10, 20]
+[20, 30, 40]
+[10, 30, 50]
+[50, 40, 30, 20, 10]
+[10, 0, 40, 50]
+[10, 40, 50]</div>
+        </div>
+        <p>
+          Формула среза — <code class="inl">a[start:stop:step]</code>, где <code class="inl">start</code>
+          включается, <code class="inl">stop</code> — нет. Отрицательные значения считаются с конца,
+          а пропущенное = «от края до края». Срез всегда создаёт новый список — даже
+          <code class="inl">a[:]</code>.
+        </p>
+
+        <h3>Операторы и встроенные функции</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_list_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">a = [1, 2]
+print(a + [3])           # новый список
+print(a * 2)
+print(sum(a), min(a), max(a), len(a))</pre>
+          <div class="out">[1, 2, 3]
+[1, 2, 1, 2]
+3 1 2 2</div>
+        </div>
+        <p>
+          <code class="inl">+</code> создаёт новый список, <code class="inl">+=</code> дописывает на месте.
+          <code class="inl">sum</code> работает с числами, <code class="inl">min</code>/<code class="inl">max</code>
+          — с любыми сравнимыми элементами, <code class="inl">len</code> — за O(1).
+        </p>
+      </section>
+
+      <!-- ══════════════════ 06. Сценарии ══════════════════ -->
+      <section>
+        <h2><span class="num">06</span>Три сценария из практики</h2>
+
+        <h3>Стек: скобки и откаты</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_list_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">def is_balanced(text):
+    stack = []
+    pairs = {")": "(", "]": "["}
+    for ch in text:
+        if ch in "([":
+            stack.append(ch)
+        elif ch in ")]":
+            if not stack or stack.pop() != pairs[ch]:
+                return False
+    return not stack
+
+print(is_balanced("([[]])"))
+print(is_balanced("([)]"))</pre>
+          <div class="out">True
+False</div>
+        </div>
+        <p>
+          Стек — это <code class="inl">append</code> + <code class="inl">pop()</code>: обе операции с конца
+          за O(1). На стеке же строятся откаты (undo), обход в глубину и вычисление выражений.
+        </p>
+
+        <h3>Топ-N по сумме</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_list_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">orders = [("Anna", 1200), ("Ivan", 800), ("Olga", 1500), ("Anna", 500), ("Olga", 300)]
+totals = {}
+for user, amount in orders:
+    totals[user] = totals.get(user, 0) + amount
+
+top3 = sorted(totals.items(), key=lambda kv: kv[1], reverse=True)[:3]
+print(top3)</pre>
+          <div class="out">[('Olga', 1800), ('Anna', 1700), ('Ivan', 800)]</div>
+        </div>
+        <p>
+          Список здесь — контейнер результата: словарь считает, <code class="inl">sorted</code> упорядочивает
+          пары, срез оставляет три. Для больших данных вместо полной сортировки берут
+          <code class="inl">heapq.nlargest</code>.
+        </p>
+
+        <h3>Батчи срезами</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_list_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">def chunks(seq, size):
+    return [seq[i:i + size] for i in range(0, len(seq), size)]
+
+print(chunks([1, 2, 3, 4, 5], 2))</pre>
+          <div class="out">[[1, 2], [3, 4], [5]]</div>
+        </div>
+        <p>
+          Срез сам обрезается по краю — поэтому последний батч может быть короче. Это же приём используют,
+          чтобы обрабатывать данные пачками и не держать в памяти лишнее.
+        </p>
+      </section>
+
+      <!-- ══════════════════ 07. Ошибки ══════════════════ -->
+      <section>
+        <h2><span class="num">07</span>Пять ошибок, на которых спотыкаются</h2>
+        <div class="errors">
+          <div class="err">
+            <div class="h">Алиас вместо копии</div>
+            <p><code class="inl">b = a</code> — это второе имя того же списка. Изменение через <code class="inl">b</code> видно через <code class="inl">a</code>, и «независимая» копия оказывается общей.</p>
+            <div class="fix"><code class="inl">b = a.copy()</code>, <code class="inl">b = a[:]</code> или <code class="inl">b = list(a)</code>.</div>
+          </div>
+
+          <div class="err">
+            <div class="h">Ждать результата от sort()</div>
+            <p><code class="inl">b = a.sort()</code> записывает в <code class="inl">b</code> значение <code class="inl">None</code>: сортировка меняет список на месте и ничего не возвращает.</p>
+            <div class="fix">Нужен новый список — <code class="inl">b = sorted(a)</code>. Нужно на месте — <code class="inl">a.sort()</code>, а результат не присваивать.</div>
+          </div>
+
+          <div class="err">
+            <div class="h">Путать remove и pop</div>
+            <p><code class="inl">remove(x)</code> ищет <b>значение</b> и падает с <code class="inl">ValueError</code>, если его нет. <code class="inl">pop(i)</code> работает с <b>индексом</b> и падает с <code class="inl">IndexError</code>.</p>
+            <div class="fix">Удаляете по значению — <code class="inl">remove</code>; по позиции — <code class="inl">pop</code> или <code class="inl">del</code>.</div>
+          </div>
+
+          <div class="err">
+            <div class="h">Изменять список во время итерации</div>
+            <p><code class="inl">for x in a: if ...: a.remove(x)</code> сдвигает элементы под итератором: часть будет пропущена, часть обработана дважды.</p>
+            <div class="fix">Собирайте новый список comprehension'ом или итерируйтесь по копии: <code class="inl">for x in a[:]</code>.</div>
+          </div>
+
+          <div class="err">
+            <div class="h">in по списку внутри цикла</div>
+            <p><code class="inl">if x in a</code> внутри <code class="inl">for</code> по другому списку — это O(n²). На 10 000 элементов уже больно.</p>
+            <div class="fix">Один раз постройте <code class="inl">set</code> и проверяйте по нему — O(1) на проверку.</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ══════════════════ 08. Мини-проверка ══════════════════ -->
+      <section>
+        <h2><span class="num">08</span>Мини-проверка</h2>
+        <p>Пять вопросов на понимание и две задачи. Сначала своя попытка — потом спойлер.</p>
+
+        <div class="qa">
+          <details>
+            <summary>Чем append отличается от extend?</summary>
+            <div class="a">
+              <p><code class="inl">append(x)</code> добавляет <em>один</em> объект — даже если это список.
+              <code class="inl">extend(iterable)</code> разбирает итерируемое и добавляет его элементы по одному.</p>
+              <p><code class="inl">a = [1]; a.append([2, 3])</code> → <code class="inl">[1, [2, 3]]</code>,
+              а <code class="inl">a.extend([2, 3])</code> → <code class="inl">[1, 2, 3]</code>.</p>
+              <div class="verdict">Резюме: append — «положить свёрток», extend — «высыпать содержимое».</div>
+            </div>
+          </details>
+        </div>
+
+        <div class="qa">
+          <details>
+            <summary>Почему insert(0, x) медленный и что использовать вместо?</summary>
+            <div class="a">
+              <p>Элементы лежат подряд, поэтому вставка в начало сдвигает весь массив — O(n) на операцию,
+              а серия таких вставок — O(n²).</p>
+              <p>Нужна очередь с быстрыми краями — <code class="inl">collections.deque</code>:
+              <code class="inl">appendleft</code>/<code class="inl">popleft</code> за O(1).</p>
+              <div class="verdict">Резюме: список — быстрый конец справа; левый край — не его работа.</div>
+            </div>
+          </details>
+        </div>
+
+        <div class="qa">
+          <details>
+            <summary>Что возвращает a.sort() и как получить новый отсортированный список?</summary>
+            <div class="a">
+              <p><code class="inl">a.sort()</code> возвращает <code class="inl">None</code>: это метод «на месте».
+              Новый список даёт встроенная функция <code class="inl">sorted(a)</code>, она принимает
+              <code class="inl">key</code> и <code class="inl">reverse</code> так же.</p>
+              <div class="verdict">Резюме: sort — изменить, sorted — получить копию.</div>
+            </div>
+          </details>
+        </div>
+
+        <div class="qa">
+          <details>
+            <summary>Как скопировать список и чем плох b = a?</summary>
+            <div class="a">
+              <p><code class="inl">b = a.copy()</code>, <code class="inl">b = a[:]</code>,
+              <code class="inl">b = list(a)</code> — три равнозначных способа. Копия поверхностная:
+              вложенные объекты общие.</p>
+              <p><code class="inl">b = a</code> создаёт алиас — второе имя, а не копию.</p>
+              <div class="verdict">Резюме: сначала спросите «мне нужен новый список или второе имя?».</div>
+            </div>
+          </details>
+        </div>
+
+        <div class="qa">
+          <details>
+            <summary>Когда list — плохой выбор?</summary>
+            <div class="a">
+              <p>Когда нужен доступ по ключу (<code class="inl">dict</code>), уникальность или проверка входа
+              (<code class="inl">set</code>), быстрые оба конца (<code class="inl">deque</code>), неизменяемая
+              запись или ключ словаря (<code class="inl">tuple</code>), частоты и группировки
+              (<code class="inl">Counter</code>/<code class="inl">defaultdict</code>).</p>
+              <div class="verdict">Резюме: list силён порядком и индексами, а не любым доступом.</div>
+            </div>
+          </details>
+        </div>
+
+        <h3><span style="color:var(--muted);font-family:var(--mono);font-size:.8rem">01</span> Второй максимум</h3>
+        <p>Найдите второй по величине уникальный элемент списка. Если его нет — верните <code class="inl">None</code>.</p>
+        <div class="code">
+          <div class="bar"><span class="file">условие</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">nums = [4, 1, 7, 7, 3, 9, 9, 2]
+# ожидается: 7 — второй по величине среди уникальных</pre>
+        </div>
+        <div class="qa">
+          <details>
+            <summary>Показать решение и разбор</summary>
+            <div class="a">
+              <div class="code" style="margin-top:0">
+                <div class="bar"><span class="file">решение</span><span class="lang">python</span><button class="copy">копировать</button></div>
+                <pre data-lang="python">unique = sorted(set(nums), reverse=True)
+print(unique[1] if len(unique) > 1 else None)</pre>
+                <div class="out">7</div>
+              </div>
+              <p><strong>Что важно.</strong> <code class="inl">set</code> убирает повторы, <code class="inl">sorted</code>
+              возвращает новый список, срез/индекс берёт второй элемент. Проверка длины нужна, чтобы не получить
+              <code class="inl">IndexError</code> на списке из одного значения.</p>
+            </div>
+          </details>
+        </div>
+
+        <h3><span style="color:var(--muted);font-family:var(--mono);font-size:.8rem">02</span> Схлопнуть вложенные списки</h3>
+        <p>Соберите один плоский список из списка списков, сохранив порядок.</p>
+        <div class="code">
+          <div class="bar"><span class="file">условие</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">nested = [[1, 2], [3], [], [4, 5]]
+# ожидается: [1, 2, 3, 4, 5]</pre>
+        </div>
+        <div class="qa">
+          <details>
+            <summary>Показать решение и разбор</summary>
+            <div class="a">
+              <div class="code" style="margin-top:0">
+                <div class="bar"><span class="file">решение</span><span class="lang">python</span><button class="copy">копировать</button></div>
+                <pre data-lang="python">flat = [x for row in nested for x in row]
+print(flat)</pre>
+                <div class="out">[1, 2, 3, 4, 5]</div>
+              </div>
+              <p><strong>Что важно.</strong> Два <code class="inl">for</code> в одном comprehension читаются
+              как «для каждого списка — для каждого элемента». Вариант <code class="inl">sum(nested, [])</code>
+              короче, но на каждом шаге копирует накопленный список — O(n²); на больших данных это заметно.</p>
+            </div>
+          </details>
+        </div>
+      </section>
+
+      <!-- ══════════════════ 09. Мостик ══════════════════ -->
+      <section>
+        <h2><span class="num">09</span>Мостик: та же идея в pandas и SQL</h2>
+
+        <h3>pandas: Series и ndarray</h3>
+        <div class="code">
+          <div class="bar"><span class="file">мост в pandas</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">import pandas as pd
+import numpy as np
+
+s = pd.Series([1200, 800, 1500])     # список + индекс
+s.sort_values().tolist()              # обратно в список
+np.array([1, 2, 3]) * 2               # векторно, без цикла</pre>
+        </div>
+        <p>
+          Список — «сырые» данные; Series добавляет индекс, а ndarray — тип и векторные операции.
+          И то и другое создаётся из списка и возвращается к нему через <code class="inl">.tolist()</code>.
+        </p>
+
+        <h3>SQL: порядок и «первые N»</h3>
+        <div class="code">
+          <div class="bar"><span class="file">мост в SQL</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">-- топ-3 заказа: тот же sort + срез, но в базе
+SELECT id, amount
+FROM orders
+ORDER BY amount DESC
+LIMIT 3;</pre>
+        </div>
+        <p>
+          <code class="inl">ORDER BY</code> — это <code class="inl">sort</code>, <code class="inl">LIMIT</code> —
+          срез. А результат запроса драйвер отдаёт как список кортежей — ровно тот формат, с которым
+          работает <code class="inl">list</code>.
+        </p>
+
+        <div class="bridges">
+          <a class="bridge" href="ch-03-list-tuple.html"><span class="to">Глава 03</span><span>list и tuple: изменяемость, копии и view</span><span class="what">→ почему tuple может быть ключом</span></a>
+          <a class="bridge" href="ch-05-comprehensions.html"><span class="to">Глава 05</span><span>Comprehensions и генераторы</span><span class="what">→ как строить списки без циклов</span></a>
+          <a class="bridge" href="ch-07-ndarray.html"><span class="to">Глава 07</span><span>ndarray: сетка вместо списка</span><span class="what">→ векторные операции вместо циклов</span></a>
+          <a class="bridge" href="ref-tuple.html"><span class="to">Справочник</span><span>tuple: опечатанный контейнер</span><span class="what">→ следующий тип: неизменяемая запись</span></a>
+        </div>
+      </section>
+
+      <div class="pager">
+        <a class="prev" href="appendix-types.html"><span class="dir">← Назад</span><span class="ttl">Справочник по типам</span></a>
+        <a class="next" href="ref-tuple.html"><span class="dir">Дальше →</span><span class="ttl">tuple: опечатанный контейнер</span></a>
+      </div>
+
+    </div>
+  </main>
+</div>
+<script src="assets/toc.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>

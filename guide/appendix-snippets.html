@@ -35,12 +35,13 @@
         </h1>
         <p class="lead">
           В главах код показан фрагментами. Здесь — полные файлы: открыть с номерами строк, скачать
-          и запустить у себя. Каждый файл соответствует главе и воспроизводит её вывод.
+          и запустить у себя. Каждый файл соответствует главе или странице справочника и воспроизводит
+          её вывод.
         </p>
         <div class="meta">
           <span class="chip">🐍 <b>Python 3.12</b></span>
           <span class="chip">🐘 <b>PostgreSQL 14</b></span>
-          <span class="chip">📄 <b>28 файлов</b></span>
+          <span class="chip">📄 <b>35 файлов</b></span>
           <span class="chip">📦 <b>numpy · pandas</b></span>
         </div>
       </header>
@@ -151,7 +152,33 @@ psql -d learning_shop -f guide/snippets/20_select_where.sql</pre>
       </section>
 
       <section>
-        <h2><span class="num">07</span>Учебная база и порядок запуска</h2>
+        <h2><span class="num">07</span>Справочник · лаборатории типов</h2>
+        <p>
+          Примеры страниц <a href="appendix-types.html">справочника по типам данных</a> собраны в семь
+          отдельных файлов: каждый печатает код и вывод в том же порядке, что и страница.
+        </p>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Страница</th><th>Файл</th><th>Что внутри</th></tr></thead>
+            <tbody>
+              <tr><td><a href="ref-list.html">list</a></td><td><a href="snippets/view.html?f=ref_list_lab.py"><code class="inl">ref_list_lab.py</code></a></td><td>append/extend/insert, pop/remove, sort, копия и срез, стек, топ-N, батчи</td></tr>
+              <tr><td><a href="ref-tuple.html">tuple</a></td><td><a href="snippets/view.html?f=ref_tuple_lab.py"><code class="inl">ref_tuple_lab.py</code></a></td><td>hashable, распаковка, count/index, tuple как ключ</td></tr>
+              <tr><td><a href="ref-dict.html">dict</a></td><td><a href="snippets/view.html?f=ref_dict_lab.py"><code class="inl">ref_dict_lab.py</code></a></td><td>get/setdefault, update/pop, views, слияние, счётчик и группировка</td></tr>
+              <tr><td><a href="ref-set.html">set</a></td><td><a href="snippets/view.html?f=ref_set_lab.py"><code class="inl">ref_set_lab.py</code></a></td><td>дедупликация, операции &amp; | − ^, frozenset, проверка входа</td></tr>
+              <tr><td><a href="ref-counter.html">Counter</a></td><td><a href="snippets/view.html?f=ref_counter_lab.py"><code class="inl">ref_counter_lab.py</code></a></td><td>most_common, elements, total, арифметика счётчиков</td></tr>
+              <tr><td><a href="ref-defaultdict.html">defaultdict</a></td><td><a href="snippets/view.html?f=ref_defaultdict_lab.py"><code class="inl">ref_defaultdict_lab.py</code></a></td><td>фабрика, группировка, список смежности, вложенность</td></tr>
+              <tr><td><a href="ref-deque.html">deque</a></td><td><a href="snippets/view.html?f=ref_deque_lab.py"><code class="inl">ref_deque_lab.py</code></a></td><td>оба конца, extendleft, rotate, maxlen, скользящее окно</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="small">
+          Запуск — как у остальных Python-файлов: <code class="inl">python3 guide/snippets/ref_list_lab.py</code>.
+          Вывод в справочнике совпадает с выводом файла.
+        </p>
+      </section>
+
+      <section>
+        <h2><span class="num">08</span>Учебная база и порядок запуска</h2>
         <div class="code">
           <div class="bar"><span class="file">терминал</span><span class="lang">shell</span><button class="copy">копировать</button></div>
           <pre># 1. создать базу и загрузить схему с данными
