@@ -1,0 +1,686 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Справочник · GROUP BY и HAVING: словарь-аккумулятор — Ассоциативный гайд</title>
+<meta name="description" content="Справочник по SQL GROUP BY: агрегаты, GROUP BY по выражению, WHERE против HAVING, FILTER, COUNT(*) и NULL-группа — запросы и реальный вывод PostgreSQL 14.">
+<link rel="stylesheet" href="assets/style.css">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#fbf8f2" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#14131a" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="assets/icons/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="assets/icons/icon-180.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Гайд Py/SQL">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+</head>
+<body data-slug="ref-sql-group">
+<div class="app">
+  <aside class="sidebar" id="sidebar"></aside>
+  <main>
+    <div class="wrap">
+      <header class="chapter-head">
+        <div class="eyebrow">
+          <span class="part">Справочник · SQL</span>
+          <span class="dot"></span>
+          <span>страница 3 из 6</span>
+          <span class="dot"></span>
+          <span>готово</span>
+        </div>
+        <h1>GROUP BY и HAVING: словарь-аккумулятор
+          <span class="sub">Разложить строки по ключу, посчитать агрегаты и отфильтровать группы</span>
+        </h1>
+        <p class="lead">
+          <code class="inl">GROUP BY</code> — тот же словарь-аккумулятор из главы 02, только внутри базы:
+          ключ — значение колонки, значение — агрегат по группе. Здесь — синтаксис, все агрегаты,
+          <code class="inl">WHERE</code> против <code class="inl">HAVING</code> и ловушки с NULL.
+        </p>
+        <div class="meta">
+          <span class="chip">⏱ <b>12 минут</b></span>
+          <span class="chip">🎯 уровень <b>2</b></span>
+          <span class="chip">🐘 PostgreSQL <b>14</b></span>
+          <span class="chip">📚 <b>глава 21</b></span>
+        </div>
+      </header>
+      <p class="small">
+        Справочник SQL: <a href="appendix-sql.html">вся карта</a> ·
+        <a href="ref-sql-select.html">01 · SELECT и NULL</a> ·
+        <a href="ref-sql-join.html">02 · JOIN</a> ·
+        <b>03 · GROUP BY</b> · <a href="ref-sql-window.html">04 · окна</a> ·
+        <a href="ref-sql-cte.html">05 · CTE</a> ·
+        <a href="ref-sql-index.html">06 · индексы</a>
+      </p>
+      <div class="tldr">
+        <div class="t">Самое главное</div>
+        <ul>
+          <li><code class="inl">GROUP BY</code> раскладывает строки по ключу и сворачивает каждую
+              группу в <b>одну строку</b> результата: всё в <code class="inl">SELECT</code> должно быть
+              агрегатом или ключом.</li>
+          <li><code class="inl">WHERE</code> фильтрует строки <b>до</b> группировки,
+              <code class="inl">HAVING</code> — группы <b>после</b>. Агрегат в
+              <code class="inl">WHERE</code> — ошибка этапа, а не стиля.</li>
+          <li><code class="inl">COUNT(*)</code> считает строки, <code class="inl">COUNT(col)</code> —
+              непустые значения. NULL в ключе в PostgreSQL образует <b>отдельную группу</b>.</li>
+        </ul>
+      </div>
+      <!-- ══════════════════ 01. Что это ══════════════════ -->
+      <section>
+        <h2><span class="num">01</span>Что это и как устроено</h2>
+        <p>
+          <code class="inl">GROUP BY</code> — не новая структура данных, а этап выполнения запроса.
+          Сначала <code class="inl">FROM</code> и <code class="inl">WHERE</code> дают набор строк,
+          потом <code class="inl">GROUP BY</code> раскладывает их по лоткам с одинаковым ключом,
+          а агрегаты сворачивают каждый лоток в одно значение. В результате — одна строка на группу.
+        </p>
+        <p>
+          Ключей может быть несколько — тогда группа определяется уникальной парой значений.
+          Ключом может быть и выражение: месяц из даты, <code class="inl">CASE</code>-корзина по цене,
+          <code class="inl">lower(name)</code>. Всё, что в <code class="inl">SELECT</code> не агрегат,
+          должно быть в <code class="inl">GROUP BY</code>: иначе база не знает, какое из значений
+          группы показывать.
+        </p>
+        <div class="anchor">
+          <div class="glyph">🗃️</div>
+          <div>
+            <div class="t">Держите эту картинку в голове</div>
+            <p class="kick"><strong>Словарь-аккумулятор.</strong> Строки раскладываются по лоткам
+            с ярлыками — «Anna», «Ivan», «electronics», «2024-01». В каждом лотке считается итог,
+            потом из лотков собирается новая таблица: одна строка на лоток.</p>
+            <p>WHERE решает, какие строки вообще попадут в лотки. HAVING — какие лотки останутся
+            в результате. Подробный разбор — в <a href="ch-21-group-by-having.html">главе 21</a>.</p>
+          </div>
+        </div>
+      </section>
+      <!-- ══════════════════ 02. Когда применять ══════════════════ -->
+      <section>
+        <h2><span class="num">02</span>Когда применять, а когда нет</h2>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Задача</th><th>GROUP BY?</th><th>Что взять вместо</th></tr></thead>
+            <tbody>
+              <tr><td>Сводка по пользователям, категориям, месяцам</td><td><b>да</b></td><td>—</td></tr>
+              <tr><td>Агрегат и фильтр по его значению: «выручка больше N»</td><td><b>да</b></td><td><code class="inl">HAVING</code></td></tr>
+              <tr><td>Несколько условных итогов в одной строке</td><td><b>да</b></td><td><code class="inl">FILTER</code> или <code class="inl">CASE</code></td></tr>
+              <tr><td>Итог рядом с каждой строкой, а не вместо неё</td><td>нет</td><td>окно, <a href="ref-sql-window.html">страница 04</a></td></tr>
+              <tr><td>Топ-N внутри группы</td><td>нет</td><td><code class="inl">ROW_NUMBER</code> в CTE</td></tr>
+              <tr><td>Просто отфильтровать строки</td><td>нет</td><td><code class="inl">WHERE</code></td></tr>
+              <tr><td>Уникальные значения без агрегата</td><td>нет</td><td><code class="inl">SELECT DISTINCT</code></td></tr>
+              <tr><td>NULL-группа как в SQL, но в pandas</td><td>—</td><td><code class="inl">groupby(..., dropna=False)</code></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="small">
+          Если нужны и строки, и итог по группе — это уже окно. Если нужна одна строка на группу —
+          <code class="inl">GROUP BY</code>.
+        </p>
+      </section>
+      <!-- ══════════════════ 03. Синтаксис ══════════════════ -->
+      <section>
+        <h2><span class="num">03</span>Синтаксис-шаблон</h2>
+        <div class="code">
+          <div class="bar"><span class="file">ref_sql_group_lab.sql</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">SELECT u.city, COUNT(*) AS users
+FROM users u
+GROUP BY u.city
+ORDER BY users DESC, u.city;</pre>
+          <div class="out">      city       | users
+-----------------+-------
+ Москва          |     2
+ Казань          |     1
+ Санкт-Петербург |     1
+                 |     1
+(4 rows)</div>
+        </div>
+        <p>
+          Читается так: сгруппировать пользователей по городу, посчитать строки в каждой группе,
+          вывести города по убыванию числа пользователей и по алфавиту при равенстве. NULL-город тоже
+          стал группой — последней строкой.
+        </p>
+        <p class="small">
+          Порядок частей запроса: <code class="inl">SELECT → FROM → WHERE → GROUP BY → HAVING →
+          ORDER BY → LIMIT</code>. Показанный вывод — точный stdout <code class="inl">psql</code>,
+          включая строку <code class="inl">(4 rows)</code>.
+        </p>
+      </section>
+      <!-- ══════════════════ 04. Все конструкции ══════════════════ -->
+      <section>
+        <h2><span class="num">04</span>Все конструкции</h2>
+        <p>
+          Три таблицы: ключи и агрегаты, фильтры и сортировка, поведение NULL. «Результат» —
+          что получится в строке результата.
+        </p>
+        <h3>Ключи и агрегаты</h3>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Конструкция</th><th>Что делает</th><th>Результат</th><th>Примечание</th></tr></thead>
+            <tbody>
+              <tr><td class="mono">GROUP BY col</td><td>группы по значениям колонки</td><td>строка на значение</td><td>NULL — тоже группа</td></tr>
+              <tr><td class="mono">GROUP BY a, b</td><td>группы по уникальным парам</td><td>строка на пару</td><td>ключ составной</td></tr>
+              <tr><td class="mono">GROUP BY выражение</td><td>ключ — результат выражения</td><td>строка на значение</td><td>месяц, CASE, lower()</td></tr>
+              <tr><td class="mono">COUNT(*)</td><td>число строк группы</td><td>bigint</td><td>считает и NULL-строки</td></tr>
+              <tr><td class="mono">COUNT(col)</td><td>число непустых значений</td><td>bigint</td><td>NULL пропускает</td></tr>
+              <tr><td class="mono">COUNT(DISTINCT col)</td><td>уникальные непустые значения</td><td>bigint</td><td>NULL пропускает</td></tr>
+              <tr><td class="mono">SUM / AVG</td><td>сумма / среднее по группе</td><td>numeric</td><td>NULL пропускают</td></tr>
+              <tr><td class="mono">MIN / MAX</td><td>минимум / максимум</td><td>тип колонки</td><td>NULL пропускают</td></tr>
+              <tr><td class="mono">array_agg / string_agg</td><td>собрать значения группы</td><td>array / text</td><td>порядок задавать явно</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <h3>Фильтры и сортировка</h3>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Конструкция</th><th>Что делает</th><th>Результат</th><th>Примечание</th></tr></thead>
+            <tbody>
+              <tr><td class="mono">WHERE условие</td><td>фильтр строк до группировки</td><td>строк меньше</td><td>агрегатов не знает</td></tr>
+              <tr><td class="mono">HAVING условие</td><td>фильтр групп после агрегации</td><td>групп меньше</td><td>видит агрегаты и алиасы</td></tr>
+              <tr><td class="mono">WHERE + HAVING</td><td>два фильтра в одном запросе</td><td>сначала строки, потом группы</td><td>так и надо</td></tr>
+              <tr><td class="mono">aggr(...) FILTER (WHERE ...)</td><td>агрегат по подмножеству строк</td><td>несколько условных итогов</td><td>другие агрегаты не трогает</td></tr>
+              <tr><td class="mono">ORDER BY агрегат</td><td>сортировка готовых групп</td><td>порядок строк</td><td>после GROUP BY/HAVING</td></tr>
+              <tr><td class="mono">ORDER BY алиас</td><td>сортировка по имени из SELECT</td><td>порядок строк</td><td>PostgreSQL разрешает</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <h3>NULL в агрегатах</h3>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Конструкция</th><th>Что делает</th><th>Результат</th><th>Примечание</th></tr></thead>
+            <tbody>
+              <tr><td class="mono">AVG(col)</td><td>среднее по известным</td><td>numeric</td><td>делит на COUNT(col), не на COUNT(*)</td></tr>
+              <tr><td class="mono">SUM(col)</td><td>сумма известных</td><td>numeric</td><td>все NULL → NULL, не 0</td></tr>
+              <tr><td class="mono">COUNT(*)</td><td>строки, включая NULL</td><td>bigint</td><td>не путать с COUNT(col)</td></tr>
+              <tr><td class="mono">COALESCE(col, ...)</td><td>подменить NULL до группировки</td><td>значение</td><td>альтернатива NULL-группе</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+      <!-- ══════════════════ 05. Разбор ══════════════════ -->
+      <section>
+        <h2><span class="num">05</span>Разбор по вариантам</h2>
+        <p>
+          Все запросы страницы собраны в файле
+          <a href="snippets/view.html?f=ref_sql_group_lab.sql"><code class="inl">ref_sql_group_lab.sql</code></a> —
+          запуск: <code class="inl">psql -d learning_shop -f guide/snippets/ref_sql_group_lab.sql</code>.
+          База <code class="inl">learning_shop</code>, выручка заказа — <code class="inl">quantity * price</code>.
+        </p>
+        <h3>Пять агрегатов по одной колонке</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_sql_group_lab.sql</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">SELECT p.category,
+       COUNT(*) AS orders,
+       SUM(o.quantity) AS items,
+       ROUND(AVG(o.quantity * p.price), 2) AS avg_check,
+       MIN(p.price) AS min_price,
+       MAX(p.price) AS max_price
+FROM orders o
+JOIN products p ON p.id = o.product_id
+GROUP BY p.category
+ORDER BY p.category;</pre>
+          <div class="out">  category   | orders | items | avg_check | min_price | max_price
+-------------+--------+-------+-----------+-----------+-----------
+ books       |      2 |     3 |   1350.00 |    900.00 |    900.00
+ electronics |      5 |     5 |  39100.00 |   1500.00 |  75000.00
+ food        |      3 |    10 |   1400.00 |    300.00 |    450.00
+(3 rows)</div>
+        </div>
+        <p>
+          <code class="inl">orders</code> — число заказов, <code class="inl">items</code> — сумма
+          количеств: у food 3 заказа, но 10 единиц товара. <code class="inl">avg_check</code> —
+          средняя выручка заказа, поэтому electronics со средним 39 100 выглядит иначе, чем food
+          с 1 400. MIN/MAX берут цену товара, а не выручку заказа.
+        </p>
+        <h3>Два ключа: категория и месяц</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_sql_group_lab.sql</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">SELECT p.category,
+       DATE_TRUNC('month', o.created_at)::date AS month,
+       COUNT(*) AS orders,
+       SUM(o.quantity * p.price) AS revenue
+FROM orders o
+JOIN products p ON p.id = o.product_id
+GROUP BY p.category, DATE_TRUNC('month', o.created_at)
+ORDER BY month, p.category;</pre>
+          <div class="out">  category   |   month    | orders | revenue
+-------------+------------+--------+----------
+ books       | 2024-01-01 |      1 |  1800.00
+ electronics | 2024-01-01 |      1 | 75000.00
+ food        | 2024-01-01 |      1 |  1350.00
+ electronics | 2024-02-01 |      2 | 23500.00
+ food        | 2024-02-01 |      1 |  2250.00
+ books       | 2024-03-01 |      1 |   900.00
+ electronics | 2024-03-01 |      2 | 97000.00
+ food        | 2024-03-01 |      1 |   600.00
+(8 rows)</div>
+        </div>
+        <p>
+          Группа — уникальная пара «категория + месяц», поэтому строк восемь, а не три.
+          В феврале electronics собрал два заказа на 23 500, в марте — два на 97 000;
+          <code class="inl">DATE_TRUNC</code> превращает точное время в начало месяца, чтобы
+          одинаковые месяцы попали в один лоток.
+        </p>
+        <h3>GROUP BY по выражению</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_sql_group_lab.sql</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">SELECT CASE WHEN p.price &gt;= 10000 THEN 'дорогой'
+            ELSE 'дешёвый' END AS price_tier,
+       COUNT(*) AS orders,
+       SUM(o.quantity * p.price) AS revenue
+FROM orders o
+JOIN products p ON p.id = o.product_id
+GROUP BY CASE WHEN p.price &gt;= 10000 THEN 'дорогой'
+              ELSE 'дешёвый' END
+ORDER BY revenue DESC;</pre>
+          <div class="out"> price_tier | orders |  revenue
+------------+--------+-----------
+ дорогой    |      4 | 194000.00
+ дешёвый    |      6 |   8400.00
+(2 rows)</div>
+        </div>
+        <p>
+          Ключом может быть любое выражение — здесь <code class="inl">CASE</code> делит товары на
+          дорогие и дешёвые. Выражение в <code class="inl">GROUP BY</code> должно совпадать
+          с выражением в <code class="inl">SELECT</code>; PostgreSQL дополнительно разрешает
+          сослаться на алиас <code class="inl">price_tier</code>, но для переносимости пишут полное
+          выражение. 4 «дорогих» заказа дали 194 000 из 202 400.
+        </p>
+        <h3>WHERE и HAVING вместе</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_sql_group_lab.sql</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">SELECT p.category,
+       COUNT(*) AS orders,
+       SUM(o.quantity * p.price) AS revenue
+FROM orders o
+JOIN products p ON p.id = o.product_id
+WHERE p.price &gt; 400
+GROUP BY p.category
+HAVING SUM(o.quantity * p.price) &gt; 3000
+ORDER BY revenue DESC;</pre>
+          <div class="out">  category   | orders |  revenue
+-------------+--------+-----------
+ electronics |      5 | 195500.00
+ food        |      2 |   3600.00
+(2 rows)</div>
+        </div>
+        <p>
+          Два фильтра работают на разных этапах. WHERE выбросил Чай за 300 — у food осталось два
+          заказа на 3 600. HAVING затем выбросил books: 2 700 меньше порога 3 000. Если поменять
+          фильтры местами, запрос либо упадёт, либо посчитает не то.
+        </p>
+        <h3>FILTER: условный агрегат</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_sql_group_lab.sql</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">SELECT p.category,
+       COUNT(*) AS orders,
+       COUNT(*) FILTER (WHERE o.created_at &gt;= DATE '2024-03-01') AS march_orders,
+       SUM(o.quantity * p.price)
+           FILTER (WHERE o.created_at &lt; DATE '2024-02-01') AS jan_revenue
+FROM orders o
+JOIN products p ON p.id = o.product_id
+GROUP BY p.category
+ORDER BY p.category;</pre>
+          <div class="out">  category   | orders | march_orders | jan_revenue
+-------------+--------+--------------+-------------
+ books       |      2 |            1 |     1800.00
+ electronics |      5 |            2 |    75000.00
+ food        |      3 |            1 |     1350.00
+(3 rows)</div>
+        </div>
+        <p>
+          <code class="inl">FILTER</code> считает агрегат только по строкам, прошедшим условие:
+          в одной строке — все заказы, мартовские заказы и январская выручка. Если под условие не
+          попала ни одна строка, <code class="inl">SUM ... FILTER</code> вернёт NULL, а
+          <code class="inl">COUNT ... FILTER</code> — 0.
+        </p>
+        <h3>COUNT(*) против COUNT(col) и NULL-группа</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_sql_group_lab.sql</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">SELECT u.city,
+       COUNT(*) AS users,
+       COUNT(u.email) AS with_email
+FROM users u
+GROUP BY u.city
+ORDER BY u.city NULLS LAST;</pre>
+          <div class="out">      city       | users | with_email
+-----------------+-------+------------
+ Казань          |     1 |          1
+ Москва          |     2 |          2
+ Санкт-Петербург |     1 |          0
+                 |     1 |          1
+(4 rows)</div>
+        </div>
+        <p>
+          Два разных NULL в одном результате. У Санкт-Петербурга
+          <code class="inl">with_email = 0</code>: город есть, а email у Maria NULL — его
+          <code class="inl">COUNT(u.email)</code> не считает. У Petr NULL в городе, и это
+          <b>отдельная группа</b>: <code class="inl">COUNT(*)</code> её видит, а
+          <code class="inl">COUNT(u.email)</code> считает его email. В pandas такие строки по
+          умолчанию выбрасываются, в SQL — остаются.
+        </p>
+        <h3>ORDER BY агрегата, алиас и доля</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_sql_group_lab.sql</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">SELECT p.category,
+       SUM(o.quantity * p.price) AS revenue,
+       ROUND(100.0 * SUM(o.quantity * p.price)
+             / SUM(SUM(o.quantity * p.price)) OVER (), 1) AS share_pct
+FROM orders o
+JOIN products p ON p.id = o.product_id
+GROUP BY p.category
+ORDER BY revenue DESC;</pre>
+          <div class="out">  category   |  revenue  | share_pct
+-------------+-----------+-----------
+ electronics | 195500.00 |      96.6
+ food        |   4200.00 |       2.1
+ books       |   2700.00 |       1.3
+(3 rows)</div>
+        </div>
+        <p>
+          Сортировка идёт по алиасу <code class="inl">revenue</code>, а доля считается выражением
+          <code class="inl">SUM(SUM(...)) OVER ()</code>: внутренний <code class="inl">SUM</code> —
+          агрегат группы, внешний — окно по уже готовым группам. Оконные функции подробно на
+          <a href="ref-sql-window.html">странице 04</a>; здесь они дают долю без второго запроса.
+          Electronics — 96,6 % выручки, и сумма долей даёт 100,0.
+        </p>
+      </section>
+      <!-- ══════════════════ 06. Сценарии ══════════════════ -->
+      <section>
+        <h2><span class="num">06</span>Три сценария из практики</h2>
+        <h3>Выручка по пользователям</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_sql_group_lab.sql</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">SELECT u.name, COUNT(*) AS orders, SUM(o.quantity * p.price) AS revenue
+FROM orders o
+JOIN users u ON u.id = o.user_id
+JOIN products p ON p.id = o.product_id
+GROUP BY u.name
+ORDER BY revenue DESC;</pre>
+          <div class="out"> name  | orders | revenue
+-------+--------+----------
+ Anna  |      3 | 76950.00
+ Olga  |      2 | 76500.00
+ Ivan  |      2 | 23800.00
+ Petr  |      1 | 22000.00
+ Maria |      1 |  2250.00
+(5 rows)</div>
+        </div>
+        <p>
+          Классический отчёт «кто сколько принёс». <code class="inl">JOIN users</code> —
+          внутренний, поэтому гостевой заказ на 900 в отчёт не попал: сумма по строкам 201 500,
+          а общая выручка базы — 202 400. Если гости нужны, соединение меняют на
+          <code class="inl">LEFT JOIN</code> (задача 2 ниже).
+        </p>
+        <h3>Заказы и выручка по месяцам</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_sql_group_lab.sql</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">SELECT DATE_TRUNC('month', o.created_at)::date AS month,
+       COUNT(*) AS orders,
+       SUM(o.quantity * p.price) AS revenue
+FROM orders o
+JOIN products p ON p.id = o.product_id
+GROUP BY DATE_TRUNC('month', o.created_at)
+ORDER BY month;</pre>
+          <div class="out">   month    | orders | revenue
+------------+--------+----------
+ 2024-01-01 |      3 | 78150.00
+ 2024-02-01 |      3 | 25750.00
+ 2024-03-01 |      4 | 98500.00
+(3 rows)</div>
+        </div>
+        <p>
+          Январь и февраль дали по три заказа, март — четыре, но выручка марта почти в четыре раза
+          больше января: 98 500 против 78 150. Количество заказов и деньги — разные метрики,
+          и группировка показывает это в одной таблице.
+        </p>
+        <h3>HAVING с порогом</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_sql_group_lab.sql</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">SELECT u.name, COUNT(*) AS orders, SUM(o.quantity * p.price) AS revenue
+FROM orders o
+JOIN users u ON u.id = o.user_id
+JOIN products p ON p.id = o.product_id
+GROUP BY u.name
+HAVING SUM(o.quantity * p.price) &gt; 50000
+ORDER BY revenue DESC;</pre>
+          <div class="out"> name | orders | revenue
+------+--------+----------
+ Anna |      3 | 76950.00
+ Olga |      2 | 76500.00
+(2 rows)</div>
+        </div>
+        <p>
+          Порог 50 000 оставил только Anna и Olga. Ivan с 23 800 и Petr с 22 000 — обычные
+          пользователи, но для этого отчёта они не проходят. Если бы то же условие стояло
+          в <code class="inl">WHERE</code>, запрос упал бы: на этапе WHERE агрегатов ещё не
+          существует.
+        </p>
+      </section>
+      <!-- ══════════════════ 07. Ошибки ══════════════════ -->
+      <section>
+        <h2><span class="num">07</span>Пять ошибок, на которых спотыкаются</h2>
+        <div class="errors">
+          <div class="err">
+            <div class="h">Неагрегированная колонка в SELECT</div>
+            <p><code class="inl">SELECT name, category, COUNT(*) ... GROUP BY category</code> —
+            PostgreSQL ответит <code class="inl">column "name" must appear in the GROUP BY clause
+            or be used in an aggregate function</code>: для группы из нескольких строк одно
+            значение name не определено.</p>
+            <div class="fix">Добавить колонку в <code class="inl">GROUP BY</code> или обернуть в агрегат: <code class="inl">MIN(name)</code>.</div>
+          </div>
+          <div class="err">
+            <div class="h">HAVING вместо WHERE для условия на строку</div>
+            <p>Группировать, а потом отбрасывать группы по неагрегированному условию можно, но
+            это позже и дороже — да и NULL-семантика условия в HAVING читается хуже.</p>
+            <div class="fix">Условие на отдельную строку — <code class="inl">WHERE</code>; условие на итог группы — <code class="inl">HAVING</code>.</div>
+          </div>
+          <div class="err">
+            <div class="h">Агрегат в WHERE</div>
+            <p><code class="inl">WHERE SUM(quantity) &gt; 5</code> — ошибка
+            <code class="inl">aggregate functions are not allowed in WHERE</code>. WHERE выполняется
+            до группировки, агрегатов там ещё нет.</p>
+            <div class="fix">То же условие — в <code class="inl">HAVING</code>.</div>
+          </div>
+          <div class="err">
+            <div class="h">COUNT(*) вместо COUNT(col)</div>
+            <p>Числа расходятся там, где есть NULL: <code class="inl">COUNT(*)</code> считает
+            строки, <code class="inl">COUNT(user_id)</code> — только известных пользователей.
+            Отчёт «10 заказов» и «9 заказов с пользователем» — оба верны.</p>
+            <div class="fix">Сначала решить, что именно считаем, и только потом выбирать форму счётчика.</div>
+          </div>
+          <div class="err">
+            <div class="h">NULL-группа и перенос привычек pandas</div>
+            <p>В SQL <code class="inl">GROUP BY city</code> оставляет строки с NULL отдельной
+            группой, в pandas <code class="inl">groupby("city")</code> по умолчанию их выбрасывает.
+            Отчёты расходятся на одну строку, и это легко не заметить.</p>
+            <div class="fix">В pandas — <code class="inl">dropna=False</code>; в SQL — осознанно решить, нужна ли NULL-группа, и при необходимости подписать её <code class="inl">COALESCE</code>.</div>
+          </div>
+        </div>
+      </section>
+      <!-- ══════════════════ 08. Мини-проверка ══════════════════ -->
+      <section>
+        <h2><span class="num">08</span>Мини-проверка</h2>
+        <p>Пять вопросов на понимание и две задачи. Сначала своя попытка — потом спойлер.</p>
+        <div class="qa">
+          <details>
+            <summary>Чем WHERE отличается от HAVING?</summary>
+            <div class="a">
+              <p>WHERE фильтрует строки до группировки, HAVING — группы после агрегации.
+              Поэтому условия на агрегаты (<code class="inl">SUM</code>,
+              <code class="inl">COUNT</code>) возможны только в HAVING, а индексы и отбор строк —
+              работа WHERE.</p>
+              <div class="verdict">Резюме: строки против групп.</div>
+            </div>
+          </details>
+        </div>
+        <div class="qa">
+          <details>
+            <summary>Почему колонка в SELECT должна быть в GROUP BY?</summary>
+            <div class="a">
+              <p>В группе несколько строк, и у неагрегированной колонки нет единственного значения.
+              База требует явности: либо колонка — часть ключа, либо значение сворачивается
+              агрегатом.</p>
+              <div class="verdict">Резюме: агрегируй или группируй.</div>
+            </div>
+          </details>
+        </div>
+        <div class="qa">
+          <details>
+            <summary>Чем COUNT(*) отличается от COUNT(col)?</summary>
+            <div class="a">
+              <p><code class="inl">COUNT(*)</code> считает все строки группы, включая те, где
+              колонка NULL. <code class="inl">COUNT(col)</code> считает только непустые значения.
+              В лаборатории разница видна на городе Санкт-Петербург: 1 пользователь, но 0 email.</p>
+              <div class="verdict">Резюме: строки против известных значений.</div>
+            </div>
+          </details>
+        </div>
+        <div class="qa">
+          <details>
+            <summary>Что происходит с NULL в ключе GROUP BY?</summary>
+            <div class="a">
+              <p>В PostgreSQL все строки с NULL в ключе образуют отдельную группу — она попадает
+              в результат, если её не отфильтровать. В pandas по умолчанию наоборот:
+              <code class="inl">dropna=True</code>. Поэтому отчёты SQL и pandas могут отличаться
+              на одну строку.</p>
+              <div class="verdict">Резюме: SQL оставляет NULL-группу, pandas выбрасывает.</div>
+            </div>
+          </details>
+        </div>
+        <div class="qa">
+          <details>
+            <summary>Зачем FILTER, если можно CASE внутри агрегата?</summary>
+            <div class="a">
+              <p><code class="inl">COUNT(*) FILTER (WHERE ...)</code> читается как «посчитай
+              только эти строки» и не влияет на соседние агрегаты. С
+              <code class="inl">CASE</code> приходится помнить про NULL и ELSE:
+              <code class="inl">SUM(CASE WHEN ... THEN x ELSE 0 END)</code> и
+              <code class="inl">COUNT(CASE WHEN ... THEN 1 END)</code> ведут себя по-разному.</p>
+              <div class="verdict">Резюме: FILTER — точечный фильтр на один агрегат.</div>
+            </div>
+          </details>
+        </div>
+        <h3><span style="color:var(--muted);font-family:var(--mono);font-size:.8rem">01</span> Категории с выручкой больше 10 000</h3>
+        <p>Оставьте категории, где суммарная выручка превышает 10 000, и отсортируйте по убыванию.</p>
+        <div class="code">
+          <div class="bar"><span class="file">условие</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">-- expected: только electronics
+-- food: 4200, books: 2700 — ниже порога</pre>
+        </div>
+        <div class="qa">
+          <details>
+            <summary>Показать решение и разбор</summary>
+            <div class="a">
+              <div class="code" style="margin-top:0">
+                <div class="bar"><span class="file">решение</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+                <pre data-lang="sql">SELECT p.category, COUNT(*) AS orders, SUM(o.quantity * p.price) AS revenue
+FROM orders o
+JOIN products p ON p.id = o.product_id
+GROUP BY p.category
+HAVING SUM(o.quantity * p.price) &gt; 10000
+ORDER BY revenue DESC;</pre>
+                <div class="out">  category   | orders |  revenue
+-------------+--------+-----------
+ electronics |      5 | 195500.00
+(1 row)</div>
+              </div>
+              <p><strong>Что важно.</strong> Порог применяется к <code class="inl">SUM</code>, значит
+              это <code class="inl">HAVING</code>. orders и revenue считаются по всем строкам
+              групп, а фильтр отбрасывает группы целиком — food с 4 200 и books с 2 700
+              исчезают после агрегации.</p>
+            </div>
+          </details>
+        </div>
+        <h3><span style="color:var(--muted);font-family:var(--mono);font-size:.8rem">02</span> Гостевая выручка</h3>
+        <p>Покажите выручку по пользователям вместе с заказом без пользователя, не потеряв его.</p>
+        <div class="code">
+          <div class="bar"><span class="file">условие</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">-- expected: 6 строк, включая «гость» на 900.00
+-- сумма revenue = 202400.00</pre>
+        </div>
+        <div class="qa">
+          <details>
+            <summary>Показать решение и разбор</summary>
+            <div class="a">
+              <div class="code" style="margin-top:0">
+                <div class="bar"><span class="file">решение</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+                <pre data-lang="sql">SELECT COALESCE(u.name, 'гость') AS who,
+       COUNT(*) AS orders,
+       SUM(o.quantity * p.price) AS revenue
+FROM orders o
+LEFT JOIN users u ON u.id = o.user_id
+JOIN products p ON p.id = o.product_id
+GROUP BY COALESCE(u.name, 'гость')
+ORDER BY revenue DESC;</pre>
+                <div class="out">  who  | orders | revenue
+-------+--------+----------
+ Anna  |      3 | 76950.00
+ Olga  |      2 | 76500.00
+ Ivan  |      2 | 23800.00
+ Petr  |      1 | 22000.00
+ Maria |      1 |  2250.00
+ гость |      1 |   900.00
+(6 rows)</div>
+              </div>
+              <p><strong>Что важно.</strong> <code class="inl">LEFT JOIN</code> сохранил заказ
+              с <code class="inl">user_id IS NULL</code>, <code class="inl">COALESCE</code> дал
+              группе имя «гость». Сумма по шести строкам теперь равна общей выручке 202 400 —
+              в отличие от сценария с INNER JOIN, где было 201 500.</p>
+            </div>
+          </details>
+        </div>
+      </section>
+      <!-- ══════════════════ 09. Мостик ══════════════════ -->
+      <section>
+        <h2><span class="num">09</span>Мостик: pandas, Python и соседние страницы SQL</h2>
+        <h3>pandas: groupby — тот же конвейер</h3>
+        <div class="code">
+          <div class="bar"><span class="file">SQL → pandas</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">import pandas as pd
+df.groupby("name")["revenue"].sum()                  # GROUP BY + SUM
+df.groupby("name").size()                            # COUNT(*)
+df.groupby("name").agg(orders=("revenue", "size"),
+                       revenue=("revenue", "sum"))   # несколько агрегатов
+df.groupby("name")["revenue"].sum().sort_values(ascending=False)  # ORDER BY
+df.groupby("category").filter(lambda g: g["revenue"].sum() &gt; 10000)  # HAVING
+df.groupby("city", dropna=False)["revenue"].sum()    # NULL-группа как в SQL</pre>
+        </div>
+        <p>
+          GROUP BY, COUNT, HAVING и даже ORDER BY агрегата переводятся один в один; главная разница —
+          <code class="inl">dropna</code>. Подробно — <a href="ch-15-groupby.html">глава 15</a>.
+        </p>
+        <h3>Python: тот же словарь-аккумулятор</h3>
+        <div class="code">
+          <div class="bar"><span class="file">SQL → Python</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">from collections import defaultdict
+by_user = defaultdict(list)
+for name, revenue in rows:
+    by_user[name].append(revenue)
+totals = {name: sum(group) for name, group in by_user.items()}
+top = sorted(totals.items(), key=lambda kv: kv[1], reverse=True)</pre>
+        </div>
+        <p>
+          В Python группировка — это цикл и словарь; в SQL тот же цикл выполняет база, а результат
+          приходит таблицей. Поэтому <code class="inl">defaultdict</code> из
+          <a href="ref-defaultdict.html">справочника по Python</a> — хорошая мысленная модель
+          GROUP BY.
+        </p>
+        <h3>Соседние страницы SQL</h3>
+        <div class="bridges">
+          <a class="bridge" href="ch-21-group-by-having.html"><span class="to">Глава 21</span><span>GROUP BY и HAVING: тот же словарь-аккумулятор</span><span class="what">→ разбор с картинками и задачами</span></a>
+          <a class="bridge" href="ch-15-groupby.html"><span class="to">Глава 15</span><span>groupby в pandas</span><span class="what">→ та же группировка, векторно</span></a>
+          <a class="bridge" href="ref-sql-join.html"><span class="to">Справочник SQL · 02</span><span>JOIN: откуда берётся выручка</span><span class="what">→ соединить orders и products</span></a>
+          <a class="bridge" href="ref-sql-window.html"><span class="to">Справочник SQL · 04</span><span>Оконные функции: колонка рядом</span><span class="what">→ итог без схлопывания строк</span></a>
+          <a class="bridge" href="ref-sql-select.html"><span class="to">Справочник SQL · 01</span><span>SELECT и NULL</span><span class="what">→ что делает WHERE и IS NULL</span></a>
+        </div>
+      </section>
+      <div class="pager">
+        <a class="prev" href="ref-sql-join.html"><span class="dir">← Назад</span><span class="ttl">02 · JOIN</span></a>
+        <a class="next" href="ref-sql-window.html"><span class="dir">Дальше →</span><span class="ttl">04 · окна</span></a>
+      </div>
+    </div>
+  </main>
+</div>
+<script src="assets/toc.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>

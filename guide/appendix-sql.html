@@ -1,0 +1,207 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Справочник по SQL — Ассоциативный гайд</title>
+<meta name="description" content="Справочник по SQL (PostgreSQL 14): SELECT и NULL, JOIN, GROUP BY, окна, CTE, индексы и EXPLAIN — конструкции, ловушки и примеры на learning_shop.">
+<link rel="stylesheet" href="assets/style.css">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#fbf8f2" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#14131a" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="assets/icons/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="assets/icons/icon-180.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Гайд Py/SQL">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+</head>
+<body data-slug="appendix-sql">
+<div class="app">
+  <aside class="sidebar" id="sidebar"></aside>
+  <main>
+    <div class="wrap">
+
+      <header class="chapter-head">
+        <div class="eyebrow">
+          <span class="part">Приложение · Справочник</span>
+          <span class="dot"></span>
+          <span>SQL · вне программы</span>
+          <span class="dot"></span>
+          <span>готово</span>
+        </div>
+        <h1>Справочник по SQL
+          <span class="sub">Шесть страниц: от SELECT до EXPLAIN — конструкция, смысл и ловушка</span>
+        </h1>
+        <p class="lead">
+          Главы 19–24 объясняют, как база читает запрос. Здесь — рабочая шпаргалка по конструкциям
+          PostgreSQL 14: синтаксис-шаблон, что вернётся, где трёхзначная логика ломает ожидания и
+          как читать план. Все примеры — на живой базе <code class="inl">learning_shop</code>.
+        </p>
+        <div class="meta">
+          <span class="chip">⏱ <b>5 минут</b> на выбор</span>
+          <span class="chip">🎯 уровень <b>2</b></span>
+          <span class="chip">🐘 <b>PostgreSQL 14</b></span>
+          <span class="chip">🗄 <b>learning_shop</b></span>
+        </div>
+      </header>
+
+      <p class="small">
+        Справочники: <a href="appendix-types.html">Python-коллекции</a> ·
+        <a href="appendix-pandas.html">pandas</a> · <b>SQL</b>
+      </p>
+
+      <div class="tldr">
+        <div class="t">Самое главное</div>
+        <ul>
+          <li>Это <b>reference, а не глава</b>: сюда возвращаются за конструкцией, порядком
+              выполнения и чтением плана.</li>
+          <li>Главные ловушки SQL — <b>NULL</b> (третье значение), <b>кардинальность JOIN</b>
+              и <b>порядок выполнения</b>: <code class="inl">WHERE</code> считается до
+              <code class="inl">SELECT</code>, поэтому алиас там не виден.</li>
+          <li>Диалект — <b>PostgreSQL 14</b>, база <code class="inl">learning_shop</code>; в другом
+              диалекте часть синтаксиса отличается.</li>
+        </ul>
+      </div>
+
+      <!-- ══════════════════ 01. Как пользоваться ══════════════════ -->
+      <section>
+        <h2><span class="num">01</span>Как пользоваться</h2>
+        <ol>
+          <li><strong>Найдите конструкцию в карте.</strong> Обычно это фильтр, соединение, агрегат,
+              окно, разложение запроса или ускорение.</li>
+          <li><strong>Откройте страницу.</strong> Вверху — зачем, в середине — синтаксис-шаблон и
+              таблицы вариантов, внизу — ошибки и примеры на <code class="inl">learning_shop</code>.</li>
+          <li><strong>Проверьте на живой базе.</strong> Каждая страница ссылается на SQL-лабораторию:
+              запустите <code class="inl">psql -d learning_shop -f guide/snippets/ref_sql_*.sql</code>
+              и сравните вывод.</li>
+        </ol>
+        <div class="note">
+          <span class="t">Что нужно для лабораторий</span>
+          <p>Локальный PostgreSQL 14 и учебная база: <code class="inl">bash tools/setup_db.sh</code>.
+          SQL-файлы только читают данные; исключение — ничего: справочник не меняет базу.
+          Вывод в лабораториях совпадает с выводом на страницах.</p>
+        </div>
+      </section>
+
+      <!-- ══════════════════ 02. Порядок выполнения ══════════════════ -->
+      <section>
+        <h2><span class="num">02</span>Порядок выполнения: как база читает запрос</h2>
+        <p>
+          SQL пишут сверху вниз, а база выполняет в другом порядке. Из этого порядка растут почти все
+          «почему не работает»: алиас, <code class="inl">WHERE</code> против
+          <code class="inl">HAVING</code>, окно в <code class="inl">WHERE</code>.
+        </p>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Этап</th><th>Что происходит</th><th>Что важно</th></tr></thead>
+            <tbody>
+              <tr><td class="mono">FROM / JOIN</td><td>строится рабочее множество строк</td><td>кардинальность и NULL-ключи</td></tr>
+              <tr><td class="mono">WHERE</td><td>фильтр строк до группировки</td><td>алиасы <code class="inl">SELECT</code> ещё не видны</td></tr>
+              <tr><td class="mono">GROUP BY</td><td>строки раскладываются по ключам</td><td>NULL — отдельная группа</td></tr>
+              <tr><td class="mono">HAVING</td><td>фильтр групп после агрегатов</td><td>агрегаты здесь разрешены</td></tr>
+              <tr><td class="mono">SELECT</td><td>вычисляются выражения и алиасы</td><td>оконные функции — здесь</td></tr>
+              <tr><td class="mono">DISTINCT</td><td>убираются повторы результата</td><td>после SELECT, до ORDER BY</td></tr>
+              <tr><td class="mono">ORDER BY</td><td>сортировка результата</td><td>видит алиасы SELECT</td></tr>
+              <tr><td class="mono">LIMIT / OFFSET</td><td>отрезаются строки</td><td>без ORDER BY порядок не определён</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="small">
+          Подробный разбор каждого шага — в <a href="ch-19-order-of-execution.html">главе 19</a>.
+        </p>
+      </section>
+
+      <!-- ══════════════════ 03. Карта выбора ══════════════════ -->
+      <section>
+        <h2><span class="num">03</span>Карта выбора: от задачи к странице</h2>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Задача</th><th>Конструкция</th><th>Страница</th></tr></thead>
+            <tbody>
+              <tr><td>Отфильтровать строки, разобраться с NULL</td><td><code class="inl">WHERE</code>, <code class="inl">IS NULL</code>, <code class="inl">IN</code>, <code class="inl">LIKE</code></td><td><a href="ref-sql-select.html">01</a></td></tr>
+              <tr><td>Соединить таблицы по ключу</td><td><code class="inl">JOIN</code>, <code class="inl">LEFT JOIN</code>, <code class="inl">EXISTS</code></td><td><a href="ref-sql-join.html">02</a></td></tr>
+              <tr><td>Свернуть строки в группы</td><td><code class="inl">GROUP BY</code>, <code class="inl">HAVING</code>, агрегаты</td><td><a href="ref-sql-group.html">03</a></td></tr>
+              <tr><td>Посчитать по окну, не схлопывая строки</td><td><code class="inl">OVER</code>, <code class="inl">ROW_NUMBER</code>, <code class="inl">LAG</code></td><td><a href="ref-sql-window.html">04</a></td></tr>
+              <tr><td>Разложить сложный запрос на шаги</td><td>подзапрос, <code class="inl">WITH</code>, рекурсия</td><td><a href="ref-sql-cte.html">05</a></td></tr>
+              <tr><td>Понять, почему запрос тормозит</td><td>индекс, <code class="inl">EXPLAIN</code>, <code class="inl">ANALYZE</code></td><td><a href="ref-sql-index.html">06</a></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ══════════════════ 04. Синтаксис-шаблон ══════════════════ -->
+      <section>
+        <h2><span class="num">04</span>Синтаксис-шаблон: весь запрос сразу</h2>
+        <p>
+          Порядок ключевых слов фиксирован, поэтому шаблон ниже — каркас: выкидывайте ненужные этапы,
+          не меняя их местами.
+        </p>
+        <div class="code">
+          <div class="bar"><span class="file">шаблон.sql</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">SELECT o.user_id,
+       SUM(o.quantity * p.price) AS revenue
+FROM orders o
+JOIN products p ON p.id = o.product_id
+WHERE o.created_at &gt;= '2024-01-01'
+GROUP BY o.user_id
+HAVING SUM(o.quantity * p.price) &gt; 5000
+ORDER BY revenue DESC;</pre>
+          <div class="out"> user_id | revenue  
+---------+----------
+       1 | 76950.00
+       3 | 76500.00
+       2 | 23800.00
+       4 | 22000.00
+(4 rows)</div>
+        </div>
+        <p class="small">
+          Заказ с <code class="inl">user_id = NULL</code> в результат не попал: ключ NULL — отдельная
+          группа, и она не прошла <code class="inl">HAVING</code>. Об этом — страница 03.
+        </p>
+      </section>
+
+      <!-- ══════════════════ 05. Страницы ══════════════════ -->
+      <section>
+        <h2><span class="num">05</span>Шесть страниц</h2>
+        <div class="bridges">
+          <a class="bridge" href="ref-sql-select.html"><span class="to">01 · SELECT и NULL</span><span>Порядок выполнения и три значения</span><span class="what">→ WHERE, IS NULL, LIKE, LIMIT</span></a>
+          <a class="bridge" href="ref-sql-join.html"><span class="to">02 · JOIN</span><span>Кардинальность важнее синтаксиса</span><span class="what">→ INNER/LEFT/RIGHT/FULL, anti-join</span></a>
+          <a class="bridge" href="ref-sql-group.html"><span class="to">03 · GROUP BY</span><span>Разложить — посчитать — собрать</span><span class="what">→ агрегаты, HAVING, FILTER</span></a>
+          <a class="bridge" href="ref-sql-window.html"><span class="to">04 · Окна</span><span>Агрегат без схлопывания</span><span class="what">→ OVER, ROW_NUMBER, LAG, рамки</span></a>
+          <a class="bridge" href="ref-sql-cte.html"><span class="to">05 · CTE и подзапросы</span><span>Как разложить вопрос</span><span class="what">→ WITH, EXISTS, рекурсия</span></a>
+          <a class="bridge" href="ref-sql-index.html"><span class="to">06 · Индексы и EXPLAIN</span><span>Где тормозит запрос</span><span class="what">→ Seq/Index Scan, составные индексы</span></a>
+        </div>
+        <p class="small">
+          Порядок — как в книге: сначала чтение и фильтр, потом соединения, агрегаты, окна, разложение
+          и производительность. Каждая страница заканчивается мостиком в pandas и Python.
+        </p>
+      </section>
+
+      <!-- ══════════════════ 06. Куда дальше ══════════════════ -->
+      <section>
+        <h2><span class="num">06</span>Куда дальше</h2>
+        <div class="bridges">
+          <a class="bridge" href="ch-19-order-of-execution.html"><span class="to">Глава 19</span><span>Порядок выполнения</span><span class="what">→ как база читает запрос</span></a>
+          <a class="bridge" href="ch-20-select-where-null.html"><span class="to">Глава 20</span><span>SELECT, WHERE и NULL</span><span class="what">→ логика трёх значений</span></a>
+          <a class="bridge" href="ch-21-group-by-having.html"><span class="to">Глава 21</span><span>GROUP BY и HAVING</span><span class="what">→ словарь-аккумулятор в базе</span></a>
+          <a class="bridge" href="ch-22-subqueries-cte.html"><span class="to">Глава 22</span><span>Подзапросы и CTE</span><span class="what">→ разложить вопрос на шаги</span></a>
+          <a class="bridge" href="ch-23-window-functions.html"><span class="to">Глава 23</span><span>Оконные функции</span><span class="what">→ агрегат без схлопывания</span></a>
+          <a class="bridge" href="ch-24-indexes-explain.html"><span class="to">Глава 24</span><span>Индексы и EXPLAIN</span><span class="what">→ план и стоимость</span></a>
+          <a class="bridge" href="appendix-pandas.html"><span class="to">Справочник</span><span>pandas: Series, loc, groupby, merge</span><span class="what">→ та же операция в таблице</span></a>
+          <a class="bridge" href="appendix-snippets.html"><span class="to">Приложение</span><span>Файлы лабораторий</span><span class="what">→ запуск ref_sql_*_lab.sql</span></a>
+        </div>
+      </section>
+
+      <div class="pager">
+        <a class="prev" href="appendix-pandas.html"><span class="dir">← Назад</span><span class="ttl">Справочник: pandas</span></a>
+        <a class="next" href="ref-sql-select.html"><span class="dir">Дальше →</span><span class="ttl">01 · SELECT и NULL</span></a>
+      </div>
+
+    </div>
+  </main>
+</div>
+<script src="assets/toc.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,666 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Справочник · JOIN: кардинальность важнее синтаксиса — Ассоциативный гайд</title>
+<meta name="description" content="Справочник по JOIN в PostgreSQL 14: INNER/LEFT/RIGHT/FULL, ON и USING, кардинальность, anti-join и semi-join, self-join и CROSS JOIN — с реальным выводом psql.">
+<link rel="stylesheet" href="assets/style.css">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#fbf8f2" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#14131a" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="assets/icons/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="assets/icons/icon-180.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Гайд Py/SQL">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+</head>
+<body data-slug="ref-sql-join">
+<div class="app">
+  <aside class="sidebar" id="sidebar"></aside>
+  <main>
+    <div class="wrap">
+
+      <header class="chapter-head">
+        <div class="eyebrow">
+          <span class="part">Справочник · SQL</span>
+          <span class="dot"></span>
+          <span>страница 2 из 6</span>
+          <span class="dot"></span>
+          <span>готово</span>
+        </div>
+        <h1>JOIN: кардинальность важнее синтаксиса
+          <span class="sub">Кто с кем соединяется, сколько строк получится и куда исчезают NULL</span>
+        </h1>
+        <p class="lead"><code class="inl">JOIN</code> отвечает на вопрос «какие строки двух таблиц относятся друг к другу». Синтаксис заучивается за минуту; сложность — в количестве строк и в NULL-ключах. Здесь — все типы соединений, кардинальность и точный вывод <code class="inl">psql</code> на <code class="inl">learning_shop</code>.</p>
+        <div class="meta">
+          <span class="chip">⏱ <b>12 минут</b></span>
+          <span class="chip">🎯 уровень <b>2</b></span>
+          <span class="chip">🐘 <b>PostgreSQL 14</b></span>
+          <span class="chip">📚 <b>глава 20</b></span>
+        </div>
+      </header>
+
+            <p class="small">
+        Справочник SQL: <a href="appendix-sql.html">вся карта</a> ·
+        <a href="ref-sql-select.html">01 · SELECT и NULL</a> · <b>02 · JOIN</b> ·
+        <a href="ref-sql-group.html">03 · GROUP BY</a> ·
+        <a href="ref-sql-window.html">04 · окна</a> ·
+        <a href="ref-sql-cte.html">05 · CTE</a> ·
+        <a href="ref-sql-index.html">06 · индексы</a>
+      </p>
+
+      <div class="tldr">
+        <div class="t">Самое главное</div>
+        <ul>
+          <li><code class="inl">JOIN</code> сопоставляет строки по условию <code class="inl">ON</code>:
+              <code class="inl">INNER</code> оставляет только совпадения, <code class="inl">LEFT</code> —
+              все левые, <code class="inl">RIGHT</code> — все правые, <code class="inl">FULL</code> —
+              все с обеих сторон.</li>
+          <li>Число строк решает <b>кардинальность</b>: many-to-one (заказы → пользователи) строки
+              сохраняет, many-to-many — перемножает. Сначала кардинальность, потом синтаксис.</li>
+          <li><code class="inl">NULL</code>-ключ не соединяется ни с чем: заказ с
+              <code class="inl">user_id IS NULL</code> выпадает из <code class="inl">INNER JOIN</code>.
+              «Строки без пары» ищут через <code class="inl">LEFT JOIN … IS NULL</code> или
+              <code class="inl">NOT EXISTS</code>.</li>
+        </ul>
+      </div>
+
+      <!-- ══════════════════ 01. Что это ══════════════════ -->
+      <section>
+        <h2><span class="num">01</span>Что это и как читается</h2>
+        <p>Соединение берёт строку из одной таблицы и ищет ей пару во второй по условию <code class="inl">ON</code>. Что делать с найденными и ненайденными — определяет тип соединения. Поэтому запрос читают не как «приклеить», а как «какие строки останутся и сколько их будет».</p>
+        <p>Соединение — это не обязательно две таблицы: можно соединить три и больше, а также таблицу с самой собой. На каждом шаге число строк может сохраниться, вырасти или уменьшиться, и это главный источник ошибок в отчётах.</p>
+
+        <div class="anchor">
+          <div class="glyph">🧩</div>
+          <div>
+            <div class="t">Держите эту картинку в голове</div>
+            <p class="kick"><strong>JOIN — это склейка двух списков по номеру.</strong> У каждой строки слева ищется строка справа с тем же ключом. Нашлась — склеили; не нашлась — зависит от типа join.</p>
+            <p><strong>Опасность не в склейке, а в количестве.</strong> Если ключ справа встречается дважды, одна строка слева даст две склеенные. Если дважды с обеих сторон — четыре. Это и есть кардинальность. Ту же метафору разбирает <a href="ch-16-merge.html">глава 16</a> — там это соединение в pandas.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ══════════════════ 02. Когда применять ══════════════════ -->
+      <section>
+        <h2><span class="num">02</span>Когда применять</h2>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Задача</th><th>JOIN?</th><th>Что дальше</th></tr></thead>
+            <tbody>
+              <tr><td>Нужны строки, у которых есть пара в обеих таблицах</td><td><b>да</b></td><td><code class="inl">INNER JOIN</code></td></tr>
+              <tr><td>Сохранить все строки левой таблицы, добавить данные справа</td><td><b>да</b></td><td><code class="inl">LEFT JOIN</code></td></tr>
+              <tr><td>Найти строки без пары: заказы без пользователя</td><td><b>да</b></td><td><code class="inl">LEFT JOIN … IS NULL</code>, <code class="inl">NOT EXISTS</code></td></tr>
+              <tr><td>Проверить «есть ли пара», без дублей</td><td><b>да</b></td><td><code class="inl">EXISTS</code> — semi-join</td></tr>
+              <tr><td>Сравнить строки внутри одной таблицы</td><td><b>да</b></td><td>self-join с двумя алиасами</td></tr>
+              <tr><td>Все комбинации строк</td><td>редко</td><td><code class="inl">CROSS JOIN</code> — декартово произведение</td></tr>
+              <tr><td>Свернуть результат соединения в группы</td><td>как основа</td><td><code class="inl">GROUP BY</code> — страница 03</td></tr>
+              <tr><td>Сравнить два набора строк на равенство</td><td>нет</td><td><code class="inl">EXCEPT</code> / <code class="inl">INTERSECT</code> — страница 05</td></tr>
+              <tr><td>Изменить данные</td><td>нет</td><td><code class="inl">INSERT</code>, <code class="inl">UPDATE</code>, <code class="inl">DELETE</code></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="small">Карта целиком — в <a href="appendix-sql.html">справочнике SQL</a>.</p>
+      </section>
+
+      <!-- ══════════════════ 03. Синтаксис-шаблон ══════════════════ -->
+      <section>
+        <h2><span class="num">03</span>Синтаксис-шаблон</h2>
+        <p>Базовая форма: <code class="inl">SELECT … FROM a JOIN b ON условие</code>. Условие <code class="inl">ON</code> — не фильтр результата, а правило сопоставления строк; его отсутствие даёт декартово произведение.</p>
+        <div class="code">
+          <div class="bar"><span class="file">ref_sql_join_lab.sql</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">SELECT o.id AS order_id, u.name, o.quantity
+FROM orders o
+JOIN users u ON u.id = o.user_id
+ORDER BY o.id;</pre>
+          <div class="out"> order_id | name  | quantity
+----------+-------+----------
+        1 | Anna  |        1
+        2 | Ivan  |        2
+        3 | Anna  |        3
+        4 | Olga  |        1
+        5 | Ivan  |        1
+        6 | Maria |        5
+        7 | Anna  |        2
+        9 | Olga  |        1
+       10 | Petr  |        1
+(9 rows)</div>
+        </div>
+        <p>Десять заказов дали девять строк: у заказа <code class="inl">id = 8</code> ключ <code class="inl">user_id IS NULL</code>, и пара для него не нашлась. Алиасы <code class="inl">o</code> и <code class="inl">u</code> — не украшение: с ними условие читается однозначно.</p>
+        <div class="note">
+          <span class="t">ON или USING</span>
+          <p><code class="inl">USING (col)</code> короче, но требует <b>одинаковых имён</b> колонок с обеих сторон. В <code class="inl">learning_shop</code> ключи названы по-разному — <code class="inl">orders.user_id</code> и <code class="inl">users.id</code>, — поэтому здесь только <code class="inl">ON</code>.</p>
+        </div>
+      </section>
+
+      <!-- ══════════════════ 04. Все конструкции ══════════════════ -->
+      <section>
+        <h2><span class="num">04</span>Все конструкции</h2>
+        <p>«Примечание» — про смысл и кардинальность. План на таких маленьких таблицах — обычно <b>Hash Join</b> по ключу; на объёме выбор плана зависит от индексов и разбирается на <a href="ref-sql-index.html">странице 06</a>.</p>
+
+        <h3>Типы соединений</h3>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Конструкция</th><th>Что делает</th><th>Результат</th><th>Примечание</th></tr></thead>
+            <tbody>
+              <tr><td class="mono">INNER JOIN … ON</td><td>соединяет только совпавшие строки</td><td>совпадения</td><td>тип по умолчанию; большинство отчётов</td></tr>
+              <tr><td class="mono">LEFT JOIN … ON</td><td>сохраняет все строки левой таблицы</td><td>левые + NULL справа</td><td>«все заказы, имя если есть»</td></tr>
+              <tr><td class="mono">RIGHT JOIN … ON</td><td>сохраняет все строки правой таблицы</td><td>правые + NULL слева</td><td>редко: обычно переворачивают в LEFT</td></tr>
+              <tr><td class="mono">FULL JOIN … ON</td><td>сохраняет строки обеих таблиц</td><td>объединение</td><td>видно, что не совпало с любой стороны</td></tr>
+              <tr><td class="mono">CROSS JOIN</td><td>все комбинации строк</td><td>n × m</td><td>декартово произведение; почти всегда ошибка</td></tr>
+              <tr><td class="mono">ON условие</td><td>правило сопоставления строк</td><td>—</td><td>можно несколько условий через AND</td></tr>
+              <tr><td class="mono">USING (col)</td><td>соединение по одноимённой колонке</td><td>колонка один раз</td><td>только при одинаковых именах</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>Приёмы на основе JOIN</h3>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Конструкция</th><th>Что делает</th><th>Результат</th><th>Примечание</th></tr></thead>
+            <tbody>
+              <tr><td class="mono">EXISTS (подзапрос)</td><td>semi-join: есть ли пара</td><td>строки без дублей</td><td>безопаснее, чем JOIN + DISTINCT</td></tr>
+              <tr><td class="mono">LEFT JOIN … WHERE b IS NULL</td><td>anti-join: строки без пары</td><td>левые без пары</td><td>классический поиск «сирот»</td></tr>
+              <tr><td class="mono">NOT EXISTS</td><td>то же без соединения</td><td>левые без пары</td><td>предпочтительнее <code class="inl">NOT IN</code> при NULL</td></tr>
+              <tr><td class="mono">self-join</td><td>таблица соединяется сама с собой</td><td>пары строк</td><td>два разных алиаса обязательны</td></tr>
+              <tr><td class="mono">три таблицы</td><td>цепочка соединений</td><td>строки из трёх источников</td><td>следите за кардинальностью каждого шага</td></tr>
+              <tr><td class="mono">JOIN + GROUP BY</td><td>агрегат после соединения</td><td>группы</td><td>выручка по товарам — сценарий ниже</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>Кардинальность</h3>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Отношение</th><th>Что это</th><th>Строк в результате</th><th>Пример</th></tr></thead>
+            <tbody>
+              <tr><td class="mono">one-to-one</td><td>ключ уникален с обеих сторон</td><td>не больше, чем было</td><td>users.id → users.email</td></tr>
+              <tr><td class="mono">many-to-one</td><td>много строк слева, одна справа</td><td>сохраняется</td><td>orders → users (10 заказов, 9 пар)</td></tr>
+              <tr><td class="mono">one-to-many</td><td>одна слева, много справа</td><td>растёт</td><td>users → orders</td></tr>
+              <tr><td class="mono">many-to-many</td><td>дубли с обеих сторон</td><td>перемножается</td><td>причина «внезапных» дублей</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ══════════════════ 05. Разбор ══════════════════ -->
+      <section>
+        <h2><span class="num">05</span>Разбор по вариантам</h2>
+        <p>Все примеры страницы — в файле <a href="snippets/view.html?f=ref_sql_join_lab.sql"><code class="inl">ref_sql_join_lab.sql</code></a>. База та же: <code class="inl">learning_shop</code>, PostgreSQL 14.</p>
+
+        <h3>LEFT JOIN: все заказы</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_sql_join_lab.sql</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">SELECT o.id AS order_id, u.name, o.quantity
+FROM orders o
+LEFT JOIN users u ON u.id = o.user_id
+ORDER BY o.id;</pre>
+          <div class="out"> order_id | name  | quantity
+----------+-------+----------
+        1 | Anna  |        1
+        2 | Ivan  |        2
+        3 | Anna  |        3
+        4 | Olga  |        1
+        5 | Ivan  |        1
+        6 | Maria |        5
+        7 | Anna  |        2
+        8 |       |        1
+        9 | Olga  |        1
+       10 | Petr  |        1
+(10 rows)</div>
+        </div>
+        <p>Теперь десять строк: заказ 8 остался, а имя пустое — <code class="inl">NULL</code> в колонках правой таблицы означает «пары не нашлось». Именно так LEFT JOIN сохраняет левую сторону.</p>
+
+        <h3>RIGHT и FULL: сколько строк</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_sql_join_lab.sql</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">SELECT 'inner' AS join_type, COUNT(*) AS rows
+FROM orders o JOIN users u ON u.id = o.user_id
+UNION ALL
+SELECT 'left', COUNT(*)
+FROM orders o LEFT JOIN users u ON u.id = o.user_id
+UNION ALL
+SELECT 'right', COUNT(*)
+FROM orders o RIGHT JOIN users u ON u.id = o.user_id
+UNION ALL
+SELECT 'full', COUNT(*)
+FROM orders o FULL JOIN users u ON u.id = o.user_id
+ORDER BY join_type;</pre>
+          <div class="out"> join_type | rows
+-----------+------
+ full      |   10
+ inner     |    9
+ left      |   10
+ right     |    9
+(4 rows)</div>
+        </div>
+        <p>INNER и LEFT различаются на одну строку — тот самый заказ без пользователя. RIGHT здесь совпал с INNER: у всех пяти пользователей есть заказы, поэтому «правых без пары» нет. FULL оставил и заказ без пользователя, и (если бы были) пользователей без заказов.</p>
+
+        <h3>NULL-ключ не соединяется</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_sql_join_lab.sql</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">SELECT id, user_id
+FROM orders
+WHERE user_id IS NULL;
+
+SELECT COUNT(*) AS matched_rows
+FROM orders o
+JOIN users u ON u.id = o.user_id;
+
+SELECT o.id AS order_id
+FROM orders o
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM users u
+    WHERE u.id = o.user_id
+)
+ORDER BY o.id;</pre>
+          <div class="out"> id | user_id
+----+---------
+  8 |
+(1 row)
+
+ matched_rows
+--------------
+            9
+(1 row)
+
+ order_id
+----------
+        8
+(1 row)</div>
+        </div>
+        <p>Заказ 8 существует и содержит NULL в ключе. Но <code class="inl">NULL = NULL</code> — UNKNOWN, а не TRUE, поэтому соединение по NULL-ключу невозможно. Тот же ответ даёт <code class="inl">NOT EXISTS</code> — anti-join без соединения. В SQL это не баг, а следствие трёхзначной логики; в pandas <code class="inl">NaN</code> в ключе, наоборот, соединяется с <code class="inl">NaN</code> (глава 16).</p>
+
+        <h3>semi-join через EXISTS</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_sql_join_lab.sql</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">SELECT u.name
+FROM users u
+WHERE EXISTS (
+    SELECT 1
+    FROM orders o
+    JOIN products p ON p.id = o.product_id
+    WHERE o.user_id = u.id AND p.category = 'electronics'
+)
+ORDER BY u.name;
+
+SELECT u.name
+FROM users u
+JOIN orders o ON o.user_id = u.id
+JOIN products p ON p.id = o.product_id
+WHERE p.category = 'electronics'
+ORDER BY u.name, o.id;</pre>
+          <div class="out"> name
+------
+ Anna
+ Ivan
+ Olga
+ Petr
+(4 rows)
+
+ name
+------
+ Anna
+ Ivan
+ Olga
+ Olga
+ Petr
+(5 rows)</div>
+        </div>
+        <p>Обе строки отвечают на вопрос «кто покупал электронику», но по-разному. <code class="inl">EXISTS</code> возвращает каждого пользователя один раз — это semi-join. Обычный <code class="inl">JOIN</code> даёт по строке на каждый заказ, поэтому Olga с двумя электронными заказами появляется дважды. Если нужен только факт, берите EXISTS.</p>
+
+        <h3>self-join и CROSS JOIN</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_sql_join_lab.sql</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">SELECT a.name AS user_a, b.name AS user_b, a.city
+FROM users a
+JOIN users b ON a.city = b.city AND a.id &lt; b.id
+ORDER BY a.name, b.name;
+
+SELECT COUNT(*) AS cross_rows
+FROM orders
+CROSS JOIN users;</pre>
+          <div class="out"> user_a | user_b |  city
+--------+--------+--------
+ Anna   | Olga   | Москва
+(1 row)
+
+ cross_rows
+------------
+         50
+(1 row)</div>
+        </div>
+        <p>Self-join соединяет таблицу с самой собой: нашли пару «из одного города» — Anna и Olga. Условие <code class="inl">a.id &lt; b.id</code> убирает зеркальные пары и пары с собой, а <code class="inl">a.city = b.city</code> не срабатывает для NULL — снова UNKNOWN. <code class="inl">CROSS JOIN</code> даёт 10 × 5 = 50 строк: декартово произведение, почти всегда признак забытого условия.</p>
+
+        <h3>Фильтр в ON или в WHERE</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_sql_join_lab.sql</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">SELECT o.id AS order_id, u.name
+FROM orders o
+LEFT JOIN users u ON u.id = o.user_id
+WHERE u.city = 'Москва'
+ORDER BY o.id;
+
+SELECT o.id AS order_id, u.name
+FROM orders o
+LEFT JOIN users u ON u.id = o.user_id AND u.city = 'Москва'
+ORDER BY o.id;</pre>
+          <div class="out"> order_id | name
+----------+------
+        1 | Anna
+        3 | Anna
+        4 | Olga
+        7 | Anna
+        9 | Olga
+(5 rows)
+
+ order_id | name
+----------+------
+        1 | Anna
+        2 |
+        3 | Anna
+        4 | Olga
+        5 |
+        6 |
+        7 | Anna
+        8 |
+        9 | Olga
+       10 |
+(10 rows)</div>
+        </div>
+        <p>Первый запрос оставил только заказы Анны и Ольги — 5 строк: фильтр в WHERE применяется <em>после</em> соединения и отбрасывает NULL-строки, то есть LEFT фактически превращается в INNER. Второй — сохранил все 10 заказов: условие в <code class="inl">ON</code> решает, кого соединять, но левую сторону не выбрасывает.</p>
+      </section>
+
+      <!-- ══════════════════ 06. Сценарии ══════════════════ -->
+      <section>
+        <h2><span class="num">06</span>Три сценария на learning_shop</h2>
+
+        <h3>Заказы с именами и суммами</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_sql_join_lab.sql</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">SELECT o.id AS order_id,
+       COALESCE(u.name, '—') AS user_name,
+       o.quantity * p.price AS total
+FROM orders o
+LEFT JOIN users u ON u.id = o.user_id
+JOIN products p ON p.id = o.product_id
+ORDER BY o.id;</pre>
+          <div class="out"> order_id | user_name |  total
+----------+-----------+----------
+        1 | Anna      | 75000.00
+        2 | Ivan      |  1800.00
+        3 | Anna      |  1350.00
+        4 | Olga      |  1500.00
+        5 | Ivan      | 22000.00
+        6 | Maria     |  2250.00
+        7 | Anna      |   600.00
+        8 | —         |   900.00
+        9 | Olga      | 75000.00
+       10 | Petr      | 22000.00
+(10 rows)</div>
+        </div>
+        <p>Типичный отчёт: «все заказы, с именем пользователя, если он известен». LEFT JOIN сохраняет заказ 8, COALESCE заменяет пустое имя прочерком, а INNER JOIN с products безопасен: ссылочная целостность гарантирует товар для каждого заказа.</p>
+
+        <h3>Анти-джойн в обе стороны</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_sql_join_lab.sql</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">SELECT o.id AS order_id, o.created_at
+FROM orders o
+LEFT JOIN users u ON u.id = o.user_id
+WHERE u.id IS NULL;
+
+SELECT u.name
+FROM users u
+LEFT JOIN orders o ON o.user_id = u.id
+WHERE o.id IS NULL
+ORDER BY u.name;</pre>
+          <div class="out"> order_id |     created_at
+----------+---------------------
+        8 | 2024-03-07 19:30:00
+(1 row)
+
+ name
+------
+(0 rows)</div>
+        </div>
+        <p>Первый запрос нашёл «заказ-сироту» — id 8 с NULL-ключом. Второй вернул 0 строк: все пять пользователей что-то покупали. Пустой результат — тоже ответ, и это честнее, чем подставлять несуществующие строки. Альтернатива — <code class="inl">NOT EXISTS</code> (страница 05).</p>
+
+        <h3>Выручка по товарам</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_sql_join_lab.sql</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">SELECT p.name, p.category,
+       SUM(o.quantity) AS units,
+       SUM(o.quantity * p.price) AS revenue
+FROM orders o
+JOIN products p ON p.id = o.product_id
+GROUP BY p.id, p.name, p.category
+ORDER BY revenue DESC;</pre>
+          <div class="out">  name   |  category   | units |  revenue
+---------+-------------+-------+-----------
+ Ноутбук | electronics |     2 | 150000.00
+ Монитор | electronics |     2 |  44000.00
+ Кофе    | food        |     8 |   3600.00
+ Книга   | books       |     3 |   2700.00
+ Мышь    | electronics |     1 |   1500.00
+ Чай     | food        |     2 |    600.00
+(6 rows)</div>
+        </div>
+        <p>Соединение даёт строку на заказ, GROUP BY сворачивает их в товары, <code class="inl">SUM</code> считает выручку. Заказ с NULL-ключом здесь не теряется: товар у него есть, а соединение идёт по <code class="inl">product_id</code>.</p>
+      </section>
+
+      <!-- ══════════════════ 07. Ошибки ══════════════════ -->
+      <section>
+        <h2><span class="num">07</span>Пять ошибок, на которых спотыкаются</h2>
+        <div class="errors">
+          <div class="err">
+            <div class="h">Условие на правую таблицу в WHERE</div>
+            <p><code class="inl">LEFT JOIN … WHERE u.city = 'Москва'</code> отбрасывает строки, где справа NULL, и фактически превращает LEFT в INNER. Левая сторона «исчезает» незаметно.</p>
+            <div class="fix">Нужны все левые строки — переносите условие в <code class="inl">ON</code>; нужен фильтр результата — оставляйте в <code class="inl">WHERE</code> осознанно.</div>
+          </div>
+
+          <div class="err">
+            <div class="h">Дубли из-за кардинальности</div>
+            <p>Соединение many-to-many перемножает строки: 2 слева × 2 справа = 4. Отчёт «внезапно» вырастает, а <code class="inl">DISTINCT</code> скрывает симптом, но не причину.</p>
+            <div class="fix">Проверить уникальность ключа (<code class="inl">GROUP BY … HAVING COUNT(*) &gt; 1</code>), предварительно агрегировать сторону, которая размножает.</div>
+          </div>
+
+          <div class="err">
+            <div class="h">Ожидание, что NULL-ключ соединится</div>
+            <p>Заказ с <code class="inl">user_id IS NULL</code> не появится в INNER JOIN: <code class="inl">NULL = NULL</code> — UNKNOWN, а не TRUE.</p>
+            <div class="fix">Решить явно: исключить такие строки (<code class="inl">WHERE user_id IS NOT NULL</code>) или сохранить через LEFT JOIN.</div>
+          </div>
+
+          <div class="err">
+            <div class="h">Забытое условие соединения</div>
+            <p><code class="inl">FROM orders, users</code> или <code class="inl">CROSS JOIN</code> без <code class="inl">ON</code> даёт декартово произведение: 10 × 5 = 50 строк вместо 10.</p>
+            <div class="fix">Всегда <code class="inl">ON</code>/<code class="inl">USING</code>; сверять число строк до и после соединения.</div>
+          </div>
+
+          <div class="err">
+            <div class="h">Фильтр до и после соединения — не одно и то же</div>
+            <p>Условие в <code class="inl">ON</code> фильтрует правую таблицу до сопоставления, условие в <code class="inl">WHERE</code> — результат после. Для LEFT JOIN это разные ответы.</p>
+            <div class="fix">Сначала сформулировать вопрос словами: «все заказы» или «только заказы москвичей» — и выбирать место условия.</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ══════════════════ 08. Мини-проверка ══════════════════ -->
+      <section>
+        <h2><span class="num">08</span>Мини-проверка</h2>
+        <p>Пять вопросов и две задачи. Сначала своя попытка — потом спойлер.</p>
+
+        <div class="qa">
+          <details>
+            <summary>Чем INNER JOIN отличается от LEFT JOIN?</summary>
+            <div class="a">
+              <p><code class="inl">INNER</code> оставляет только строки, для которых нашлась пара. <code class="inl">LEFT</code> сохраняет все строки левой таблицы, подставляя NULL там, где пары нет.</p>
+              <div class="verdict">Резюме: INNER — только совпадения, LEFT — все левые.</div>
+            </div>
+          </details>
+        </div>
+
+        <div class="qa">
+          <details>
+            <summary>Почему заказ id = 8 не появляется в INNER JOIN с users?</summary>
+            <div class="a">
+              <p>У него <code class="inl">user_id IS NULL</code>, а соединение ищет равенство ключей. <code class="inl">NULL = users.id</code> даёт UNKNOWN, а не TRUE — пара не находится. В LEFT JOIN строка останется с NULL в колонках пользователя.</p>
+              <div class="verdict">Резюме: NULL-ключ не равен ничему, даже другому NULL.</div>
+            </div>
+          </details>
+        </div>
+
+        <div class="qa">
+          <details>
+            <summary>Что такое кардинальность и почему many-to-many опасен?</summary>
+            <div class="a">
+              <p>Это отношение числа строк: one-to-one, many-to-one, one-to-many, many-to-many. При many-to-many каждая пара совпавших строк даёт отдельную строку результата, поэтому строки перемножаются, а не «добавляются».</p>
+              <div class="verdict">Резюме: сначала предскажите число строк, потом пишите JOIN.</div>
+            </div>
+          </details>
+        </div>
+
+        <div class="qa">
+          <details>
+            <summary>Чем semi-join (EXISTS) отличается от обычного JOIN?</summary>
+            <div class="a">
+              <p><code class="inl">EXISTS</code> проверяет факт существования пары и не размножает строки. Обычный JOIN выдаёт строку на каждое совпадение, поэтому пользователь с двумя заказами появится дважды.</p>
+              <div class="verdict">Резюме: нужно «есть ли» — EXISTS; нужны детали — JOIN.</div>
+            </div>
+          </details>
+        </div>
+
+        <div class="qa">
+          <details>
+            <summary>Как найти строки без пары?</summary>
+            <div class="a">
+              <p>Через anti-join: <code class="inl">LEFT JOIN … WHERE right.id IS NULL</code>. Альтернатива — <code class="inl">NOT EXISTS</code>; она безопаснее, когда в ключах есть NULL.</p>
+              <div class="verdict">Резюме: anti-join ищет «сирот».</div>
+            </div>
+          </details>
+        </div>
+
+        <h3><span style="color:var(--muted);font-family:var(--mono);font-size:.8rem">01</span> Заказы с товарами</h3>
+        <p>Выведите пары «заказ — товар» с количеством и суммой. Отсортируйте по id заказа.</p>
+        <div class="code">
+          <div class="bar"><span class="file">условие</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">-- orders + products, сумма = quantity * price</pre>
+        </div>
+        <div class="qa">
+          <details>
+            <summary>Показать решение и разбор</summary>
+            <div class="a">
+              <div class="code" style="margin-top:0">
+                <div class="bar"><span class="file">решение</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+                <pre data-lang="sql">SELECT o.id AS order_id, p.name AS product, o.quantity,
+       o.quantity * p.price AS total
+FROM orders o
+JOIN products p ON p.id = o.product_id
+ORDER BY o.id;</pre>
+                <div class="out"> order_id | product | quantity |  total
+----------+---------+----------+----------
+        1 | Ноутбук |        1 | 75000.00
+        2 | Книга   |        2 |  1800.00
+        3 | Кофе    |        3 |  1350.00
+        4 | Мышь    |        1 |  1500.00
+        5 | Монитор |        1 | 22000.00
+        6 | Кофе    |        5 |  2250.00
+        7 | Чай     |        2 |   600.00
+        8 | Книга   |        1 |   900.00
+        9 | Ноутбук |        1 | 75000.00
+       10 | Монитор |        1 | 22000.00
+(10 rows)</div>
+              </div>
+              <p><strong>Что важно.</strong> Соединение many-to-one: каждый заказ ссылается на один товар, поэтому число строк не меняется — 10 заказов дают 10 строк.</p>
+            </div>
+          </details>
+        </div>
+
+        <h3><span style="color:var(--muted);font-family:var(--mono);font-size:.8rem">02</span> Топ заказов по сумме</h3>
+        <p>Выведите четыре самых дорогих заказа: id, пользователя, товар и сумму. Заказы без пользователя тоже должны попасть в выборку.</p>
+        <div class="code">
+          <div class="bar"><span class="file">условие</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">-- LEFT JOIN users, INNER JOIN products, ORDER BY total DESC, o.id</pre>
+        </div>
+        <div class="qa">
+          <details>
+            <summary>Показать решение и разбор</summary>
+            <div class="a">
+              <div class="code" style="margin-top:0">
+                <div class="bar"><span class="file">решение</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+                <pre data-lang="sql">SELECT o.id AS order_id,
+       COALESCE(u.name, '—') AS user_name,
+       p.name AS product,
+       o.quantity * p.price AS total
+FROM orders o
+LEFT JOIN users u ON u.id = o.user_id
+JOIN products p ON p.id = o.product_id
+ORDER BY total DESC, o.id
+LIMIT 4;</pre>
+                <div class="out"> order_id | user_name | product |  total
+----------+-----------+---------+----------
+        1 | Anna      | Ноутбук | 75000.00
+        9 | Olga      | Ноутбук | 75000.00
+        5 | Ivan      | Монитор | 22000.00
+       10 | Petr      | Монитор | 22000.00
+(4 rows)</div>
+              </div>
+              <p><strong>Что важно.</strong> LEFT JOIN сохраняет заказы без пользователя, а второй ключ <code class="inl">o.id</code> делает порядок воспроизводимым при равных суммах.</p>
+            </div>
+          </details>
+        </div>
+      </section>
+
+      <!-- ══════════════════ 09. Мостик ══════════════════ -->
+      <section>
+        <h2><span class="num">09</span>Мостик: то же соединение в pandas</h2>
+
+        <h3>merge: how вместо типа JOIN</h3>
+        <div class="code">
+          <div class="bar"><span class="file">мост в pandas</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">import pandas as pd
+
+orders = pd.read_sql("SELECT * FROM orders", conn)
+users = pd.read_sql(
+    "SELECT id AS user_id, name AS user_name, city FROM users", conn
+)
+products = pd.read_sql(
+    "SELECT id AS product_id, name AS product_name, price FROM products", conn
+)
+
+left = orders.merge(users, on="user_id", how="left")          # LEFT JOIN
+both = left.merge(products, on="product_id", how="inner")     # + INNER JOIN
+both["total"] = both["quantity"] * both["price"]
+
+only_orders = left[left["user_name"].isna()]                  # anti-join
+has_user = orders.merge(users, on="user_id", how="inner",
+                        validate="many_to_one")               # semi/many-to-one check</pre>
+        </div>
+        <p><code class="inl">how="left"</code> — это LEFT JOIN, <code class="inl">how="inner"</code> — INNER, <code class="inl">validate="many_to_one"</code> — проверка кардинальности, которую в SQL делают запросом <code class="inl">GROUP BY … HAVING COUNT(*) &gt; 1</code>. После left join пропуски справа становятся <code class="inl">NaN</code> — с ними работают методы из главы 17.</p>
+        <div class="note">
+          <span class="t">Одно отличие, которое ломает отчёты</span>
+          <p>В SQL NULL-ключ не соединяется ни с чем; в pandas <code class="inl">NaN</code> в ключе считается равным <code class="inl">NaN</code>. При переносе запроса в pandas число строк может измениться — сверяйте его на каждом шаге (глава 16).</p>
+        </div>
+
+        <div class="bridges">
+          <a class="bridge" href="ch-16-merge.html"><span class="to">Глава 16</span><span>merge: кардинальность важнее синтаксиса</span><span class="what">→ how, validate, indicator</span></a>
+          <a class="bridge" href="ch-17-missing.html"><span class="to">Глава 17</span><span>Пропуски: NaN, None и pd.NA</span><span class="what">→ NULL после LEFT JOIN</span></a>
+          <a class="bridge" href="ch-22-subqueries-cte.html"><span class="to">Глава 22</span><span>Подзапросы и CTE</span><span class="what">→ NOT EXISTS вместо NOT IN</span></a>
+          <a class="bridge" href="ch-15-groupby.html"><span class="to">Глава 15</span><span>groupby: разложить — посчитать — собрать</span><span class="what">→ выручка после соединения</span></a>
+        </div>
+      </section>
+
+      <div class="pager">
+        <a class="prev" href="ref-sql-select.html"><span class="dir">← Назад</span><span class="ttl">01 · SELECT и NULL</span></a>
+        <a class="next" href="ref-sql-group.html"><span class="dir">Дальше →</span><span class="ttl">03 · GROUP BY</span></a>
+      </div>
+
+    </div>
+  </main>
+</div>
+<script src="assets/toc.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>

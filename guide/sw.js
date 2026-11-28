@@ -1,8 +1,9 @@
 // Сгенерировано tools/gen_sw.cjs — не править руками.
-const CACHE = "assoc-guide-v63710307";
+const CACHE = "assoc-guide-vddbecfb0";
 const PRECACHE = [
   "./appendix-pandas.html",
   "./appendix-snippets.html",
+  "./appendix-sql.html",
   "./appendix-types.html",
   "./assets/app.js",
   "./assets/icons/favicon.svg",
@@ -87,6 +88,12 @@ const PRECACHE = [
   "./ref-pd-reshape.html",
   "./ref-pd-series.html",
   "./ref-set.html",
+  "./ref-sql-cte.html",
+  "./ref-sql-group.html",
+  "./ref-sql-index.html",
+  "./ref-sql-join.html",
+  "./ref-sql-select.html",
+  "./ref-sql-window.html",
   "./ref-str.html",
   "./ref-tuple.html",
   "./snippets/02_dict_lab.py",
@@ -131,6 +138,12 @@ const PRECACHE = [
   "./snippets/ref_pd_reshape_lab.py",
   "./snippets/ref_pd_series_lab.py",
   "./snippets/ref_set_lab.py",
+  "./snippets/ref_sql_cte_lab.sql",
+  "./snippets/ref_sql_group_lab.sql",
+  "./snippets/ref_sql_index_lab.sql",
+  "./snippets/ref_sql_join_lab.sql",
+  "./snippets/ref_sql_select_lab.sql",
+  "./snippets/ref_sql_window_lab.sql",
   "./snippets/ref_str_lab.py",
   "./snippets/ref_tuple_lab.py",
   "./snippets/view.html"

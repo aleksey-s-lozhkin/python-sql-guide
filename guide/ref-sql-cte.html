@@ -1,0 +1,768 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Справочник · Подзапросы и CTE: разложить вопрос — Ассоциативный гайд</title>
+<meta name="description" content="Справочник по SQL: скалярные подзапросы, IN/EXISTS, коррелированные запросы, CTE и рекурсия в PostgreSQL 14 — с реальным выводом psql.">
+<link rel="stylesheet" href="assets/style.css">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#fbf8f2" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#14131a" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="assets/icons/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="assets/icons/icon-180.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Гайд Py/SQL">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+</head>
+<body data-slug="ref-sql-cte">
+<div class="app">
+  <aside class="sidebar" id="sidebar"></aside>
+  <main>
+    <div class="wrap">
+
+      <header class="chapter-head">
+        <div class="eyebrow">
+          <span class="part">Справочник · SQL</span>
+          <span class="dot"></span>
+          <span>страница 5 из 6</span>
+          <span class="dot"></span>
+          <span>готово</span>
+        </div>
+        <h1>Подзапросы и CTE: разложить вопрос
+          <span class="sub">Подзапросы, IN и EXISTS, WITH и рекурсия в PostgreSQL 14</span>
+        </h1>
+        <p class="lead">
+          Сложный отчёт почти никогда не пишется одним куском: сначала считают, потом фильтруют,
+          потом соединяют. Подзапрос делает это «внутри строки», CTE — именованными шагами.
+          Здесь собраны конструкции, их цена и ловушки — с живыми планами и выводом psql.
+        </p>
+        <div class="meta">
+          <span class="chip">⏱ <b>12 минут</b></span>
+          <span class="chip">🎯 уровень <b>2</b></span>
+          <span class="chip">🐘 PostgreSQL <b>14</b></span>
+          <span class="chip">📚 <b>глава 22</b></span>
+        </div>
+      </header>
+
+      <p class="small">
+        Справочник SQL: <a href="appendix-sql.html">вся карта</a> ·
+        <a href="ref-sql-select.html">01 · SELECT и NULL</a> ·
+        <a href="ref-sql-join.html">02 · JOIN</a> ·
+        <a href="ref-sql-group.html">03 · GROUP BY</a> ·
+        <a href="ref-sql-window.html">04 · окна</a> ·
+        <b>05 · CTE</b> · <a href="ref-sql-index.html">06 · индексы</a>
+      </p>
+
+      <div class="tldr">
+        <div class="t">Самое главное</div>
+        <ul>
+          <li>Подзапрос возвращает значение или набор строк «внутри» запроса; CTE даёт шагу
+              <b>имя</b> через <code class="inl">WITH</code> и читается сверху вниз.</li>
+          <li>Для анти-соединения берите <code class="inl">NOT EXISTS</code>, а не
+              <code class="inl">NOT IN</code>: NULL в подзапросе делает <code class="inl">NOT IN</code>
+              пустым для всех строк.</li>
+          <li>В PostgreSQL 12+ CTE по умолчанию <b>встраивается</b> в запрос, а не материализуется.
+              Нужен отдельный расчёт — <code class="inl">AS MATERIALIZED</code>.</li>
+        </ul>
+      </div>
+
+      <!-- ══════════════════ 01. Что это ══════════════════ -->
+      <section>
+        <h2><span class="num">01</span>Что это и как устроено</h2>
+        <p>
+          <b>Подзапрос</b> — это <code class="inl">SELECT</code> внутри другого запроса. Он может вернуть
+          одно значение для сравнения, список значений для <code class="inl">IN</code> или просто
+          ответить «есть ли такая строка» для <code class="inl">EXISTS</code>. <b>Коррелированный</b>
+          подзапрос ссылается на строку внешнего запроса и фактически выполняется для каждой такой строки.
+        </p>
+        <p>
+          <b>CTE</b> (<code class="inl">WITH name AS (...)</code>) — именованный шаг того же запроса:
+          на результат можно ссылаться дальше как на таблицу. Это про читаемость и структуру, а не про
+          автоматическое ускорение. Живёт CTE только внутри одного запроса; временная таблица —
+          на всю сессию и требует DDL.
+        </p>
+
+        <div class="anchor">
+          <div class="glyph">📝</div>
+          <div>
+            <div class="t">Держите эту картинку в голове</div>
+            <p class="kick"><strong>Разложить вопрос на шаги.</strong> Подзапрос — пометка на полях:
+            работает, но если пометок много, читать тяжело. CTE — черновик с заголовком: шаг вынесли,
+            назвали (<code class="inl">WITH order_revenue AS (...)</code>) и дальше ссылаетесь на него
+            как на таблицу.</p>
+            <p>Логика ответа та же, но видно, из каких частей он собран. Подробный разбор — в
+            <a href="ch-22-subqueries-cte.html">главе 22</a>.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ══════════════════ 02. Когда брать ══════════════════ -->
+      <section>
+        <h2><span class="num">02</span>Когда применять, а когда нет</h2>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Задача</th><th>Инструмент</th><th>Примечание</th></tr></thead>
+            <tbody>
+              <tr><td>Сравнить с одним числом: средним, максимумом</td><td><code class="inl">(SELECT ...)</code></td><td>скалярный подзапрос; больше одной строки — ошибка</td></tr>
+              <tr><td>Проверить «есть ли хотя бы одна строка»</td><td><code class="inl">EXISTS</code></td><td>проверяет факт, а не значение</td></tr>
+              <tr><td>Отфильтровать по списку значений</td><td><code class="inl">IN</code></td><td>с NULL — только вместе с <code class="inl">IS NOT NULL</code></td></tr>
+              <tr><td>Найти строки без пары (анти-соединение)</td><td><code class="inl">NOT EXISTS</code></td><td>надёжнее <code class="inl">NOT IN</code></td></tr>
+              <tr><td>Отчёт из нескольких шагов</td><td><code class="inl">WITH</code></td><td>имя шага; читается сверху вниз</td></tr>
+              <tr><td>Шаг нужен дважды или он дорогой</td><td><code class="inl">MATERIALIZED</code></td><td>посчитать один раз, потом <code class="inl">CTE Scan</code></td></tr>
+              <tr><td>Обход иерархии, календарь, ряд чисел</td><td><code class="inl">WITH RECURSIVE</code></td><td>нужно условие остановки</td></tr>
+              <tr><td>«Сначала агрегат, потом фильтр»</td><td>CTE + <code class="inl">WHERE</code></td><td>фильтр по результату агрегата, а не по строкам</td></tr>
+              <tr><td>Коррелированный подзапрос на каждой строке</td><td>JOIN, <code class="inl">GROUP BY</code></td><td>на больших таблицах — O(n) подзапросов</td></tr>
+              <tr><td>Одноразовый короткий фильтр</td><td>без подзапроса</td><td>проще условие — меньше шансов на ошибку</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="small">
+          Схема базы и все запросы — в <a href="snippets/view.html?f=ref_sql_cte_lab.sql"><code class="inl">ref_sql_cte_lab.sql</code></a>.
+          Только <code class="inl">SELECT</code>: лаборатория ничего не меняет.
+        </p>
+      </section>
+
+      <!-- ══════════════════ 03. Синтаксис ══════════════════ -->
+      <section>
+        <h2><span class="num">03</span>Синтаксис-шаблон</h2>
+        <p>
+          Минимальный скелет CTE: шаг объявляется до основного запроса и получает имя. Скалярный
+          подзапрос выглядит как обычное сравнение с <code class="inl">(SELECT ...)</code> — он
+          разобран в разделе 05.
+        </p>
+
+        <h3>CTE: именованный шаг</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_sql_cte_lab.sql</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">WITH user_totals AS (
+    SELECT user_id, SUM(quantity * price) AS total
+    FROM orders o JOIN products p ON p.id = o.product_id
+    GROUP BY user_id
+)
+SELECT u.name, t.total
+FROM user_totals t JOIN users u ON u.id = t.user_id
+ORDER BY t.total DESC, u.name;</pre>
+          <div class="out"> name  |  total   
+-------+----------
+ Anna  | 76950.00
+ Olga  | 76500.00
+ Ivan  | 23800.00
+ Petr  | 22000.00
+ Maria |  2250.00
+(5 rows)</div>
+        </div>
+        <p>
+          Шаблон читается так: <code class="inl">WITH user_totals AS (...)</code> — «сначала посчитай
+          итоги по пользователям», затем основной <code class="inl">SELECT</code> соединяет их с
+          <code class="inl">users</code>. Имя живёт до конца запроса; вложенные запросы могут ссылаться
+          только на объявленные выше.
+        </p>
+      </section>
+
+      <!-- ══════════════════ 04. Все конструкции ══════════════════ -->
+      <section>
+        <h2><span class="num">04</span>Все конструкции</h2>
+        <p>
+          Две таблицы: сначала подзапросы, потом CTE. «Результат» — форма, с которой дальше работает
+          основной запрос.
+        </p>
+
+        <h3>Подзапросы</h3>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Конструкция</th><th>Что делает</th><th>Результат</th><th>Примечание</th></tr></thead>
+            <tbody>
+              <tr><td class="mono">(SELECT ...)</td><td>скалярный подзапрос: одно значение в сравнении</td><td>1 значение</td><td>больше одной строки — ошибка</td></tr>
+              <tr><td class="mono">x IN (SELECT ...)</td><td>сравнивает со списком значений</td><td>bool</td><td>NULL в списке делает <code class="inl">NOT IN</code> ловушкой</td></tr>
+              <tr><td class="mono">EXISTS (SELECT 1 ...)</td><td>есть ли хотя бы одна строка</td><td>bool</td><td><code class="inl">SELECT 1</code> — не «выбрать единицу», а «проверить факт»</td></tr>
+              <tr><td class="mono">NOT EXISTS (...)</td><td>анти-соединение: строки без пары</td><td>bool</td><td>NULL во внутреннем запросе не ломает</td></tr>
+              <tr><td class="mono">x = ANY (ARRAY[...])</td><td>совпадение с любым элементом массива</td><td>bool</td><td>то же, что <code class="inl">IN</code>, но список задан массивом</td></tr>
+              <tr><td class="mono">коррелированный</td><td>подзапрос ссылается на внешнюю строку</td><td>зависит от формы</td><td>выполняется для каждой строки — дорого на больших таблицах</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>CTE и промежуточные шаги</h3>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Конструкция</th><th>Что делает</th><th>Результат</th><th>Примечание</th></tr></thead>
+            <tbody>
+              <tr><td class="mono">WITH name AS (...)</td><td>именованный шаг запроса</td><td>временный набор строк</td><td>в PG 12+ по умолчанию встраивается</td></tr>
+              <tr><td class="mono">WITH a AS (...), b AS (...)</td><td>несколько шагов; <code class="inl">b</code> может ссылаться на <code class="inl">a</code></td><td>цепочка шагов</td><td>порядок объявления важен</td></tr>
+              <tr><td class="mono">WITH RECURSIVE name AS (...)</td><td>базовый шаг + повтор до условия остановки</td><td>ряд чисел, дат, иерархия</td><td>без <code class="inl">WHERE</code> в рекурсивной части — бесконечный цикл</td></tr>
+              <tr><td class="mono">AS MATERIALIZED</td><td>посчитать шаг один раз и сохранить</td><td>в плане <code class="inl">CTE Scan</code></td><td>осознанное решение, не «ускорение по умолчанию»</td></tr>
+              <tr><td class="mono">AS NOT MATERIALIZED</td><td>принудительно встроить шаг</td><td>подзапрос в плане</td><td>когда материализация мешает оптимизации</td></tr>
+              <tr><td class="mono">CREATE TEMP TABLE</td><td>таблица на сессию, не на запрос</td><td>обычная таблица</td><td>DDL, можно индексы; вне лаборатории</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="small">
+          Порядок выполнения запроса (глава 19) от <code class="inl">WITH</code> не меняется: шаг всё
+          равно вычисляется в рамках общего плана, а не «до всего остального» автоматически.
+        </p>
+      </section>
+
+      <!-- ══════════════════ 05. Разбор ══════════════════ -->
+      <section>
+        <h2><span class="num">05</span>Разбор по вариантам</h2>
+        <p>
+          Все примеры — в файле
+          <a href="snippets/view.html?f=ref_sql_cte_lab.sql"><code class="inl">ref_sql_cte_lab.sql</code></a>.
+          Вывод — реальный <code class="inl">psql</code> на базе <code class="inl">learning_shop</code>.
+        </p>
+
+        <h3>Скалярный подзапрос в WHERE</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_sql_cte_lab.sql</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">SELECT o.id, (o.quantity * p.price) AS revenue
+FROM orders o JOIN products p ON p.id = o.product_id
+WHERE (o.quantity * p.price) &gt; (
+    SELECT AVG(quantity * price) FROM orders o2
+    JOIN products p2 ON p2.id = o2.product_id
+)
+ORDER BY revenue DESC, o.id;</pre>
+          <div class="out"> id | revenue  
+----+----------
+  1 | 75000.00
+  9 | 75000.00
+  5 | 22000.00
+ 10 | 22000.00
+(4 rows)</div>
+        </div>
+        <p>
+          Внутренний запрос выполняется один раз, его результат подставляется в сравнение.
+          Заказы с выручкой ровно 20240.00 не попали: условие строгое.
+        </p>
+
+        <h3>IN и ANY</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_sql_cte_lab.sql</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">SELECT id, name FROM users
+WHERE id IN (SELECT user_id FROM orders WHERE quantity &gt;= 3)
+ORDER BY id;
+
+SELECT id, name FROM users
+WHERE id = ANY (ARRAY[1, 3])
+ORDER BY id;</pre>
+          <div class="out"> id | name  
+----+-------
+  1 | Anna
+  5 | Maria
+(2 rows)
+
+ id | name 
+----+------
+  1 | Anna
+  3 | Olga
+(2 rows)</div>
+        </div>
+        <p>
+          <code class="inl">IN</code> сравнивает с каждым значением подзапроса; <code class="inl">ANY</code>
+          делает то же для массива. Список из подзапроса может содержать NULL — для
+          <code class="inl">IN</code> это не опасно, для <code class="inl">NOT IN</code> опасно (раздел 07).
+        </p>
+
+        <h3>EXISTS и NOT EXISTS</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_sql_cte_lab.sql</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">SELECT u.id, u.name
+FROM users u
+WHERE EXISTS (SELECT 1 FROM orders o WHERE o.user_id = u.id)
+ORDER BY u.id;
+
+SELECT o.id, o.created_at
+FROM orders o
+WHERE NOT EXISTS (SELECT 1 FROM users u WHERE u.id = o.user_id);</pre>
+          <div class="out"> id | name  
+----+-------
+  1 | Anna
+  2 | Ivan
+  3 | Olga
+  4 | Petr
+  5 | Maria
+(5 rows)
+
+ id |     created_at      
+----+---------------------
+  8 | 2024-03-07 19:30:00
+(1 row)</div>
+        </div>
+        <p>
+          <code class="inl">EXISTS</code> останавливается на первой найденной строке — значение внутри
+          <code class="inl">SELECT</code> не вычисляется. <code class="inl">NOT EXISTS</code> — каноническое
+          анти-соединение: заказ <code class="inl">id = 8</code> остался без пользователя.
+        </p>
+
+        <h3>Коррелированный подзапрос</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_sql_cte_lab.sql</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">SELECT u.name,
+       (SELECT COUNT(*) FROM orders o WHERE o.user_id = u.id) AS orders
+FROM users u
+ORDER BY u.id;</pre>
+          <div class="out"> name  | orders 
+-------+--------
+ Anna  |      3
+ Ivan  |      2
+ Olga  |      2
+ Petr  |      1
+ Maria |      1
+(5 rows)</div>
+        </div>
+        <p>
+          Подзапрос ссылается на <code class="inl">u.id</code> снаружи, поэтому выполняется для каждого
+          пользователя. На пяти строках это незаметно; на 100 000 — уже 100 000 подзапросов.
+          Обычная замена — <code class="inl">LEFT JOIN ... GROUP BY</code>.
+        </p>
+
+        <h3>Несколько CTE: агрегат, потом фильтр</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_sql_cte_lab.sql</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">WITH order_revenue AS (
+    SELECT o.id, o.user_id, o.quantity * p.price AS revenue
+    FROM orders o JOIN products p ON p.id = o.product_id
+),
+user_totals AS (
+    SELECT user_id, SUM(revenue) AS total
+    FROM order_revenue
+    GROUP BY user_id
+),
+big_spenders AS (
+    SELECT user_id, total FROM user_totals WHERE total &gt; 50000
+)
+SELECT u.name, b.total
+FROM big_spenders b JOIN users u ON u.id = b.user_id
+ORDER BY b.total DESC, u.name;</pre>
+          <div class="out"> name |  total   
+------+----------
+ Anna | 76950.00
+ Olga | 76500.00
+(2 rows)</div>
+        </div>
+        <p>
+          Шаги выстраиваются цепочкой: <code class="inl">order_revenue</code> → <code class="inl">user_totals</code>
+          → <code class="inl">big_spenders</code>. Фильтр <code class="inl">total &gt; 50000</code> стоит
+          уже после агрегата, а не до него. Каждый следующий шаг видит только предыдущие, поэтому
+          порядок объявления — часть логики.
+        </p>
+
+        <h3>Рекурсивный CTE: числа</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_sql_cte_lab.sql</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">WITH RECURSIVE numbers AS (
+    SELECT 1 AS n
+    UNION ALL
+    SELECT n + 1 FROM numbers WHERE n &lt; 5
+)
+SELECT n FROM numbers;</pre>
+          <div class="out"> n 
+---
+ 1
+ 2
+ 3
+ 4
+ 5
+(5 rows)</div>
+        </div>
+        <p>
+          Три части: старт (<code class="inl">SELECT 1</code>), соединение
+          (<code class="inl">UNION ALL</code>) и рекурсивный шаг с условием
+          <code class="inl">WHERE n &lt; 5</code>. Условие — единственное, что останавливает
+          последовательность; без него запрос не завершится.
+        </p>
+
+        <h3>CTE и материализация: смотрим план</h3>
+        <p>
+          Один и тот же отчёт дважды. Сначала — как есть: PostgreSQL 14 встраивает шаги, в плане нет
+          <code class="inl">CTE Scan</code>. Потом — с <code class="inl">MATERIALIZED</code>: шаги
+          считаются отдельно и читаются из временного результата.
+        </p>
+        <div class="code">
+          <div class="bar"><span class="file">ref_sql_cte_lab.sql</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">EXPLAIN
+WITH order_revenue AS (
+    SELECT o.id, o.user_id, o.quantity * p.price AS revenue
+    FROM orders o JOIN products p ON p.id = o.product_id
+),
+user_totals AS (
+    SELECT user_id, SUM(revenue) AS total
+    FROM order_revenue
+    GROUP BY user_id
+)
+SELECT u.name, t.total
+FROM user_totals t JOIN users u ON u.id = t.user_id
+ORDER BY t.total DESC, u.name;</pre>
+          <div class="out">                                               QUERY PLAN                                               
+--------------------------------------------------------------------------------------------------------
+ Sort  (cost=104.35..104.85 rows=200 width=64)
+   Sort Key: t.total DESC, u.name
+   -&gt;  Hash Join  (cost=78.74..96.71 rows=200 width=64)
+         Hash Cond: (u.id = t.user_id)
+         -&gt;  Seq Scan on users u  (cost=0.00..16.30 rows=630 width=36)
+         -&gt;  Hash  (cost=76.24..76.24 rows=200 width=36)
+               -&gt;  Subquery Scan on t  (cost=71.74..76.24 rows=200 width=36)
+                     -&gt;  HashAggregate  (cost=71.74..74.24 rows=200 width=36)
+                           Group Key: o.user_id
+                           -&gt;  Hash Join  (cost=26.20..56.04 rows=1570 width=24)
+                                 Hash Cond: (o.product_id = p.id)
+                                 -&gt;  Seq Scan on orders o  (cost=0.00..25.70 rows=1570 width=12)
+                                 -&gt;  Hash  (cost=17.20..17.20 rows=720 width=20)
+                                       -&gt;  Seq Scan on products p  (cost=0.00..17.20 rows=720 width=20)
+(14 rows)</div>
+        </div>
+        <div class="code" style="margin-top:18px">
+          <div class="bar"><span class="file">ref_sql_cte_lab.sql</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">EXPLAIN
+WITH order_revenue AS MATERIALIZED (
+    SELECT o.id, o.user_id, o.quantity * p.price AS revenue
+    FROM orders o JOIN products p ON p.id = o.product_id
+),
+user_totals AS MATERIALIZED (
+    SELECT user_id, SUM(revenue) AS total
+    FROM order_revenue
+    GROUP BY user_id
+)
+SELECT u.name, t.total
+FROM user_totals t JOIN users u ON u.id = t.user_id
+ORDER BY t.total DESC, u.name;</pre>
+          <div class="out">                                    QUERY PLAN                                    
+----------------------------------------------------------------------------------
+ Sort  (cost=141.99..142.49 rows=200 width=64)
+   Sort Key: t.total DESC, u.name
+   CTE order_revenue
+     -&gt;  Hash Join  (cost=26.20..63.89 rows=1570 width=40)
+           Hash Cond: (o.product_id = p.id)
+           -&gt;  Seq Scan on orders o  (cost=0.00..25.70 rows=1570 width=16)
+           -&gt;  Hash  (cost=17.20..17.20 rows=720 width=20)
+                 -&gt;  Seq Scan on products p  (cost=0.00..17.20 rows=720 width=20)
+   CTE user_totals
+     -&gt;  HashAggregate  (cost=39.25..41.75 rows=200 width=36)
+           Group Key: order_revenue.user_id
+           -&gt;  CTE Scan on order_revenue  (cost=0.00..31.40 rows=1570 width=36)
+   -&gt;  Hash Join  (cost=24.18..28.70 rows=200 width=64)
+         Hash Cond: (t.user_id = u.id)
+         -&gt;  CTE Scan on user_totals t  (cost=0.00..4.00 rows=200 width=36)
+         -&gt;  Hash  (cost=16.30..16.30 rows=630 width=36)
+               -&gt;  Seq Scan on users u  (cost=0.00..16.30 rows=630 width=36)
+(17 rows)</div>
+        </div>
+        <p>
+          В первом плане видно <code class="inl">Subquery Scan on t</code> — это встроенный CTE;
+          во втором появились <code class="inl">CTE order_revenue</code> и
+          <code class="inl">CTE Scan</code>. Вывод: <code class="inl">WITH</code> сам по себе
+          не «материализует для скорости».
+        </p>
+      </section>
+
+      <!-- ══════════════════ 06. Сценарии ══════════════════ -->
+      <section>
+        <h2><span class="num">06</span>Три сценария на learning_shop</h2>
+
+        <h3>Отчёт: выше средней выручки</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_sql_cte_lab.sql</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">WITH order_revenue AS (
+    SELECT o.id, o.user_id, o.quantity * p.price AS revenue
+    FROM orders o JOIN products p ON p.id = o.product_id
+),
+user_totals AS (
+    SELECT user_id, SUM(revenue) AS total
+    FROM order_revenue
+    GROUP BY user_id
+)
+SELECT u.name, t.total
+FROM user_totals t JOIN users u ON u.id = t.user_id
+WHERE t.total &gt; (SELECT AVG(total) FROM user_totals)
+ORDER BY t.total DESC, u.name;</pre>
+          <div class="out"> name |  total   
+------+----------
+ Anna | 76950.00
+ Olga | 76500.00
+(2 rows)</div>
+        </div>
+        <p>
+          Вопрос звучит как «кто выше среднего», но среднее считается по <em>готовым суммам</em>,
+          а не по заказам. Поэтому сначала два CTE, потом подзапрос со средним. Порядок шагов здесь —
+          и есть решение задачи.
+        </p>
+
+        <h3>Пользователи, не покупавшие в феврале</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_sql_cte_lab.sql</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">SELECT u.id, u.name
+FROM users u
+WHERE NOT EXISTS (
+    SELECT 1 FROM orders o
+    WHERE o.user_id = u.id
+      AND o.created_at &gt;= '2024-02-01'
+      AND o.created_at &lt; '2024-03-01'
+)
+ORDER BY u.id;</pre>
+          <div class="out"> id | name 
+----+------
+  1 | Anna
+  4 | Petr
+(2 rows)</div>
+        </div>
+        <p>
+          Анти-соединение с дополнительным условием по датам: «нет строки за февраль». В этой базе
+          заказы есть у всех пяти пользователей, поэтому вопрос «совсем без заказов» вернул бы пустой
+          результат — а с периодом он осмыслен. Пустой ответ здесь корректен, а не ошибка.
+        </p>
+
+        <h3>Рекурсивный календарь месяцев</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_sql_cte_lab.sql</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">WITH RECURSIVE months AS (
+    SELECT DATE '2024-01-01' AS month
+    UNION ALL
+    SELECT (month + INTERVAL '1 month')::date FROM months
+    WHERE month &lt; DATE '2024-06-01'
+),
+monthly AS (
+    SELECT DATE_TRUNC('month', o.created_at)::date AS month,
+           SUM(o.quantity * p.price) AS revenue
+    FROM orders o JOIN products p ON p.id = o.product_id
+    GROUP BY 1
+)
+SELECT m.month, COALESCE(mo.revenue, 0) AS revenue
+FROM months m LEFT JOIN monthly mo ON mo.month = m.month
+ORDER BY m.month;</pre>
+          <div class="out">   month    | revenue  
+------------+----------
+ 2024-01-01 | 78150.00
+ 2024-02-01 | 25750.00
+ 2024-03-01 | 98500.00
+ 2024-04-01 |        0
+ 2024-05-01 |        0
+ 2024-06-01 |        0
+(6 rows)</div>
+        </div>
+        <p>
+          Рекурсия строит полный ряд месяцев, а <code class="inl">LEFT JOIN</code> оставляет месяцы
+          без продаж с нулём через <code class="inl">COALESCE</code>. Так делают отчёты, где «нет данных»
+          должно быть явной строкой, а не пропуском.
+        </p>
+      </section>
+
+      <!-- ══════════════════ 07. Ошибки ══════════════════ -->
+      <section>
+        <h2><span class="num">07</span>Пять ошибок, на которых спотыкаются</h2>
+        <div class="errors">
+          <div class="err">
+            <div class="h">NOT IN с NULL</div>
+            <p>Если в подзапросе (или списке) есть NULL, <code class="inl">NOT IN</code> даёт unknown для каждой строки — и вы получаете пустой результат там, где ждали три строки. Проверено: <code class="inl">id NOT IN (2, 4, NULL)</code> возвращает 0 строк, хотя Anna, Olga и Maria подходят.</p>
+            <div class="fix">Для анти-соединения — <code class="inl">NOT EXISTS</code>. Для <code class="inl">NOT IN</code> — отфильтровать NULL: <code class="inl">WHERE user_id IS NOT NULL</code>.</div>
+          </div>
+
+          <div class="err">
+            <div class="h">Коррелированный подзапрос в цикле</div>
+            <p>Подзапрос, который ссылается на внешнюю строку, выполняется для каждой строки внешнего запроса. На маленькой таблице это незаметно, на <code class="inl">orders_big</code> — сто тысяч обращений к <code class="inl">users</code>.</p>
+            <div class="fix">Переписать в <code class="inl">JOIN</code> + <code class="inl">GROUP BY</code> или оконную функцию: один проход вместо n подзапросов.</div>
+          </div>
+
+          <div class="err">
+            <div class="h">Рекурсия без условия остановки</div>
+            <p><code class="inl">WITH RECURSIVE</code> без <code class="inl">WHERE</code> в рекурсивной части не завершится: каждая итерация снова порождает строку. <code class="inl">LIMIT</code> снаружи не спасает — рекурсия вычисляется до применения лимита.</p>
+            <div class="fix">Условие в рекурсивной части обязательно: <code class="inl">WHERE n &lt; 5</code>, <code class="inl">WHERE month &lt; DATE '2024-06-01'</code>. Плюс проверка на NULL.</div>
+          </div>
+
+          <div class="err">
+            <div class="h">Верить, что CTE всегда материализуется</div>
+            <p>В PostgreSQL 12+ обычный <code class="inl">WITH</code> встраивается в основной запрос: в плане <code class="inl">Subquery Scan</code>, а не <code class="inl">CTE Scan</code>. Ждать от него «кэша» или отдельного расчёта не стоит.</p>
+            <div class="fix">Нужен отдельный расчёт — <code class="inl">AS MATERIALIZED</code>. Нужно встроить обратно — <code class="inl">AS NOT MATERIALIZED</code>.</div>
+          </div>
+
+          <div class="err">
+            <div class="h">Одинаковые имена шагов и колонок</div>
+            <p>Два CTE с одним именем — ошибка; одинаковые колонки в шагах и таблицах дают неоднозначность при соединении. <code class="inl">SELECT total</code> в запросе с двумя источниками <code class="inl">total</code> не выполнится.</p>
+            <div class="fix">Уникальные имена шагов и явные списки колонок: <code class="inl">WITH user_totals(user_id, total) AS (...)</code>, а к колонкам — <code class="inl">t.total</code>.</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ══════════════════ 08. Мини-проверка ══════════════════ -->
+      <section>
+        <h2><span class="num">08</span>Мини-проверка</h2>
+        <p>Пять вопросов на понимание и две задачи. Сначала своя попытка — потом спойлер.</p>
+
+        <div class="qa">
+          <details>
+            <summary>Чем CTE отличается от подзапроса?</summary>
+            <div class="a">
+              <p>Синтаксически — именем и местом: CTE объявляется до основного запроса
+              (<code class="inl">WITH name AS (...)</code>) и на него ссылаются как на таблицу.
+              Подзапрос живёт внутри выражения. По смыслу оба — шаги одного запроса; в PG 12+ CTE
+              по умолчанию встраивается так же, как подзапрос.</p>
+              <div class="verdict">Резюме: CTE — это подзапрос, которому дали имя и вынесли наверх.</div>
+            </div>
+          </details>
+        </div>
+
+        <div class="qa">
+          <details>
+            <summary>Когда IN, а когда EXISTS?</summary>
+            <div class="a">
+              <p><code class="inl">IN</code> — когда подзапрос возвращает список значений и вы
+              сравниваете с ним. <code class="inl">EXISTS</code> — когда важен сам факт существования
+              строки. Для анти-соединения <code class="inl">NOT EXISTS</code> безопаснее:
+              <code class="inl">NOT IN</code> ломается о NULL.</p>
+              <div class="verdict">Резюме: IN — про значения, EXISTS — про факт.</div>
+            </div>
+          </details>
+        </div>
+
+        <div class="qa">
+          <details>
+            <summary>Почему коррелированный подзапрос дорогой и что вместо него?</summary>
+            <div class="a">
+              <p>Он зависит от строки внешнего запроса и выполняется для каждой строки — n строк дают
+              n запусков внутреннего запроса. Замена: <code class="inl">JOIN</code> +
+              <code class="inl">GROUP BY</code> или оконная функция — один проход по данным.</p>
+              <div class="verdict">Резюме: коррелированный — «спросить заново для каждой строки».</div>
+            </div>
+          </details>
+        </div>
+
+        <div class="qa">
+          <details>
+            <summary>Как остановить рекурсивный CTE?</summary>
+            <div class="a">
+              <p>Условием в рекурсивной части: <code class="inl">WHERE month &lt; DATE '2024-06-01'</code>
+              или <code class="inl">WHERE n &lt; 5</code>. Базовый шаг даёт первую строку, рекурсивный —
+              следующую, пока условие истинно. <code class="inl">LIMIT</code> снаружи не является
+              условием остановки.</p>
+              <div class="verdict">Резюме: без WHERE в рекурсивной части запрос не завершится.</div>
+            </div>
+          </details>
+        </div>
+
+        <div class="qa">
+          <details>
+            <summary>Материализуется ли CTE в PostgreSQL 14?</summary>
+            <div class="a">
+              <p>По умолчанию нет: он встраивается в план (<code class="inl">Subquery Scan</code>).
+              <code class="inl">AS MATERIALIZED</code> заставляет посчитать шаг один раз
+              (<code class="inl">CTE Scan</code>). Это инструмент под задачу, а не «всегда быстрее».</p>
+              <div class="verdict">Резюме: обычный WITH — встроенный; MATERIALIZED — отдельный расчёт.</div>
+            </div>
+          </details>
+        </div>
+
+        <h3><span style="color:var(--muted);font-family:var(--mono);font-size:.8rem">01</span> Пользователи с числом заказов меньше двух</h3>
+        <p>Сколько заказов у каждого пользователя и кто заказал меньше двух раз? Учтите и тех, у кого заказов нет.</p>
+        <div class="code">
+          <div class="bar"><span class="file">условие</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">-- ожидается: Petr и Maria — по одному заказу</pre>
+        </div>
+        <div class="qa">
+          <details>
+            <summary>Показать решение и разбор</summary>
+            <div class="a">
+              <div class="code" style="margin-top:0">
+                <div class="bar"><span class="file">решение</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+                <pre data-lang="sql">WITH user_orders AS (
+    SELECT u.id, u.name, COUNT(o.id) AS orders
+    FROM users u LEFT JOIN orders o ON o.user_id = u.id
+    GROUP BY u.id, u.name
+)
+SELECT name, orders
+FROM user_orders
+WHERE orders &lt; 2
+ORDER BY id;</pre>
+                <div class="out"> name  | orders 
+-------+--------
+ Petr  |      1
+ Maria |      1
+(2 rows)</div>
+              </div>
+              <p><strong>Что важно.</strong> <code class="inl">LEFT JOIN</code> сохраняет пользователей
+              без заказов, <code class="inl">COUNT(o.id)</code> считает только реальные заказы и даёт 0.
+              Фильтр по агрегату стоит в финальном <code class="inl">WHERE</code> — именно для этого
+              и нужен второй шаг.</p>
+            </div>
+          </details>
+        </div>
+
+        <h3><span style="color:var(--muted);font-family:var(--mono);font-size:.8rem">02</span> Категории выше средней выручки</h3>
+        <p>Посчитайте выручку по категориям и оставьте те, что выше средней по категориям.</p>
+        <div class="code">
+          <div class="bar"><span class="file">условие</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">-- ожидается: electronics — единственная категория выше средней</pre>
+        </div>
+        <div class="qa">
+          <details>
+            <summary>Показать решение и разбор</summary>
+            <div class="a">
+              <div class="code" style="margin-top:0">
+                <div class="bar"><span class="file">решение</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+                <pre data-lang="sql">WITH category_revenue AS (
+    SELECT p.category, SUM(o.quantity * p.price) AS revenue
+    FROM orders o JOIN products p ON p.id = o.product_id
+    GROUP BY p.category
+)
+SELECT category, revenue
+FROM category_revenue
+WHERE revenue &gt; (SELECT AVG(revenue) FROM category_revenue)
+ORDER BY revenue DESC;</pre>
+                <div class="out">  category   |  revenue  
+-------------+-----------
+ electronics | 195500.00
+(1 row)</div>
+              </div>
+              <p><strong>Что важно.</strong> Среднее по категориям — это среднее от <em>готовых сумм</em>,
+              поэтому подзапрос ссылается на тот же CTE <code class="inl">category_revenue</code>.
+              Считать среднее по всем заказам было бы другой задачей.</p>
+            </div>
+          </details>
+        </div>
+      </section>
+
+      <!-- ══════════════════ 09. Мостик ══════════════════ -->
+      <section>
+        <h2><span class="num">09</span>Мостик: та же идея в pandas и Python</h2>
+
+        <h3>pandas: промежуточные переменные вместо CTE</h3>
+        <div class="code">
+          <div class="bar"><span class="file">мост в pandas</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">merged = orders.merge(products, left_on="product_id", right_on="id")
+merged["revenue"] = merged["quantity"] * merged["price"]        # order_revenue
+
+order_revenue = merged[["id", "user_id", "revenue"]]             # первый шаг
+user_totals = order_revenue.groupby("user_id", as_index=False)["revenue"].sum()
+
+report = user_totals.merge(users, on="user_id")                 # финальный SELECT
+report.where(report["revenue"] &gt; report["revenue"].mean()).dropna()</pre>
+        </div>
+        <p>
+          В pandas аналог CTE — обычная промежуточная переменная: результат шага присвоили имени
+          и используют дальше. Подзапрос <code class="inl">IN</code> похож на
+          <code class="inl">isin</code>, <code class="inl">EXISTS</code> — на проверку
+          <code class="inl">notna</code>/наличие ключа. Рекурсивного CTE в pandas нет — календарь
+          строят через <code class="inl">pd.date_range</code>, иерархию — циклом. В чистом Python
+          ту же роль играет <code class="inl">set</code>: <code class="inl">id in user_ids</code> — это
+          <code class="inl">EXISTS</code>, а <code class="inl">not in</code> — <code class="inl">NOT EXISTS</code>.
+        </p>
+
+        <div class="bridges">
+          <a class="bridge" href="ch-22-subqueries-cte.html"><span class="to">Глава 22</span><span>Подзапросы и CTE: как разложить вопрос</span><span class="what">→ черновик и чистовой вариант</span></a>
+          <a class="bridge" href="ch-19-order-of-execution.html"><span class="to">Глава 19</span><span>Порядок выполнения SQL</span><span class="what">→ почему WHERE не видит агрегат</span></a>
+          <a class="bridge" href="ch-23-window-functions.html"><span class="to">Глава 23</span><span>Оконные функции</span><span class="what">→ замена коррелированному подзапросу</span></a>
+          <a class="bridge" href="ref-sql-index.html"><span class="to">Справочник</span><span>06 · индексы и EXPLAIN</span><span class="what">→ следующий шаг: планы запросов</span></a>
+        </div>
+      </section>
+
+      <div class="pager">
+        <a class="prev" href="ref-sql-window.html"><span class="dir">← Назад</span><span class="ttl">04 · Оконные функции</span></a>
+        <a class="next" href="ref-sql-index.html"><span class="dir">Дальше →</span><span class="ttl">06 · Индексы и EXPLAIN</span></a>
+      </div>
+
+    </div>
+  </main>
+</div>
+<script src="assets/toc.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>

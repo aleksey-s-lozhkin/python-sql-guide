@@ -26,6 +26,7 @@ open guide/index.html
 | V. Интеграция | 25–26 | **готово** |
 | Справочник по типам данных | хаб + 9 страниц (str, list, tuple, dict, set, frozenset, Counter, defaultdict, deque) | **готово** |
 | Справочник по pandas | хаб + 7 страниц (Series/DataFrame, loc/iloc, фильтрация, groupby, merge, пропуски, reshape) | **готово** |
+| Справочник по SQL | хаб + 6 страниц (SELECT/NULL, JOIN, GROUP BY, окна, CTE, индексы/EXPLAIN) | **готово** |
 
 Заготовка — страница с планом главы и рабочей навигацией: оглавление и «мостики» работают
 как карта курса, а не как битые ссылки.
@@ -53,7 +54,7 @@ open http://localhost:8080
 ## Телефон и офлайн
 
 1. Опубликуйте книгу на GitHub Pages (ниже) — нужен `https`, иначе браузер не включит офлайн-кэш.
-2. Откройте ссылку на телефоне и полистайте 2–3 страницы: service worker скачает все 133 файла.
+2. Откройте ссылку на телефоне и полистайте 2–3 страницы: service worker скачает все 146 файлов.
 3. Safari: «Поделиться → На экран «Домой»»; Chrome: меню → «Установить приложение».
 4. Дальше книга открывается без сети. Прогресс чтения и размер текста (А−/А+) запоминаются.
 
@@ -75,6 +76,7 @@ guide/
   ch-*.html             главы и заготовки
   appendix-types.html   справочник по Python-коллекциям: карта, сложности, конвертации
   appendix-pandas.html  справочник по pandas: карта операций, конвертации
+  appendix-sql.html     справочник по SQL: конвейер, карта конструкций, план
   ref-*.html            справочники: методы, примеры, ошибки
   manifest.webmanifest  PWA: имя, иконки, запуск без браузерной обвязки
   sw.js                 офлайн-кэш (генерируется, не править руками)
@@ -138,11 +140,11 @@ npx puppeteer browsers install chrome
 Из корня проекта:
 
 ```
-node tools/check-links.cjs       # все 1022 ссылки и 51 страница на месте
-node tools/pwa-check.cjs         # SW, кэш из 133 файлов, открытие главы офлайн
+node tools/check-links.cjs       # все 1209 ссылок и 58 страниц на месте
+node tools/pwa-check.cjs         # SW, кэш из 146 файлов, открытие главы офлайн
 node tools/reader-check.cjs      # «продолжить чтение», размер текста, мобильное меню
 node tools/verify.cjs light      # скриншоты: десктоп, планшет, мобильный, тёмная тема
-node tools/gen_sw.cjs            # пересобрать sw.js после правок контента (133 файла)
+node tools/gen_sw.cjs            # пересобрать sw.js после правок контента (146 файлов)
 tools/publish.sh                 # опубликовать guide/ в ветку gh-pages вручную
 node tools/render.cjs guide/assets/maps/*.svg
 python3 guide/snippets/02_dict_lab.py

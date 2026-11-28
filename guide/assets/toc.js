@@ -55,7 +55,15 @@ window.BOOK = {
     { slug: "ref-pd-groupby", file: "ref-pd-groupby.html", title: "groupby: разложить — посчитать — собрать", n: "4", group: "pandas" },
     { slug: "ref-pd-merge", file: "ref-pd-merge.html", title: "merge: кардинальность важнее синтаксиса", n: "5", group: "pandas" },
     { slug: "ref-pd-missing", file: "ref-pd-missing.html", title: "Пропуски: NaN, None и pd.NA", n: "6", group: "pandas" },
-    { slug: "ref-pd-reshape", file: "ref-pd-reshape.html", title: "Reshape, даты и строки", n: "7", group: "pandas" }
+    { slug: "ref-pd-reshape", file: "ref-pd-reshape.html", title: "Reshape, даты и строки", n: "7", group: "pandas" },
+
+    { slug: "appendix-sql", file: "appendix-sql.html", title: "Справочник по SQL", nav: "SQL", group: "sql", hub: true },
+    { slug: "ref-sql-select", file: "ref-sql-select.html", title: "SELECT, WHERE и NULL", n: "1", group: "sql" },
+    { slug: "ref-sql-join", file: "ref-sql-join.html", title: "JOIN: кардинальность важнее синтаксиса", n: "2", group: "sql" },
+    { slug: "ref-sql-group", file: "ref-sql-group.html", title: "GROUP BY и HAVING", n: "3", group: "sql" },
+    { slug: "ref-sql-window", file: "ref-sql-window.html", title: "Оконные функции", n: "4", group: "sql" },
+    { slug: "ref-sql-cte", file: "ref-sql-cte.html", title: "Подзапросы и CTE", n: "5", group: "sql" },
+    { slug: "ref-sql-index", file: "ref-sql-index.html", title: "Индексы и EXPLAIN", n: "6", group: "sql" }
   ],
   parts: [
     { n: 1, title: "Фундамент Python", range: "Неделя 1" },
