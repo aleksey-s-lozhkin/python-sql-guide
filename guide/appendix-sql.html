@@ -71,16 +71,28 @@
               окно, разложение запроса или ускорение.</li>
           <li><strong>Откройте страницу.</strong> Вверху — зачем, в середине — синтаксис-шаблон и
               таблицы вариантов, внизу — ошибки и примеры на <code class="inl">learning_shop</code>.</li>
-          <li><strong>Проверьте на живой базе.</strong> Каждая страница ссылается на SQL-лабораторию:
-              запустите <code class="inl">psql -d learning_shop -f guide/snippets/ref_sql_*.sql</code>
-              и сравните вывод.</li>
+          <li><strong>Подготовьте базу и проверьте на живой базе.</strong> Два шага ниже создают
+              <code class="inl">learning_shop</code> из репозитория; затем запускайте лаборатории:
+              <code class="inl">psql -d learning_shop -f guide/snippets/ref_sql_*.sql</code>.</li>
         </ol>
         <div class="note">
-          <span class="t">Что нужно для лабораторий</span>
-          <p>Локальный PostgreSQL 14 и учебная база: <code class="inl">bash tools/setup_db.sh</code>.
-          SQL-файлы только читают данные; исключение — ничего: справочник не меняет базу.
-          Вывод в лабораториях совпадает с выводом на страницах.</p>
+          <span class="t">Подготовка базы: два шага</span>
+          <p>Нужен локальный PostgreSQL 14 — сама база создаётся скриптами из репозитория, ничего
+          скачивать не нужно. Оба шага идемпотентны: повторный запуск ничего не ломает.</p>
         </div>
+        <div class="code">
+          <div class="bar"><span class="file">терминал</span><span class="lang">shell</span><button class="copy">копировать</button></div>
+          <pre># 1. база users / products / orders
+bash tools/setup_db.sh
+
+# 2. orders_big и воспроизводимая статистика для страницы 06
+psql -d learning_shop -f guide/snippets/ref_sql_setup.sql</pre>
+        </div>
+        <p class="small">
+          <code class="inl">ref_sql_setup.sql</code> создаёт <code class="inl">orders_big</code> (100 000
+          строк), если её ещё нет, и фиксирует статистику — иначе <code class="inl">EXPLAIN</code>
+          на странице 06 будет отличаться. Сами лаборатории только читают данные.
+        </p>
       </section>
 
       <!-- ══════════════════ 02. Порядок выполнения ══════════════════ -->

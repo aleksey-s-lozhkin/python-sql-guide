@@ -144,7 +144,7 @@
 SELECT u.name, t.total
 FROM user_totals t JOIN users u ON u.id = t.user_id
 ORDER BY t.total DESC, u.name;</pre>
-          <div class="out"> name  |  total   
+          <div class="out"> name  |  total
 -------+----------
  Anna  | 76950.00
  Olga  | 76500.00
@@ -223,7 +223,7 @@ WHERE (o.quantity * p.price) &gt; (
     JOIN products p2 ON p2.id = o2.product_id
 )
 ORDER BY revenue DESC, o.id;</pre>
-          <div class="out"> id | revenue  
+          <div class="out"> id | revenue
 ----+----------
   1 | 75000.00
   9 | 75000.00
@@ -246,13 +246,13 @@ ORDER BY id;
 SELECT id, name FROM users
 WHERE id = ANY (ARRAY[1, 3])
 ORDER BY id;</pre>
-          <div class="out"> id | name  
+          <div class="out"> id | name
 ----+-------
   1 | Anna
   5 | Maria
 (2 rows)
 
- id | name 
+ id | name
 ----+------
   1 | Anna
   3 | Olga
@@ -275,7 +275,7 @@ ORDER BY u.id;
 SELECT o.id, o.created_at
 FROM orders o
 WHERE NOT EXISTS (SELECT 1 FROM users u WHERE u.id = o.user_id);</pre>
-          <div class="out"> id | name  
+          <div class="out"> id | name
 ----+-------
   1 | Anna
   2 | Ivan
@@ -284,7 +284,7 @@ WHERE NOT EXISTS (SELECT 1 FROM users u WHERE u.id = o.user_id);</pre>
   5 | Maria
 (5 rows)
 
- id |     created_at      
+ id |     created_at
 ----+---------------------
   8 | 2024-03-07 19:30:00
 (1 row)</div>
@@ -302,7 +302,7 @@ WHERE NOT EXISTS (SELECT 1 FROM users u WHERE u.id = o.user_id);</pre>
        (SELECT COUNT(*) FROM orders o WHERE o.user_id = u.id) AS orders
 FROM users u
 ORDER BY u.id;</pre>
-          <div class="out"> name  | orders 
+          <div class="out"> name  | orders
 -------+--------
  Anna  |      3
  Ivan  |      2
@@ -335,7 +335,7 @@ big_spenders AS (
 SELECT u.name, b.total
 FROM big_spenders b JOIN users u ON u.id = b.user_id
 ORDER BY b.total DESC, u.name;</pre>
-          <div class="out"> name |  total   
+          <div class="out"> name |  total
 ------+----------
  Anna | 76950.00
  Olga | 76500.00
@@ -357,7 +357,7 @@ ORDER BY b.total DESC, u.name;</pre>
     SELECT n + 1 FROM numbers WHERE n &lt; 5
 )
 SELECT n FROM numbers;</pre>
-          <div class="out"> n 
+          <div class="out"> n
 ---
  1
  2
@@ -394,22 +394,22 @@ user_totals AS (
 SELECT u.name, t.total
 FROM user_totals t JOIN users u ON u.id = t.user_id
 ORDER BY t.total DESC, u.name;</pre>
-          <div class="out">                                               QUERY PLAN                                               
---------------------------------------------------------------------------------------------------------
- Sort  (cost=104.35..104.85 rows=200 width=64)
+          <div class="out">                                             QUERY PLAN
+----------------------------------------------------------------------------------------------------
+ Sort  (cost=3.69..3.70 rows=5 width=37)
    Sort Key: t.total DESC, u.name
-   -&gt;  Hash Join  (cost=78.74..96.71 rows=200 width=64)
+   -&gt;  Hash Join  (cost=2.56..3.63 rows=5 width=37)
          Hash Cond: (u.id = t.user_id)
-         -&gt;  Seq Scan on users u  (cost=0.00..16.30 rows=630 width=36)
-         -&gt;  Hash  (cost=76.24..76.24 rows=200 width=36)
-               -&gt;  Subquery Scan on t  (cost=71.74..76.24 rows=200 width=36)
-                     -&gt;  HashAggregate  (cost=71.74..74.24 rows=200 width=36)
+         -&gt;  Seq Scan on users u  (cost=0.00..1.05 rows=5 width=9)
+         -&gt;  Hash  (cost=2.50..2.50 rows=5 width=36)
+               -&gt;  Subquery Scan on t  (cost=2.38..2.50 rows=5 width=36)
+                     -&gt;  HashAggregate  (cost=2.38..2.45 rows=5 width=36)
                            Group Key: o.user_id
-                           -&gt;  Hash Join  (cost=26.20..56.04 rows=1570 width=24)
+                           -&gt;  Hash Join  (cost=1.14..2.28 rows=10 width=13)
                                  Hash Cond: (o.product_id = p.id)
-                                 -&gt;  Seq Scan on orders o  (cost=0.00..25.70 rows=1570 width=12)
-                                 -&gt;  Hash  (cost=17.20..17.20 rows=720 width=20)
-                                       -&gt;  Seq Scan on products p  (cost=0.00..17.20 rows=720 width=20)
+                                 -&gt;  Seq Scan on orders o  (cost=0.00..1.10 rows=10 width=12)
+                                 -&gt;  Hash  (cost=1.06..1.06 rows=6 width=9)
+                                       -&gt;  Seq Scan on products p  (cost=0.00..1.06 rows=6 width=9)
 (14 rows)</div>
         </div>
         <div class="code" style="margin-top:18px">
@@ -476,7 +476,7 @@ SELECT u.name, t.total
 FROM user_totals t JOIN users u ON u.id = t.user_id
 WHERE t.total &gt; (SELECT AVG(total) FROM user_totals)
 ORDER BY t.total DESC, u.name;</pre>
-          <div class="out"> name |  total   
+          <div class="out"> name |  total
 ------+----------
  Anna | 76950.00
  Olga | 76500.00
@@ -500,7 +500,7 @@ WHERE NOT EXISTS (
       AND o.created_at &lt; '2024-03-01'
 )
 ORDER BY u.id;</pre>
-          <div class="out"> id | name 
+          <div class="out"> id | name
 ----+------
   1 | Anna
   4 | Petr
@@ -530,7 +530,7 @@ monthly AS (
 SELECT m.month, COALESCE(mo.revenue, 0) AS revenue
 FROM months m LEFT JOIN monthly mo ON mo.month = m.month
 ORDER BY m.month;</pre>
-          <div class="out">   month    | revenue  
+          <div class="out">   month    | revenue
 ------------+----------
  2024-01-01 | 78150.00
  2024-02-01 | 25750.00

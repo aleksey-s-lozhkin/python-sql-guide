@@ -55,7 +55,7 @@ open http://localhost:8080
 ## Телефон и офлайн
 
 1. Опубликуйте книгу на GitHub Pages (ниже) — нужен `https`, иначе браузер не включит офлайн-кэш.
-2. Откройте ссылку на телефоне и полистайте 2–3 страницы: service worker скачает все 157 файлов.
+2. Откройте ссылку на телефоне и полистайте 2–3 страницы: service worker скачает все 158 файлов.
 3. Safari: «Поделиться → На экран «Домой»»; Chrome: меню → «Установить приложение».
 4. Дальше книга открывается без сети. Прогресс чтения и размер текста (А−/А+) запоминаются.
 
@@ -142,11 +142,11 @@ npx puppeteer browsers install chrome
 Из корня проекта:
 
 ```
-node tools/check-links.cjs       # все 1371 ссылка и 64 страницы на месте
-node tools/pwa-check.cjs         # SW, кэш из 157 файлов, открытие главы офлайн
+node tools/check-links.cjs       # все 1372 ссылки и 64 страницы на месте
+node tools/pwa-check.cjs         # SW, кэш из 158 файлов, открытие главы офлайн
 node tools/reader-check.cjs      # «продолжить чтение», размер текста, мобильное меню
 node tools/verify.cjs light      # скриншоты: десктоп, планшет, мобильный, тёмная тема
-node tools/gen_sw.cjs            # пересобрать sw.js после правок контента (157 файлов)
+node tools/gen_sw.cjs            # пересобрать sw.js после правок контента (158 файлов)
 tools/publish.sh                 # опубликовать guide/ в ветку gh-pages вручную
 node tools/render.cjs guide/assets/maps/*.svg
 python3 guide/snippets/02_dict_lab.py

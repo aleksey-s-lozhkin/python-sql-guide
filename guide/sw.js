@@ -1,5 +1,5 @@
 // Сгенерировано tools/gen_sw.cjs — не править руками.
-const CACHE = "assoc-guide-v86d501fd";
+const CACHE = "assoc-guide-vcdc38a98";
 const PRECACHE = [
   "./appendix-numpy.html",
   "./appendix-pandas.html",
@@ -154,6 +154,7 @@ const PRECACHE = [
   "./snippets/ref_sql_index_lab.sql",
   "./snippets/ref_sql_join_lab.sql",
   "./snippets/ref_sql_select_lab.sql",
+  "./snippets/ref_sql_setup.sql",
   "./snippets/ref_sql_window_lab.sql",
   "./snippets/ref_str_lab.py",
   "./snippets/ref_tuple_lab.py",

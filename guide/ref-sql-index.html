@@ -144,7 +144,7 @@
         <div class="code">
           <div class="bar"><span class="file">ref_sql_index_lab.sql</span><span class="lang">sql</span><button class="copy">копировать</button></div>
           <pre data-lang="sql">EXPLAIN SELECT * FROM orders_big WHERE id = 4242;</pre>
-          <div class="out">                                    QUERY PLAN                                     
+          <div class="out">                                    QUERY PLAN
 -----------------------------------------------------------------------------------
  Index Scan using orders_big_pkey on orders_big  (cost=0.29..8.31 rows=1 width=24)
    Index Cond: (id = 4242)
@@ -236,14 +236,21 @@ CREATE INDEX idx_orders_big_day ON orders_big ((created_at::date));</pre>
           База <code class="inl">learning_shop</code>, таблица <code class="inl">orders_big</code> —
           100 000 строк, по 20 000 на каждого из пяти пользователей.
         </p>
+        <div class="note">
+          <span class="t">Перед запуском</span>
+          <p>Нужна таблица <code class="inl">orders_big</code> (100 000 строк). Если её нет:
+          <code class="inl">psql -d learning_shop -f guide/snippets/ref_sql_setup.sql</code> —
+          скрипт создаст таблицу и зафиксирует статистику; базовая схема создаётся
+          <code class="inl">bash tools/setup_db.sh</code>.</p>
+        </div>
 
         <h3>Seq Scan: подходящего индекса нет</h3>
         <div class="code">
           <div class="bar"><span class="file">ref_sql_index_lab.sql</span><span class="lang">sql</span><button class="copy">копировать</button></div>
           <pre data-lang="sql">EXPLAIN SELECT * FROM orders_big WHERE quantity = 2;</pre>
-          <div class="out">                            QUERY PLAN                            
+          <div class="out">                            QUERY PLAN
 ------------------------------------------------------------------
- Seq Scan on orders_big  (cost=0.00..1887.00 rows=33157 width=24)
+ Seq Scan on orders_big  (cost=0.00..1887.00 rows=33334 width=24)
    Filter: (quantity = 2)
 (2 rows)</div>
         </div>
@@ -258,9 +265,9 @@ CREATE INDEX idx_orders_big_day ON orders_big ((created_at::date));</pre>
           <div class="bar"><span class="file">ref_sql_index_lab.sql</span><span class="lang">sql</span><button class="copy">копировать</button></div>
           <pre data-lang="sql">EXPLAIN SELECT * FROM orders_big
 WHERE created_at &gt;= '2024-01-02' AND created_at &lt; '2024-01-03';</pre>
-          <div class="out">                                                                        QUERY PLAN                                                                        
+          <div class="out">                                                                        QUERY PLAN
 ----------------------------------------------------------------------------------------------------------------------------------------------------------
- Index Scan using idx_orders_big_created on orders_big  (cost=0.29..62.39 rows=1455 width=24)
+ Index Scan using idx_orders_big_created on orders_big  (cost=0.29..58.09 rows=1440 width=24)
    Index Cond: ((created_at &gt;= '2024-01-02 00:00:00'::timestamp without time zone) AND (created_at &lt; '2024-01-03 00:00:00'::timestamp without time zone))
 (2 rows)</div>
         </div>
@@ -275,12 +282,12 @@ WHERE created_at &gt;= '2024-01-02' AND created_at &lt; '2024-01-03';</pre>
           <div class="bar"><span class="file">ref_sql_index_lab.sql</span><span class="lang">sql</span><button class="copy">копировать</button></div>
           <pre data-lang="sql">EXPLAIN SELECT * FROM orders_big
 WHERE user_id = 3 AND quantity = 2;</pre>
-          <div class="out">                                       QUERY PLAN                                       
+          <div class="out">                                       QUERY PLAN
 ----------------------------------------------------------------------------------------
- Bitmap Heap Scan on orders_big  (cost=226.30..1167.95 rows=6734 width=24)
+ Bitmap Heap Scan on orders_big  (cost=223.96..1160.96 rows=6667 width=24)
    Recheck Cond: (user_id = 3)
    Filter: (quantity = 2)
-   -&gt;  Bitmap Index Scan on idx_orders_big_user  (cost=0.00..224.62 rows=20310 width=0)
+   -&gt;  Bitmap Index Scan on idx_orders_big_user  (cost=0.00..222.29 rows=20000 width=0)
          Index Cond: (user_id = 3)
 (5 rows)</div>
         </div>
@@ -297,9 +304,9 @@ WHERE user_id = 3 AND quantity = 2;</pre>
         <div class="code">
           <div class="bar"><span class="file">ref_sql_index_lab.sql</span><span class="lang">sql</span><button class="copy">копировать</button></div>
           <pre data-lang="sql">EXPLAIN SELECT user_id FROM orders_big WHERE user_id = 3;</pre>
-          <div class="out">                                           QUERY PLAN                                            
+          <div class="out">                                           QUERY PLAN
 -------------------------------------------------------------------------------------------------
- Index Only Scan using idx_orders_big_user on orders_big  (cost=0.29..427.72 rows=20310 width=4)
+ Index Only Scan using idx_orders_big_user on orders_big  (cost=0.29..422.29 rows=20000 width=4)
    Index Cond: (user_id = 3)
 (2 rows)</div>
         </div>
@@ -317,10 +324,10 @@ WHERE user_id = 3 AND quantity = 2;</pre>
 WHERE created_at &gt;= '2024-03-01'
 ORDER BY created_at DESC
 LIMIT 10;</pre>
-          <div class="out">                                                  QUERY PLAN                                                   
+          <div class="out">                                                  QUERY PLAN
 ---------------------------------------------------------------------------------------------------------------
- Limit  (cost=0.29..0.64 rows=10 width=24)
-   -&gt;  Index Scan Backward using idx_orders_big_created on orders_big  (cost=0.29..483.81 rows=13744 width=24)
+ Limit  (cost=0.29..0.65 rows=10 width=24)
+   -&gt;  Index Scan Backward using idx_orders_big_created on orders_big  (cost=0.29..480.31 rows=13601 width=24)
          Index Cond: (created_at &gt;= '2024-03-01 00:00:00'::timestamp without time zone)
 (3 rows)</div>
         </div>
@@ -337,13 +344,13 @@ LIMIT 10;</pre>
 WHERE created_at::date = DATE '2024-01-02';
 
 EXPLAIN SELECT * FROM orders_big WHERE id::text = '4242';</pre>
-          <div class="out">                           QUERY PLAN                           
+          <div class="out">                           QUERY PLAN
 ----------------------------------------------------------------
  Seq Scan on orders_big  (cost=0.00..2137.00 rows=500 width=24)
    Filter: ((created_at)::date = '2024-01-02'::date)
 (2 rows)
 
-                           QUERY PLAN                           
+                           QUERY PLAN
 ----------------------------------------------------------------
  Seq Scan on orders_big  (cost=0.00..2387.00 rows=500 width=24)
    Filter: ((id)::text = '4242'::text)
@@ -362,14 +369,14 @@ EXPLAIN SELECT * FROM orders_big WHERE id::text = '4242';</pre>
           <pre data-lang="sql">EXPLAIN SELECT o.id, u.name
 FROM orders_big o JOIN users u ON u.id = o.user_id
 WHERE o.user_id = 3;</pre>
-          <div class="out">                                          QUERY PLAN                                          
+          <div class="out">                                          QUERY PLAN
 ----------------------------------------------------------------------------------------------
- Nested Loop  (cost=229.84..1331.84 rows=20310 width=36)
-   -&gt;  Index Scan using users_pkey on users u  (cost=0.15..8.17 rows=1 width=36)
-         Index Cond: (id = 3)
-   -&gt;  Bitmap Heap Scan on orders_big o  (cost=229.69..1120.57 rows=20310 width=8)
+ Nested Loop  (cost=227.29..1315.36 rows=20000 width=9)
+   -&gt;  Seq Scan on users u  (cost=0.00..1.06 rows=1 width=9)
+         Filter: (id = 3)
+   -&gt;  Bitmap Heap Scan on orders_big o  (cost=227.29..1114.29 rows=20000 width=8)
          Recheck Cond: (user_id = 3)
-         -&gt;  Bitmap Index Scan on idx_orders_big_user  (cost=0.00..224.62 rows=20310 width=0)
+         -&gt;  Bitmap Index Scan on idx_orders_big_user  (cost=0.00..222.29 rows=20000 width=0)
                Index Cond: (user_id = 3)
 (7 rows)</div>
         </div>
@@ -388,11 +395,11 @@ WHERE o.user_id = 3;</pre>
         <div class="code">
           <div class="bar"><span class="file">ref_sql_index_lab.sql</span><span class="lang">sql</span><button class="copy">копировать</button></div>
           <pre data-lang="sql">EXPLAIN SELECT * FROM orders_big WHERE user_id = 3;</pre>
-          <div class="out">                                       QUERY PLAN                                       
+          <div class="out">                                       QUERY PLAN
 ----------------------------------------------------------------------------------------
- Bitmap Heap Scan on orders_big  (cost=229.69..1120.57 rows=20310 width=24)
+ Bitmap Heap Scan on orders_big  (cost=227.29..1114.29 rows=20000 width=24)
    Recheck Cond: (user_id = 3)
-   -&gt;  Bitmap Index Scan on idx_orders_big_user  (cost=0.00..224.62 rows=20310 width=0)
+   -&gt;  Bitmap Index Scan on idx_orders_big_user  (cost=0.00..222.29 rows=20000 width=0)
          Index Cond: (user_id = 3)
 (4 rows)</div>
         </div>
@@ -408,7 +415,7 @@ WHERE o.user_id = 3;</pre>
           <pre data-lang="sql">EXPLAIN SELECT * FROM orders_big
 ORDER BY created_at DESC
 LIMIT 10;</pre>
-          <div class="out">                                                   QUERY PLAN                                                    
+          <div class="out">                                                   QUERY PLAN
 -----------------------------------------------------------------------------------------------------------------
  Limit  (cost=0.29..0.62 rows=10 width=24)
    -&gt;  Index Scan Backward using idx_orders_big_created on orders_big  (cost=0.29..3244.29 rows=100000 width=24)
@@ -428,17 +435,17 @@ LIMIT 10;</pre>
 FROM orders_big o JOIN users u ON u.id = o.user_id
 GROUP BY u.name
 ORDER BY orders DESC, u.name;</pre>
-          <div class="out">                                      QUERY PLAN                                      
+          <div class="out">                                      QUERY PLAN
 --------------------------------------------------------------------------------------
- Sort  (cost=2435.09..2435.59 rows=200 width=40)
+ Sort  (cost=2623.22..2623.23 rows=5 width=13)
    Sort Key: (count(*)) DESC, u.name
-   -&gt;  HashAggregate  (cost=2425.44..2427.44 rows=200 width=40)
+   -&gt;  HashAggregate  (cost=2623.11..2623.16 rows=5 width=13)
          Group Key: u.name
-         -&gt;  Hash Join  (cost=24.18..1925.44 rows=100000 width=32)
+         -&gt;  Hash Join  (cost=1.11..2123.11 rows=100000 width=5)
                Hash Cond: (o.user_id = u.id)
                -&gt;  Seq Scan on orders_big o  (cost=0.00..1637.00 rows=100000 width=4)
-               -&gt;  Hash  (cost=16.30..16.30 rows=630 width=36)
-                     -&gt;  Seq Scan on users u  (cost=0.00..16.30 rows=630 width=36)
+               -&gt;  Hash  (cost=1.05..1.05 rows=5 width=9)
+                     -&gt;  Seq Scan on users u  (cost=0.00..1.05 rows=5 width=9)
 (9 rows)</div>
         </div>
         <p>

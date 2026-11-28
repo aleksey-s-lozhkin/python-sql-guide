@@ -41,7 +41,7 @@
         <div class="meta">
           <span class="chip">🐍 <b>Python 3.12</b></span>
           <span class="chip">🐘 <b>PostgreSQL 14</b></span>
-          <span class="chip">📄 <b>55 файлов</b></span>
+          <span class="chip">📄 <b>56 файлов</b></span>
           <span class="chip">📦 <b>numpy · pandas</b></span>
         </div>
       </header>
@@ -235,12 +235,16 @@ psql -d learning_shop -f guide/snippets/20_select_where.sql</pre>
         <h2><span class="num">10</span>Справочник SQL · лаборатории</h2>
         <p>
           Лаборатории <a href="appendix-sql.html">справочника по SQL</a>. Нужен PostgreSQL 14 и база
-          <code class="inl">learning_shop</code>; запросы только читают данные.
+          <code class="inl">learning_shop</code>: сначала <code class="inl">bash tools/setup_db.sh</code>,
+          затем <code class="inl">psql -d learning_shop -f guide/snippets/ref_sql_setup.sql</code>
+          (создаёт <code class="inl">orders_big</code> для страницы 06 и фиксирует статистику).
+          Сами лаборатории только читают данные.
         </p>
         <div class="tbl-wrap">
           <table>
             <thead><tr><th>Страница</th><th>Файл</th><th>Что внутри</th></tr></thead>
             <tbody>
+              <tr><td>подготовка базы</td><td><a href="snippets/view.html?f=ref_sql_setup.sql"><code class="inl">ref_sql_setup.sql</code></a></td><td>проверка схемы, orders_big (100 000 строк), индексы и фиксированная статистика; идемпотентен</td></tr>
               <tr><td><a href="ref-sql-select.html">SELECT и NULL</a></td><td><a href="snippets/view.html?f=ref_sql_select_lab.sql"><code class="inl">ref_sql_select_lab.sql</code></a></td><td>порядок выполнения, WHERE/IS NULL, IN/NOT IN, LIKE, LIMIT</td></tr>
               <tr><td><a href="ref-sql-join.html">JOIN</a></td><td><a href="snippets/view.html?f=ref_sql_join_lab.sql"><code class="inl">ref_sql_join_lab.sql</code></a></td><td>INNER/LEFT/RIGHT/FULL, anti-join, NULL-ключи, кардинальность</td></tr>
               <tr><td><a href="ref-sql-group.html">GROUP BY</a></td><td><a href="snippets/view.html?f=ref_sql_group_lab.sql"><code class="inl">ref_sql_group_lab.sql</code></a></td><td>агрегаты, HAVING, FILTER, NULL-группа, доли</td></tr>
@@ -251,7 +255,8 @@ psql -d learning_shop -f guide/snippets/20_select_where.sql</pre>
           </table>
         </div>
         <p class="small">
-          Запуск: <code class="inl">psql -d learning_shop -f guide/snippets/ref_sql_select_lab.sql</code>.
+          Порядок: <code class="inl">ref_sql_setup.sql</code>, затем любая лаборатория —
+          <code class="inl">psql -d learning_shop -f guide/snippets/ref_sql_select_lab.sql</code>.
           Вывод в справочнике совпадает с выводом файла.
         </p>
       </section>
@@ -263,24 +268,29 @@ psql -d learning_shop -f guide/snippets/20_select_where.sql</pre>
           <pre># 1. создать базу и загрузить схему с данными
 bash tools/setup_db.sh
 
-# 2. SQL-главы 19–23
+# 2. подготовка для SQL-справочника: orders_big и статистика
+psql -d learning_shop -f guide/snippets/ref_sql_setup.sql
+
+# 3. SQL-главы 19–23
 psql -d learning_shop -f guide/snippets/19_order_of_execution.sql
 psql -d learning_shop -f guide/snippets/20_select_where.sql
 psql -d learning_shop -f guide/snippets/21_group_by_having.sql
 psql -d learning_shop -f guide/snippets/22_subqueries_cte.sql
 psql -d learning_shop -f guide/snippets/23_window_functions.sql
 
-# 3. большая таблица для главы 24 (и её же использует глава 25)
+# 4. большая таблица для главы 24 (и её же использует глава 25)
 psql -d learning_shop -f guide/snippets/24_indexes_explain.sql
 
-# 4. проект: SQL и pandas-часть
+# 5. проект: SQL и pandas-часть
 psql -d learning_shop -f guide/snippets/26_project.sql</pre>
         </div>
         <div class="note">
           <span class="t">Замечание</span>
           <p>SQL-файлы предполагают базу <code class="inl">learning_shop</code>. Файлы глав 19–26 можно
           запускать по одному: каждый начинается с комментария и не меняет данные, кроме
-          <code class="inl">24_indexes_explain.sql</code>, который создаёт <code class="inl">orders_big</code>.</p>
+          <code class="inl">24_indexes_explain.sql</code> и <code class="inl">ref_sql_setup.sql</code>,
+          которые создают <code class="inl">orders_big</code>. Для справочника достаточно
+          <code class="inl">ref_sql_setup.sql</code>: он идемпотентен и не пересоздаёт данные.</p>
         </div>
       </section>
 
