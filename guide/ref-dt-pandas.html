@@ -1,0 +1,700 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Справочник «Дата и время» · pandas: Timestamp, .dt и таймзоны — Ассоциативный гайд</title>
+<meta name="description" content="Справочник по датам в pandas 3.0.1: Timestamp и datetime64[us], to_datetime, аксессор .dt, таймзоны и DST, date_range, resample и Period — с реальным выводом.">
+<link rel="stylesheet" href="assets/style.css">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#fbf8f2" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#14131a" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="assets/icons/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="assets/icons/icon-180.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Гайд Py/SQL">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+</head>
+<body data-slug="ref-dt-pandas">
+<div class="app">
+  <aside class="sidebar" id="sidebar"></aside>
+  <main>
+    <div class="wrap">
+
+      <header class="chapter-head">
+        <div class="eyebrow">
+          <span class="part">Справочник · дата и время</span>
+          <span class="dot"></span>
+          <span>страница 3 из 4</span>
+          <span class="dot"></span>
+          <span>готово</span>
+        </div>
+        <h1>pandas: Timestamp, .dt и таймзоны
+          <span class="sub">Момент, календарь и зона: как хранить даты, резать по месяцам и не путать naive с aware</span>
+        </h1>
+        <p class="lead">
+          В pandas дата — это <code class="inl">Timestamp</code> (момент) или <code class="inl">Period</code>
+          (клетка календаря), а колонка дат живёт в dtype <code class="inl">datetime64[us]</code>.
+          Здесь — все операции: <code class="inl">to_datetime</code>, аксессор <code class="inl">.dt</code>,
+          <code class="inl">tz_localize</code>/<code class="inl">tz_convert</code>, <code class="inl">date_range</code>,
+          <code class="inl">resample</code> и арифметика с <code class="inl">Timedelta</code>.
+        </p>
+        <div class="meta">
+          <span class="chip">⏱ <b>12 минут</b></span>
+          <span class="chip">🎯 уровень <b>2</b></span>
+          <span class="chip">🐼 <b>pandas 3.0.1</b></span>
+          <span class="chip">📚 <b>глава 18</b></span>
+        </div>
+      </header>
+
+      <p class="small">
+        Справочник «Дата и время»: <a href="appendix-datetime.html">вся карта</a> ·
+        <a href="ref-dt-python.html">01 · Python</a> · <a href="ref-dt-numpy.html">02 · NumPy</a> ·
+        <b>03 · pandas</b> · <a href="ref-dt-sql.html">04 · SQL</a>
+      </p>
+
+      <div class="tldr">
+        <div class="t">Самое главное</div>
+        <ul>
+          <li><code class="inl">Timestamp</code> — момент времени, <code class="inl">Period</code> —
+              клетка календаря («январь 2024»). Колонка дат в pandas 3 имеет dtype
+              <code class="inl">datetime64[us]</code>, а <code class="inl">.dt</code> открывает её
+              календарные части.</li>
+          <li><b>naive</b> (без зоны) и <b>aware</b> (с зоной) нельзя сравнивать.
+              <code class="inl">tz_localize</code> приписывает зону, <code class="inl">tz_convert</code>
+              переводит тот же момент в другую зону.</li>
+          <li>Месяцы и кварталы — через <code class="inl">to_period</code> и
+              <code class="inl">resample("ME")</code>; старые алиасы <code class="inl">M</code>,
+              <code class="inl">H</code>, <code class="inl">T</code> в pandas 3 убраны.</li>
+        </ul>
+      </div>
+
+      <!-- ══════════════════ 01. Что это ══════════════════ -->
+      <section>
+        <h2><span class="num">01</span>Что это и как устроено</h2>
+        <p>
+          В pandas две модели даты. <code class="inl">Timestamp</code> — <em>момент</em>: точка на
+          ленте времени, с календарным представлением и, возможно, зоной. <code class="inl">Period</code> —
+          <em>клетка календаря</em>: «январь 2024». Сетки моментов строит <code class="inl">date_range</code>,
+          клеток — <code class="inl">period_range</code>.
+        </p>
+        <p>
+          Колонка дат — числовой буфер <code class="inl">datetime64[us]</code> (микросекунды от эпохи),
+          поэтому сортировка, сравнения и <code class="inl">.dt</code> векторизованы, а не идут циклом.
+        </p>
+        <p>
+          У момента есть флаг «осведомлённости»: <b>naive</b> (<code class="inl">tz=None</code>) знает
+          только цифры на циферблате, <b>aware</b> — ещё и зону. Сравнивать можно только одинаковые.
+        </p>
+
+        <div class="anchor">
+          <div class="glyph">🕰</div>
+          <div>
+            <div class="t">Держите эту картинку в голове</div>
+            <p class="kick"><strong>Момент и календарь.</strong> <code class="inl">Timestamp</code> —
+            будильник: знает время, зону и всегда указывает на одну точку на ленте.
+            <code class="inl">Period</code> — клетка календаря: «январь 2024» целиком, без «который час».</p>
+            <p>Сетка будильников — <code class="inl">date_range</code>, сетка клеток —
+            <code class="inl">period_range</code>. Показать момент на других часах —
+            <code class="inl">tz_convert</code>; приписать зону наивному времени —
+            <code class="inl">tz_localize</code>. Теорию разбирает <a href="ch-18-dates-reshape.html">глава 18</a>.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ══════════════════ 02. Когда брать ══════════════════ -->
+      <section>
+        <h2><span class="num">02</span>Когда брать, а когда нет</h2>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Задача</th><th>pandas?</th><th>Что взять вместо</th></tr></thead>
+            <tbody>
+              <tr><td>Колонка дат: фильтры, сортировка, сравнения</td><td><b>да</b></td><td>—</td></tr>
+              <tr><td>Группировка по месяцам, кварталам, неделям</td><td><b>да</b></td><td>—</td></tr>
+              <tr><td>Перевод моментов между часовыми зонами</td><td><b>да</b></td><td>—</td></tr>
+              <tr><td>Сдвиги и длительности в таблице</td><td><b>да</b></td><td>—</td></tr>
+              <tr><td>Хранение момента на границе систем</td><td><b>да</b></td><td>UTC: <code class="inl">utc=True</code></td></tr>
+              <tr><td>Только календарная дата, без времени</td><td>как основа</td><td><code class="inl">Period("D")</code>, <code class="inl">date</code></td></tr>
+              <tr><td>Наносекундная точность и сырые массивы</td><td>нет</td><td><code class="inl">numpy.datetime64</code> — страница 02</td></tr>
+              <tr><td>Фильтр и агрегат целиком в базе</td><td>нет</td><td>SQL <code class="inl">date_trunc</code> — страница 04</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ══════════════════ 03. Как создать ══════════════════ -->
+      <section>
+        <h2><span class="num">03</span>Как создать</h2>
+        <div class="code">
+          <div class="bar"><span class="file">ref_dt_pandas_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">import pandas as pd
+
+ts = pd.Timestamp("2024-02-01")
+d = pd.to_datetime(pd.Series(["2024-01-15", "2024-02-01", "2024-03-10"]))
+print(ts)
+print(d.dtype)
+print(d.dt.strftime("%Y-%m-%d").tolist())</pre>
+          <div class="out">2024-02-01 00:00:00
+datetime64[us]
+['2024-01-15', '2024-02-01', '2024-03-10']</div>
+        </div>
+        <p>
+          <code class="inl">Timestamp</code> создаётся из строки, <code class="inl">date</code> или
+          <code class="inl">datetime</code>. <code class="inl">to_datetime</code> — мост из строк в dtype
+          <code class="inl">datetime64[us]</code>: после него работают <code class="inl">.dt</code>,
+          сравнения и сортировка. <code class="inl">strftime</code> возвращает строки — обратно только
+          через новый <code class="inl">to_datetime</code>.
+        </p>
+      </section>
+
+      <!-- ══════════════════ 04. Все операции ══════════════════ -->
+      <section>
+        <h2><span class="num">04</span>Все операции</h2>
+        <p>
+          Четыре таблицы по назначению: «Результат» — тип ответа, «Примечание» — зона, копия, ловушка.
+        </p>
+
+        <h3>Создание и типы</h3>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Операция</th><th>Что делает</th><th>Результат</th><th>Примечание</th></tr></thead>
+            <tbody>
+              <tr><td class="mono">pd.Timestamp("2024-02-01")</td><td>момент из строки, date или datetime</td><td>Timestamp</td><td>один объект, не колонка</td></tr>
+              <tr><td class="mono">pd.to_datetime(s)</td><td>строки или числа — в даты</td><td>Series datetime64[us]</td><td>формат лучше указывать явно</td></tr>
+              <tr><td class="mono">to_datetime(s, format="%d.%m.%Y")</td><td>разбор по явному формату</td><td>Series</td><td>без догадок и сюрпризов</td></tr>
+              <tr><td class="mono">to_datetime(s, errors="coerce")</td><td>битые значения — в NaT</td><td>Series</td><td>по умолчанию <code class="inl">raise</code></td></tr>
+              <tr><td class="mono">to_datetime(s, utc=True)</td><td>приводит к aware-UTC</td><td>Series datetime64[us, UTC]</td><td>для хранения моментов</td></tr>
+              <tr><td class="mono">pd.date_range / pd.period_range</td><td>сетка моментов / периодов</td><td>DatetimeIndex / PeriodIndex</td><td>freq обязателен</td></tr>
+              <tr><td class="mono">s.dt.to_period("M")</td><td>момент — в период-месяц</td><td>Series period[M]</td><td>ключ для группировки</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="note">
+          <span class="t">pandas 3: M, H и T убраны</span>
+          <p>Частоты <code class="inl">"M"</code>, <code class="inl">"H"</code>, <code class="inl">"T"</code>
+          в pandas 3 не работают: нужны <code class="inl">"ME"</code>, <code class="inl">"h"</code>,
+          <code class="inl">"min"</code>; иначе <code class="inl">ValueError: Invalid frequency: M</code>.</p>
+        </div>
+
+        <h3>Аксессор .dt: календарные части</h3>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Операция</th><th>Что делает</th><th>Результат</th><th>Примечание</th></tr></thead>
+            <tbody>
+              <tr><td class="mono">.dt.year / .month / .day</td><td>части даты</td><td>Series int</td><td>только на datetime64</td></tr>
+              <tr><td class="mono">.dt.day_name()</td><td>день недели строкой</td><td>Series str</td><td>имена английские</td></tr>
+              <tr><td class="mono">.dt.quarter</td><td>квартал 1–4</td><td>Series int</td><td>для отчётов по кварталам</td></tr>
+              <tr><td class="mono">.dt.day_of_week</td><td>день недели числом</td><td>Series int</td><td>0 — понедельник</td></tr>
+              <tr><td class="mono">.dt.isocalendar().week</td><td>ISO-неделя</td><td>Series UInt32</td><td><code class="inl">.dt.week</code> удалён в pandas 3</td></tr>
+              <tr><td class="mono">.dt.strftime("%d.%m.%Y")</td><td>дата — в строку по формату</td><td>Series str</td><td>обратно — только to_datetime</td></tr>
+              <tr><td class="mono">.dt.floor / .ceil / .round("h")</td><td>округление к границе</td><td>Series datetime64</td><td>для бакетов по часу/дню</td></tr>
+              <tr><td class="mono">.dt.normalize()</td><td>обнуляет время</td><td>Series datetime64</td><td>дата на полночь</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>Таймзоны и переход на летнее время</h3>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Операция</th><th>Что делает</th><th>Результат</th><th>Примечание</th></tr></thead>
+            <tbody>
+              <tr><td class="mono">.dt.tz_localize("Europe/Moscow")</td><td>приписывает зону naive-времени</td><td>Series datetime64[us, zone]</td><td>время не сдвигается</td></tr>
+              <tr><td class="mono">.dt.tz_convert("UTC")</td><td>переводит момент в другую зону</td><td>Series</td><td>требует aware</td></tr>
+              <tr><td class="mono">.dt.tz</td><td>зона колонки</td><td>tzinfo / None</td><td>None — naive</td></tr>
+              <tr><td class="mono">pd.date_range(..., tz="UTC")</td><td>сетка сразу aware</td><td>DatetimeIndex</td><td>для расписаний</td></tr>
+              <tr><td class="mono">tz_localize(..., ambiguous=True/False/NaT)</td><td>какой из двух DST-моментов брать</td><td>Timestamp / Series</td><td>по умолчанию ошибка</td></tr>
+              <tr><td class="mono">tz_localize(..., nonexistent="shift_forward")</td><td>куда сдвинуть несуществующее время</td><td>Timestamp / Series</td><td>ещё <code class="inl">"NaT"</code></td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>Периоды, агрегация и арифметика</h3>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Операция</th><th>Что делает</th><th>Результат</th><th>Примечание</th></tr></thead>
+            <tbody>
+              <tr><td class="mono">df.resample("ME").sum()</td><td>агрегат по месяцам</td><td>Series / DataFrame</td><td>DatetimeIndex или <code class="inl">on=</code></td></tr>
+              <tr><td class="mono">groupby(s.dt.to_period("M"))</td><td>группировка по месяцам</td><td>Series / DataFrame</td><td>период как ключ</td></tr>
+              <tr><td class="mono">pd.period_range(...)</td><td>сетка периодов</td><td>PeriodIndex</td><td>для отчётов</td></tr>
+              <tr><td class="mono">date + pd.Timedelta(days=10)</td><td>сдвиг на длительность</td><td>Timestamp</td><td><code class="inl">"36h"</code> тоже работает</td></tr>
+              <tr><td class="mono">date2 - date1</td><td>разница моментов</td><td>Timedelta</td><td>дни, секунды</td></tr>
+              <tr><td class="mono">s - s.min()</td><td>вектор разниц</td><td>Series timedelta64[us]</td><td>«сколько прошло с начала»</td></tr>
+              <tr><td class="mono">s &gt;= a, s &lt; b</td><td>сравнения моментов</td><td>Series bool</td><td>naive и aware не смешивать</td></tr>
+              <tr><td class="mono">s.between(a, b)</td><td>включительно с обеих сторон</td><td>Series bool</td><td>для периода — полуоткрытый <code class="inl">&lt; b</code></td></tr>
+              <tr><td class="mono">pd.NaT, pd.isna(x)</td><td>«нет даты» и проверка пропуска</td><td>NaT / bool</td><td>сравнения с NaT — False</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ══════════════════ 05. Разбор ══════════════════ -->
+      <section>
+        <h2><span class="num">05</span>Разбор по группам</h2>
+        <p>
+          Все примеры страницы — в файле
+          <a href="snippets/view.html?f=ref_dt_pandas_lab.py"><code class="inl">ref_dt_pandas_lab.py</code></a>
+          (pandas 3.0.1); даты фиксированные, вывод воспроизводим.
+        </p>
+
+        <h3>Timestamp: части, округление, формат</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_dt_pandas_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">ts = pd.Timestamp("2024-02-01")
+print(ts.year, ts.month, ts.day)
+print(ts.day_name(), ts.quarter)
+
+d = pd.to_datetime(pd.Series(["2024-01-15", "2024-02-01", "2024-03-10"]))
+print(d.dt.year.tolist())
+print(d.dt.month.tolist())
+print(d.dt.day_name().tolist())
+print(d.dt.quarter.tolist())
+print(d.dt.day_of_week.tolist())
+print(d.dt.isocalendar().week.tolist())
+
+ts = pd.Timestamp("2024-02-01 13:47:05")
+print(ts.floor("h"))
+print(ts.ceil("h"))
+print(ts.round("h"))
+print(ts.normalize())
+
+d = pd.to_datetime(pd.Series(["2024-01-15 09:20", "2024-02-01 18:05"]))
+print(d.dt.floor("D").astype(str).tolist())
+print(d.dt.strftime("%d.%m.%Y %H:%M").tolist())</pre>
+          <div class="out">2024 2 1
+Thursday 1
+[2024, 2024, 2024]
+[1, 2, 3]
+['Monday', 'Thursday', 'Sunday']
+[1, 1, 1]
+[0, 3, 6]
+[3, 5, 10]
+2024-02-01 13:00:00
+2024-02-01 14:00:00
+2024-02-01 14:00:00
+2024-02-01 00:00:00
+['2024-01-15', '2024-02-01']
+['15.01.2024 09:20', '01.02.2024 18:05']</div>
+        </div>
+        <p>
+          У одного <code class="inl">Timestamp</code> части — атрибуты, у колонки — аксессор
+          <code class="inl">.dt</code>. <code class="inl">day_of_week</code> считает с нуля, ISO-неделя —
+          только через <code class="inl">isocalendar()</code>: <code class="inl">.dt.week</code> удалён.
+          <code class="inl">floor</code>/<code class="inl">ceil</code>/<code class="inl">round</code>
+          округляют к границе, <code class="inl">normalize</code> обнуляет время, <code class="inl">strftime</code>
+          возвращает строки — обратно только <code class="inl">to_datetime</code>.
+        </p>
+
+        <h3>to_datetime: формат, ошибки, UTC</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_dt_pandas_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">raw = ["15.01.2024", "02.02.2024", "01.03.2024"]
+print(sorted(raw))
+dates = pd.to_datetime(pd.Series(raw), format="%d.%m.%Y")
+print(sorted(dates.dt.strftime("%Y-%m-%d").tolist()))
+
+coerced = pd.to_datetime(pd.Series(["01.02.2024", "not-a-date"]),
+                         format="%d.%m.%Y", errors="coerce")
+print(coerced.isna().tolist())
+print(coerced.iloc[0])
+
+try:
+    pd.to_datetime(pd.Series(["01.02.2024", "not-a-date"]), format="%d.%m.%Y")
+except ValueError as e:
+    print(type(e).__name__, str(e).split(" You might")[0])
+
+utc = pd.to_datetime(pd.Series(["2024-01-15 10:00"]), utc=True)
+print(utc.astype(str).tolist())
+print(utc.dtype)</pre>
+          <div class="out">['01.03.2024', '02.02.2024', '15.01.2024']
+['2024-01-15', '2024-02-02', '2024-03-01']
+[False, True]
+2024-02-01 00:00:00
+ValueError time data "not-a-date" doesn't match format "%d.%m.%Y".
+['2024-01-15 10:00:00+00:00']
+datetime64[us, UTC]</div>
+        </div>
+        <p>
+          Пока даты — строки, сортировка лексикографическая: <code class="inl">"15.01.2024"</code>
+          оказывается в конце. После <code class="inl">to_datetime</code> порядок календарный.
+          <code class="inl">format=</code> убирает догадки, <code class="inl">errors="coerce"</code> заменяет
+          битую строку на <code class="inl">NaT</code>, а <code class="inl">utc=True</code> сразу даёт aware.
+        </p>
+
+        <h3>Таймзоны и переход на летнее время</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_dt_pandas_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">ts = pd.Timestamp("2024-03-10 12:00:00")
+print(ts.tz)
+moscow = ts.tz_localize("Europe/Moscow")
+print(moscow)
+print(moscow.tz_convert("UTC"))
+print(moscow.tz_convert("UTC").tz)
+
+aware = pd.Series(pd.to_datetime(["2024-01-15"], utc=True))
+try:
+    aware &gt; pd.Timestamp("2024-02-01")
+except TypeError as e:
+    print(type(e).__name__, str(e))
+
+try:
+    moscow.tz_localize("UTC")
+except TypeError as e:
+    print(type(e).__name__, str(e))
+
+try:
+    pd.Timestamp("2024-03-31 02:30").tz_localize("Europe/Berlin")
+except ValueError as e:
+    print(type(e).__name__, str(e).split(" due to")[0])
+
+print(pd.Timestamp("2024-10-27 02:30").tz_localize("Europe/Berlin", ambiguous="NaT"))
+print(pd.Timestamp("2024-03-31 02:30").tz_localize(
+    "Europe/Berlin", nonexistent="shift_forward"))</pre>
+          <div class="out">None
+2024-03-10 12:00:00+03:00
+2024-03-10 09:00:00+00:00
+UTC
+TypeError Invalid comparison between dtype=datetime64[us, UTC] and Timestamp
+TypeError Cannot localize tz-aware Timestamp, use tz_convert for conversions
+ValueError 2024-03-31 02:30:00 is a nonexistent time
+NaT
+2024-03-31 03:00:00+02:00</div>
+        </div>
+        <p>
+          <code class="inl">tz_localize</code> приписывает зону, не двигая цифры: 12:00 в Москве и
+          есть 12:00, теперь это момент <code class="inl">+03:00</code>. <code class="inl">tz_convert</code>
+          переводит тот же момент: 12:00 Москвы — 09:00 UTC. «Привести к другой зоне» — всегда
+          <code class="inl">tz_convert</code>, не повторный <code class="inl">tz_localize</code>.
+          В Берлине 31 марта 02:30 не существует, а 27 октября 02:30 — дважды; нужен
+          <code class="inl">ambiguous</code> или <code class="inl">nonexistent</code>.
+        </p>
+
+        <h3>Периоды, resample и арифметика</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_dt_pandas_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">orders = pd.DataFrame({
+    "date": pd.to_datetime(["2024-01-05", "2024-01-20", "2024-02-10", "2024-03-01"]),
+    "amount": [1200, 800, 1500, 500],
+})
+print(orders.resample("ME", on="date")["amount"].sum())
+print(orders["date"].dt.to_period("M").astype(str).tolist())
+print(orders["date"].dt.to_period("M").dtype)
+print(pd.period_range("2024-01", periods=3, freq="M").astype(str).tolist())
+print(pd.date_range("2024-01-01", periods=3, freq="D").strftime("%Y-%m-%d").tolist())
+
+d0 = pd.Timestamp("2024-01-05")
+print(d0 + pd.Timedelta(days=10))
+print(pd.Timestamp("2024-03-01") - d0)
+print((d0 + pd.Timedelta("36h")))
+
+dates = pd.to_datetime(pd.Series(["2024-01-01", "2024-01-15", "2024-02-01"]))
+print(dates.between("2024-01-01", "2024-02-01").tolist())
+print(((dates &gt;= "2024-01-01") &amp; (dates &lt; "2024-02-01")).tolist())
+print(pd.NaT, pd.isna(pd.NaT), pd.NaT == pd.NaT)</pre>
+          <div class="out">date
+2024-01-31    2000
+2024-02-29    1500
+2024-03-31     500
+Freq: ME, Name: amount, dtype: int64
+['2024-01', '2024-01', '2024-02', '2024-03']
+period[M]
+['2024-01', '2024-02', '2024-03']
+['2024-01-01', '2024-01-02', '2024-01-03']
+2024-01-15 00:00:00
+56 days 00:00:00
+2024-01-06 12:00:00
+[True, True, True]
+[True, True, False]
+NaT True False</div>
+        </div>
+        <p>
+          <code class="inl">resample("ME")</code> — агрегат по месяцу: ключ — последний день.
+          <code class="inl">to_period("M")</code> даёт клетку <code class="inl">period[M]</code> — ключ
+          группировки. <code class="inl">date_range</code> строит сетку моментов (freq:
+          <code class="inl">"D"</code>, <code class="inl">"h"</code>, <code class="inl">"ME"</code>),
+          <code class="inl">period_range</code> — сетку клеток. <code class="inl">Timestamp + Timedelta</code>
+          сдвигает на длительность, разность — <code class="inl">Timedelta</code>.
+          <code class="inl">between</code> включает обе границы, поэтому для месяца берут полуоткрытый
+          интервал <code class="inl">&gt;= a &amp; &lt; b</code>; <code class="inl">NaT</code> — <code class="inl">isna</code>.
+        </p>
+      </section>
+
+      <!-- ══════════════════ 06. Сценарии ══════════════════ -->
+      <section>
+        <h2><span class="num">06</span>Три сценария из практики</h2>
+
+        <h3>Месячная выручка</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_dt_pandas_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">orders = pd.DataFrame({
+    "user": ["Anna", "Olga", "Ivan", "Anna"],
+    "date": pd.to_datetime(["2024-01-05", "2024-01-20", "2024-02-10", "2024-03-01"]),
+    "amount": [1200, 800, 1500, 500],
+})
+monthly = orders.groupby(orders["date"].dt.to_period("M"))["amount"].sum()
+print(monthly)
+print(monthly.sum())</pre>
+          <div class="out">date
+2024-01    2000
+2024-02    1500
+2024-03     500
+Freq: M, Name: amount, dtype: int64
+4000</div>
+        </div>
+        <p>
+          <code class="inl">to_period("M")</code> схлопывает моменты в месяц, поэтому
+          <code class="inl">groupby</code> считает январь одним итогом; альтернатива — <code class="inl">resample("ME")</code>
+          по индексу. Границы месяца — полуоткрытые: <code class="inl">&gt;= 2024-01-01</code> и
+          <code class="inl">&lt; 2024-02-01</code>.
+        </p>
+
+        <h3>Конвертация в зону</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_dt_pandas_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">sent = pd.to_datetime(["2024-01-15 10:00", "2024-06-15 10:00"], utc=True)
+local = sent.tz_convert("Europe/Moscow")
+print(sent.astype(str).tolist())
+print(local.astype(str).tolist())</pre>
+          <div class="out">['2024-01-15 10:00:00+00:00', '2024-06-15 10:00:00+00:00']
+['2024-01-15 13:00:00+03:00', '2024-06-15 13:00:00+03:00']</div>
+        </div>
+        <p>
+          Сервер прислал момент в UTC: храним aware-UTC и показываем через
+          <code class="inl">tz_convert</code>. Цифры меняются, момент — нет; смещение пересчитывает зона.
+        </p>
+
+        <h3>Скользящее окно по дням</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_dt_pandas_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">days = pd.date_range("2024-01-01", periods=8, freq="D")
+revenue = pd.Series([100, 120, 80, 150, 130, 90, 110, 140], index=days)
+window = revenue.rolling(3).sum().dropna()
+print(window.astype(int).tolist())
+print(window.index[-1].strftime("%Y-%m-%d"))</pre>
+          <div class="out">[300, 350, 360, 370, 330, 340]
+2024-01-08</div>
+        </div>
+        <p>
+          <code class="inl">date_range</code> даёт ровный индекс, <code class="inl">rolling(3)</code> считает
+          сумму за три дня, первые <code class="inl">NaN</code> убирает <code class="inl">dropna</code>.
+          Окно по времени — <code class="inl">rolling("3D")</code>.
+        </p>
+      </section>
+
+      <!-- ══════════════════ 07. Ошибки ══════════════════ -->
+      <section>
+        <h2><span class="num">07</span>Пять ошибок, на которых спотыкаются</h2>
+        <div class="errors">
+          <div class="err">
+            <div class="h">Сравнить naive с aware</div>
+            <p>Колонка без зоны против <code class="inl">Timestamp</code> с зоной даёт
+            <code class="inl">TypeError: Invalid comparison between dtype=datetime64[us, UTC] and Timestamp</code> —
+            это разные типы моментов.</p>
+            <div class="fix">Храните aware-UTC (<code class="inl">utc=True</code>), naive приводите через <code class="inl">tz_localize</code>.</div>
+          </div>
+          <div class="err">
+            <div class="h">tz_localize на уже aware</div>
+            <p>Повторный <code class="inl">tz_localize</code> бросает
+            <code class="inl">TypeError: Cannot localize tz-aware Timestamp, use tz_convert for conversions</code>.</p>
+            <div class="fix">Перевод — <code class="inl">tz_convert</code>; убрать зону — <code class="inl">tz_localize(None)</code>.</div>
+          </div>
+          <div class="err">
+            <div class="h">Не думать про переход на летнее время</div>
+            <p>31 марта 02:30 в Берлине не существует, 27 октября 02:30 — дважды. Без аргумента pandas
+            бросает <code class="inl">ValueError</code> и просит <code class="inl">ambiguous</code> или
+            <code class="inl">nonexistent</code>.</p>
+            <div class="fix">Задайте политику: <code class="inl">ambiguous=True/False/"NaT"</code>,
+            <code class="inl">nonexistent="shift_forward"/"NaT"</code>; лучше храните UTC.</div>
+          </div>
+          <div class="err">
+            <div class="h">Сортировать даты-строки</div>
+            <p><code class="inl">sorted(["15.01.2024", "02.02.2024", "01.03.2024"])</code> даёт
+            лексикографический порядок <code class="inl">["01.03.2024", "02.02.2024", "15.01.2024"]</code>,
+            а не календарный.</p>
+            <div class="fix">Сначала <code class="inl">to_datetime</code> с явным форматом; проверка —
+            <code class="inl">df.dtypes</code> (<code class="inl">datetime64[us]</code>, не <code class="inl">object</code>).</div>
+          </div>
+
+          <div class="err">
+            <div class="h">Формат и errors по умолчанию</div>
+            <p>Без <code class="inl">format=</code> pandas угадывает <code class="inl">%m.%d.%Y</code>:
+            <code class="inl">"15.03.2024"</code> не разбирается — <code class="inl">ValueError: time data
+            "15.03.2024" doesn't match format "%m.%d.%Y"</code>.</p>
+            <div class="fix">Указывайте <code class="inl">format=</code> и выбирайте
+            <code class="inl">errors="raise"</code> или <code class="inl">"coerce"</code>; после <code class="inl">coerce</code> — <code class="inl">isna()</code>.</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ══════════════════ 08. Мини-проверка ══════════════════ -->
+      <section>
+        <h2><span class="num">08</span>Мини-проверка</h2>
+        <p>Пять вопросов и две задачи. Сначала своя попытка — потом спойлер.</p>
+        <div class="qa">
+          <details>
+            <summary>Чем Timestamp отличается от Period?</summary>
+            <div class="a">
+              <p><code class="inl">Timestamp</code> — момент с датой, временем и, возможно, зоной.
+              <code class="inl">Period</code> — клетка календаря («2024-01») без часа и минуты;
+              <code class="inl">to_period("M")</code> теряет день.</p>
+              <div class="verdict">Резюме: Timestamp — когда именно, Period — в каком месяце.</div>
+            </div>
+          </details>
+        </div>
+        <div class="qa">
+          <details>
+            <summary>Что такое naive и aware?</summary>
+            <div class="a">
+              <p>Naive знает только цифры (<code class="inl">tz=None</code>), aware — ещё и зону.
+              Смешивать их нельзя: <code class="inl">TypeError</code>. Храните aware-UTC, показывайте
+              через <code class="inl">tz_convert</code>.</p>
+              <div class="verdict">Резюме: naive — циферблат, aware — точка на ленте времени.</div>
+            </div>
+          </details>
+        </div>
+        <div class="qa">
+          <details>
+            <summary>Чем tz_localize отличается от tz_convert?</summary>
+            <div class="a">
+              <p><code class="inl">tz_localize</code> приписывает зону naive-времени (12:00 остаётся
+              12:00), <code class="inl">tz_convert</code> переводит aware-момент (12:00 Москвы → 09:00 UTC).</p>
+              <div class="verdict">Резюме: localize — «объявить зону», convert — «показать в другой».</div>
+            </div>
+          </details>
+        </div>
+        <div class="qa">
+          <details>
+            <summary>Зачем to_datetime, если даты и так читаются?</summary>
+            <div class="a">
+              <p>Строки сортируются лексикографически и не умеют <code class="inl">.dt</code>. После
+              <code class="inl">to_datetime</code> колонка получает <code class="inl">datetime64[us]</code>:
+              работают сравнения, разности и <code class="inl">resample</code>.</p>
+              <div class="verdict">Резюме: строка — текст, дата — тип.</div>
+            </div>
+          </details>
+        </div>
+        <div class="qa">
+          <details>
+            <summary>Почему берут &gt;= a и &lt; b, а не BETWEEN?</summary>
+            <div class="a">
+              <p>Граница месяца — полночь первого числа. Включив обе границы, заказ 1 февраля в 00:00
+              посчитается и в январе, и в феврале. Полуоткрытый интервал считает каждый момент один раз.</p>
+              <div class="verdict">Резюме: левая граница включена, правая — нет.</div>
+            </div>
+          </details>
+        </div>
+
+        <h3><span style="color:var(--muted);font-family:var(--mono);font-size:.8rem">01</span> Месячная выручка</h3>
+        <p>Сгруппируйте заказы по календарным месяцам и просуммируйте суммы.</p>
+        <div class="code">
+          <div class="bar"><span class="file">условие</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">orders = pd.DataFrame({
+    "date": pd.to_datetime(["2024-01-05", "2024-01-20", "2024-02-10"]),
+    "amount": [1200, 800, 1500],
+})
+# ожидается: 2024-01 → 2000, 2024-02 → 1500</pre>
+        </div>
+        <div class="qa">
+          <details>
+            <summary>Показать решение и разбор</summary>
+            <div class="a">
+              <div class="code" style="margin-top:0">
+                <div class="bar"><span class="file">решение</span><span class="lang">python</span><button class="copy">копировать</button></div>
+                <pre data-lang="python">print(orders.groupby(orders["date"].dt.to_period("M"))["amount"].sum())</pre>
+                <div class="out">date
+2024-01    2000
+2024-02    1500
+Freq: M, Name: amount, dtype: int64</div>
+              </div>
+              <p><strong>Что важно.</strong> <code class="inl">to_period("M")</code> схлопывает январские
+              моменты в один ключ; тот же результат даст <code class="inl">resample("ME")</code>.</p>
+            </div>
+          </details>
+        </div>
+
+        <h3><span style="color:var(--muted);font-family:var(--mono);font-size:.8rem">02</span> Конвертация в зону</h3>
+        <p>Момент пришёл в UTC. Покажите его в московском времени строкой.</p>
+        <div class="code">
+          <div class="bar"><span class="file">условие</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">sent = pd.to_datetime(["2024-01-15 10:00"], utc=True)
+# ожидается: ['2024-01-15 13:00:00+03:00']</pre>
+        </div>
+        <div class="qa">
+          <details>
+            <summary>Показать решение и разбор</summary>
+            <div class="a">
+              <div class="code" style="margin-top:0">
+                <div class="bar"><span class="file">решение</span><span class="lang">python</span><button class="copy">копировать</button></div>
+                <pre data-lang="python">print(sent.tz_convert("Europe/Moscow").astype(str).tolist())</pre>
+                <div class="out">['2024-01-15 13:00:00+03:00']</div>
+              </div>
+              <p><strong>Что важно.</strong> <code class="inl">utc=True</code> сделал момент aware,
+              <code class="inl">tz_convert</code> перевёл его в Москву.</p>
+            </div>
+          </details>
+        </div>
+      </section>
+
+      <!-- ══════════════════ 09. Мостик ══════════════════ -->
+      <section>
+        <h2><span class="num">09</span>Мостик: та же идея в Python и SQL</h2>
+
+        <h3>Python: datetime и zoneinfo</h3>
+        <div class="code">
+          <div class="bar"><span class="file">мост в Python</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
+
+dt = datetime(2024, 1, 15, 10, tzinfo=timezone.utc)
+print(dt.astimezone(ZoneInfo("Europe/Moscow")))   # 13:00+03:00</pre>
+        </div>
+        <p>
+          <code class="inl">Timestamp</code> — обёртка над <code class="inl">datetime</code>, а
+          <code class="inl">tz_convert</code> — над <code class="inl">astimezone</code>; зоны даёт
+          <code class="inl">zoneinfo</code>, pandas принимает те же имена. Подробнее —
+          <a href="ref-dt-python.html">справочник по Python-датам</a>.
+        </p>
+
+        <h3>SQL: date_trunc и AT TIME ZONE</h3>
+        <div class="code">
+          <div class="bar"><span class="file">мост в SQL</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">-- месячная выручка: как to_period("M") + groupby
+SELECT date_trunc('month', created_at) AS month, SUM(amount) AS total
+FROM orders
+GROUP BY 1 ORDER BY 1;
+
+-- перевод зоны: как tz_convert
+SELECT created_at AT TIME ZONE 'Europe/Moscow' AS local_time FROM orders;
+
+-- полуоткрытый интервал месяца: &gt;= и &lt;, не BETWEEN
+SELECT * FROM orders
+WHERE created_at &gt;= '2024-01-01'
+  AND created_at &lt;  '2024-02-01';</pre>
+        </div>
+        <p>
+          <code class="inl">date_trunc('month', ts)</code> — родственник <code class="inl">to_period("M")</code>,
+          <code class="inl">AT TIME ZONE</code> — родственник <code class="inl">tz_convert</code>. Границы
+          периода и в SQL пишут полуоткрытыми: <code class="inl">BETWEEN</code> включил бы обе полночи.
+          Подробнее — <a href="ref-dt-sql.html">страница 04</a>.
+        </p>
+
+        <div class="bridges">
+          <a class="bridge" href="ch-18-dates-reshape.html"><span class="to">Глава 18</span><span>Даты и reshape: .dt в pandas</span><span class="what">→ to_datetime, месяцы и период</span></a>
+          <a class="bridge" href="ch-27-date-time.html"><span class="to">Глава 27</span><span>Дата и время: момент, календарь, длительность</span><span class="what">→ UTC, зоны и DST целиком</span></a>
+          <a class="bridge" href="ref-pd-reshape.html"><span class="to">Справочник pandas</span><span>07 · Reshape, даты и строки</span><span class="what">→ .dt рядом с pivot и .str</span></a>
+          <a class="bridge" href="appendix-datetime.html"><span class="to">Справочник</span><span>Вся карта «Дата и время»</span><span class="what">→ четыре страницы: Python, NumPy, pandas, SQL</span></a>
+        </div>
+      </section>
+
+      <div class="pager">
+        <a class="prev" href="ref-dt-numpy.html"><span class="dir">← Назад</span><span class="ttl">NumPy: datetime64 и единицы</span></a>
+        <a class="next" href="ref-dt-sql.html"><span class="dir">Дальше → SQL</span><span class="ttl">SQL: date, timestamp, interval</span></a>
+      </div>
+
+    </div>
+  </main>
+</div>
+<script src="assets/toc.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>

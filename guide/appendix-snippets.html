@@ -41,7 +41,7 @@
         <div class="meta">
           <span class="chip">🐍 <b>Python 3.12</b></span>
           <span class="chip">🐘 <b>PostgreSQL 14</b></span>
-          <span class="chip">📄 <b>56 файлов</b></span>
+          <span class="chip">📄 <b>62 файла</b></span>
           <span class="chip">📦 <b>numpy · pandas</b></span>
         </div>
       </header>
@@ -262,7 +262,33 @@ psql -d learning_shop -f guide/snippets/20_select_where.sql</pre>
       </section>
 
       <section>
-        <h2><span class="num">11</span>Учебная база и порядок запуска</h2>
+        <h2><span class="num">11</span>Дата и время · лаборатории</h2>
+        <p>
+          Лаборатории <a href="ch-27-date-time.html">главы 27</a> и
+          <a href="appendix-datetime.html">справочника «Дата и время»</a>. Python и pandas — на
+          Python 3.12 / pandas 3.0.1, NumPy — на numpy 2.3.5, SQL — PostgreSQL 14 / learning_shop.
+        </p>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Где</th><th>Файл</th><th>Что внутри</th></tr></thead>
+            <tbody>
+              <tr><td><a href="ch-27-date-time.html">глава 27 · Python/pandas</a></td><td><a href="snippets/view.html?f=27_datetime_lab.py"><code class="inl">27_datetime_lab.py</code></a></td><td>три сущности, aware/naive, zoneinfo, pandas .dt/tz, месячная выручка</td></tr>
+              <tr><td><a href="ch-27-date-time.html">глава 27 · SQL</a></td><td><a href="snippets/view.html?f=27_datetime_lab.sql"><code class="inl">27_datetime_lab.sql</code></a></td><td>timestamp/timestamptz, interval, date_trunc, AT TIME ZONE, границы</td></tr>
+              <tr><td><a href="ref-dt-python.html">справочник · Python</a></td><td><a href="snippets/view.html?f=ref_dt_python_lab.py"><code class="inl">ref_dt_python_lab.py</code></a></td><td>datetime/date/timedelta, ISO, epoch, zoneinfo</td></tr>
+              <tr><td><a href="ref-dt-numpy.html">справочник · NumPy</a></td><td><a href="snippets/view.html?f=ref_dt_numpy_lab.py"><code class="inl">ref_dt_numpy_lab.py</code></a></td><td>datetime64/timedelta64, единицы, NaT</td></tr>
+              <tr><td><a href="ref-dt-pandas.html">справочник · pandas</a></td><td><a href="snippets/view.html?f=ref_dt_pandas_lab.py"><code class="inl">ref_dt_pandas_lab.py</code></a></td><td>Timestamp, .dt, tz_localize/convert, date_range, resample</td></tr>
+              <tr><td><a href="ref-dt-sql.html">справочник · SQL</a></td><td><a href="snippets/view.html?f=ref_dt_sql_lab.sql"><code class="inl">ref_dt_sql_lab.sql</code></a></td><td>типы дат, interval, date_trunc, AT TIME ZONE, индексы</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="small">
+          SQL-файлы предполагают подготовленную базу: <code class="inl">bash tools/setup_db.sh</code>,
+          затем <code class="inl">psql -d learning_shop -f guide/snippets/ref_sql_setup.sql</code>.
+        </p>
+      </section>
+
+      <section>
+        <h2><span class="num">12</span>Учебная база и порядок запуска</h2>
         <div class="code">
           <div class="bar"><span class="file">терминал</span><span class="lang">shell</span><button class="copy">копировать</button></div>
           <pre># 1. создать базу и загрузить схему с данными

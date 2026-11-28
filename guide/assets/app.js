@@ -42,6 +42,16 @@
     const done = BOOK.chapters.filter(chapterDone).length;
     const pct = Math.round((done / total) * 100);
 
+    const extras = (BOOK.extras || []).map(c => {
+      const act = c.slug === slug ? " active" : "";
+      return `<a class="nav-ch${act}" href="${c.slug}.html">`
+        + `<span class="n">${c.n}</span><span>${c.title}</span>`
+        + `<span class="flag">вне недель</span></a>`;
+    }).join("");
+    const extrasGroup = extras
+      ? `<div class="nav-part"><div class="t"><span>◆</span>Дополнения</div>${extras}</div>`
+      : "";
+
     const currentRef = (BOOK.reference || []).find(r => r.slug === slug);
     const ref = (BOOK.reference || []).filter(r => r.hub).map(r => {
       const act = (currentRef && currentRef.group === r.group) ? " active" : "";
@@ -66,6 +76,7 @@
           ${ref}
         </div>
         ${parts}
+        ${extrasGroup}
         <div class="nav-part">
           <div class="t"><span>◆</span>Инструменты</div>
           <a class="nav-ch${slug === "appendix-snippets" ? " active" : ""}" href="appendix-snippets.html">
@@ -205,6 +216,15 @@
     }).join("");
     return `<div class="part"><h3><b>${p.n}</b>${p.title}<span style="margin-left:auto;text-transform:none;letter-spacing:0;color:var(--muted)">${p.range}</span></h3><ol>${items}</ol></div>`;
   }).join("");
+
+  const ex = document.getElementById("extras");
+  if (ex && BOOK.extras) {
+    const items = BOOK.extras.map(c => {
+      const inner = `<span class="n">${c.n}</span><span class="t">${c.title}</span><span class="d">${c.desc}</span>`;
+      return `<li><a class="${c.ready ? "" : "off"}" href="${c.slug}.html">${inner}</a></li>`;
+    }).join("");
+    ex.innerHTML = `<div class="part"><h3><b>+</b>Дополнения<span style="margin-left:auto;text-transform:none;letter-spacing:0;color:var(--muted)">вне 8 недель</span></h3><ol>${items}</ol></div>`;
+  }
 })();
 
 /* ── PWA: офлайн-копия для чтения в дороге ─────────────────── */

@@ -70,7 +70,17 @@ window.BOOK = {
     { slug: "ref-sql-group", file: "ref-sql-group.html", title: "GROUP BY и HAVING", n: "3", group: "sql" },
     { slug: "ref-sql-window", file: "ref-sql-window.html", title: "Оконные функции", n: "4", group: "sql" },
     { slug: "ref-sql-cte", file: "ref-sql-cte.html", title: "Подзапросы и CTE", n: "5", group: "sql" },
-    { slug: "ref-sql-index", file: "ref-sql-index.html", title: "Индексы и EXPLAIN", n: "6", group: "sql" }
+    { slug: "ref-sql-index", file: "ref-sql-index.html", title: "Индексы и EXPLAIN", n: "6", group: "sql" },
+
+    { slug: "appendix-datetime", file: "appendix-datetime.html", title: "Справочник «Дата и время»", nav: "Дата и время", group: "datetime", hub: true },
+    { slug: "ref-dt-python", file: "ref-dt-python.html", title: "Python datetime", n: "1", group: "datetime" },
+    { slug: "ref-dt-numpy", file: "ref-dt-numpy.html", title: "NumPy datetime64", n: "2", group: "datetime" },
+    { slug: "ref-dt-pandas", file: "ref-dt-pandas.html", title: "pandas: Timestamp и .dt", n: "3", group: "datetime" },
+    { slug: "ref-dt-sql", file: "ref-dt-sql.html", title: "SQL: date, timestamp, interval", n: "4", group: "datetime" }
+  ],
+  // ── Дополнения: спецглавы вне 8-недельной программы ─────────
+  extras: [
+    { n: "27", slug: "ch-27-date-time", title: "Дата и время: момент, календарь и длительность", desc: "Спецглава · вне недель", ready: true }
   ],
   parts: [
     { n: 1, title: "Фундамент Python", range: "Неделя 1" },
