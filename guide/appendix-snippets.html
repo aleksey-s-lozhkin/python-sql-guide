@@ -41,7 +41,7 @@
         <div class="meta">
           <span class="chip">🐍 <b>Python 3.12</b></span>
           <span class="chip">🐘 <b>PostgreSQL 14</b></span>
-          <span class="chip">📄 <b>50 файлов</b></span>
+          <span class="chip">📄 <b>55 файлов</b></span>
           <span class="chip">📦 <b>numpy · pandas</b></span>
         </div>
       </header>
@@ -180,7 +180,31 @@ psql -d learning_shop -f guide/snippets/20_select_where.sql</pre>
       </section>
 
       <section>
-        <h2><span class="num">08</span>Справочник pandas · лаборатории</h2>
+        <h2><span class="num">08</span>Справочник NumPy · лаборатории</h2>
+        <p>
+          Лаборатории <a href="appendix-numpy.html">справочника по NumPy</a>. Нужен
+          <b>numpy 2.3.5</b> (как в книге): в numpy 2 часть поведения <code class="inl">copy=</code>
+          и dtype-псевдонимов отличается.
+        </p>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Страница</th><th>Файл</th><th>Что внутри</th></tr></thead>
+            <tbody>
+              <tr><td><a href="ref-np-ndarray.html">ndarray</a></td><td><a href="snippets/view.html?f=ref_np_ndarray_lab.py"><code class="inl">ref_np_ndarray_lab.py</code></a></td><td>создание, shape/dtype/strides, память, векторизация</td></tr>
+              <tr><td><a href="ref-np-indexing.html">индексация</a></td><td><a href="snippets/view.html?f=ref_np_indexing_lab.py"><code class="inl">ref_np_indexing_lab.py</code></a></td><td>срезы, булевы маски, fancy indexing, np.where</td></tr>
+              <tr><td><a href="ref-np-axis.html">axis</a></td><td><a href="snippets/view.html?f=ref_np_axis_lab.py"><code class="inl">ref_np_axis_lab.py</code></a></td><td>sum/mean по осям, keepdims, argmax, 3D</td></tr>
+              <tr><td><a href="ref-np-broadcasting.html">broadcasting</a></td><td><a href="snippets/view.html?f=ref_np_broadcasting_lab.py"><code class="inl">ref_np_broadcasting_lab.py</code></a></td><td>выравнивание форм, newaxis, broadcast_to</td></tr>
+              <tr><td><a href="ref-np-views.html">view/copy</a></td><td><a href="snippets/view.html?f=ref_np_views_lab.py"><code class="inl">ref_np_views_lab.py</code></a></td><td>base, shares_memory, reshape/T, маска как копия</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="small">
+          Запуск: <code class="inl">python3 guide/snippets/ref_np_ndarray_lab.py</code> в окружении книги.
+        </p>
+      </section>
+
+      <section>
+        <h2><span class="num">09</span>Справочник pandas · лаборатории</h2>
         <p>
           Лаборатории <a href="appendix-pandas.html">справочника по pandas</a>. Нужен
           <b>pandas 3.0.1</b>, как в книге: на более старых версиях отличается вывод для строк
@@ -208,7 +232,7 @@ psql -d learning_shop -f guide/snippets/20_select_where.sql</pre>
       </section>
 
       <section>
-        <h2><span class="num">09</span>Справочник SQL · лаборатории</h2>
+        <h2><span class="num">10</span>Справочник SQL · лаборатории</h2>
         <p>
           Лаборатории <a href="appendix-sql.html">справочника по SQL</a>. Нужен PostgreSQL 14 и база
           <code class="inl">learning_shop</code>; запросы только читают данные.
@@ -233,7 +257,7 @@ psql -d learning_shop -f guide/snippets/20_select_where.sql</pre>
       </section>
 
       <section>
-        <h2><span class="num">10</span>Учебная база и порядок запуска</h2>
+        <h2><span class="num">11</span>Учебная база и порядок запуска</h2>
         <div class="code">
           <div class="bar"><span class="file">терминал</span><span class="lang">shell</span><button class="copy">копировать</button></div>
           <pre># 1. создать базу и загрузить схему с данными

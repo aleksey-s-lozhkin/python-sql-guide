@@ -1,0 +1,192 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Справочник по NumPy — Ассоциативный гайд</title>
+<meta name="description" content="Справочник по NumPy 2.3: ndarray, индексация и маски, axis, broadcasting, view и copy — операции, форма результата и примеры.">
+<link rel="stylesheet" href="assets/style.css">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#fbf8f2" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#14131a" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="assets/icons/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="assets/icons/icon-180.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Гайд Py/SQL">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+</head>
+<body data-slug="appendix-numpy">
+<div class="app">
+  <aside class="sidebar" id="sidebar"></aside>
+  <main>
+    <div class="wrap">
+
+      <header class="chapter-head">
+        <div class="eyebrow">
+          <span class="part">Приложение · Справочник</span>
+          <span class="dot"></span>
+          <span>NumPy · вне программы</span>
+          <span class="dot"></span>
+          <span>готово</span>
+        </div>
+        <h1>Справочник по NumPy
+          <span class="sub">Пять страниц: сетка, индексация, оси, broadcasting и view/copy</span>
+        </h1>
+        <p class="lead">
+          NumPy — фундамент pandas: массивы, dtype, оси и правила выравнивания. Здесь — рабочий
+          справочник: какая операция даёт какую форму, где копия и где view, и как не запутаться
+          в осях. Версия — <b>numpy 2.3.5</b>, как в книге.
+        </p>
+        <div class="meta">
+          <span class="chip">⏱ <b>5 минут</b> на выбор</span>
+          <span class="chip">🎯 уровень <b>2</b></span>
+          <span class="chip">🧮 <b>numpy 2.3.5</b></span>
+          <span class="chip">📚 <b>главы 07–11</b></span>
+        </div>
+      </header>
+
+            <p class="small">
+        Справочники: <a href="appendix-types.html">Python-коллекции</a> · <b>NumPy</b> · <a href="appendix-pandas.html">pandas</a> · <a href="appendix-sql.html">SQL</a>
+      </p>
+
+      <div class="tldr">
+        <div class="t">Самое главное</div>
+        <ul>
+          <li>ndarray — <b>сетка чисел одного dtype</b>; размеры идут по осям, а не «по элементам».</li>
+          <li>Две главные развилки: <b>ось</b> (<code class="inl">axis=0</code> против
+              <code class="inl">1</code>) и <b>view или copy</b> — срез смотрит в память, маска копирует.</li>
+          <li>Операции векторизованы: цикл по элементам почти всегда медленнее и длиннее.</li>
+        </ul>
+      </div>
+
+      <!-- ══════════════════ 01. Как пользоваться ══════════════════ -->
+      <section>
+        <h2><span class="num">01</span>Как пользоваться</h2>
+        <ol>
+          <li><strong>Найдите задачу в карте.</strong> Создать, выбрать элементы, свернуть по оси,
+              совместить формы, понять копию/view.</li>
+          <li><strong>Откройте страницу.</strong> Вверху — зачем, в середине — таблицы операций с
+              формой результата, внизу — ошибки и сценарии.</li>
+          <li><strong>Проверьте формой.</strong> Каждая страница ссылается на лабораторию
+              <code class="inl">ref_np_*_lab.py</code>: запустите и напечатайте
+              <code class="inl">.shape</code> — форма объясняет больше, чем текст.</li>
+        </ol>
+        <div class="note">
+          <span class="t">Версия и требования</span>
+          <p>Лаборатории сняты на <b>numpy 2.3.5</b> (Python 3.12). В numpy 2 изменились некоторые
+          детали <code class="inl">copy=</code> и удалены старые псевдонимы dtype — если вывод не
+          совпал, сначала сверьте версию.</p>
+        </div>
+      </section>
+
+      <!-- ══════════════════ 02. Карта выбора ══════════════════ -->
+      <section>
+        <h2><span class="num">02</span>Карта выбора: от задачи к странице</h2>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Задача</th><th>Что взять</th><th>Страница</th></tr></thead>
+            <tbody>
+              <tr><td>Создать массив и посмотреть свойства</td><td><code class="inl">array</code>, <code class="inl">zeros</code>, <code class="inl">arange</code>, <code class="inl">shape</code>, <code class="inl">dtype</code></td><td><a href="ref-np-ndarray.html">01</a></td></tr>
+              <tr><td>Выбрать элементы: срез, условие, список индексов</td><td>срезы, булева маска, fancy indexing, <code class="inl">np.where</code></td><td><a href="ref-np-indexing.html">02</a></td></tr>
+              <tr><td>Свернуть массив по оси</td><td><code class="inl">sum</code>, <code class="inl">mean</code>, <code class="inl">any</code>, <code class="inl">argmax</code>, <code class="inl">keepdims</code></td><td><a href="ref-np-axis.html">03</a></td></tr>
+              <tr><td>Совместить массивы разных форм</td><td>broadcasting, <code class="inl">newaxis</code>, <code class="inl">broadcast_to</code></td><td><a href="ref-np-broadcasting.html">04</a></td></tr>
+              <tr><td>Понять, меняется ли исходный массив</td><td><code class="inl">base</code>, <code class="inl">shares_memory</code>, <code class="inl">copy</code>, <code class="inl">reshape</code></td><td><a href="ref-np-views.html">05</a></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ══════════════════ 03. Форма и dtype ══════════════════ -->
+      <section>
+        <h2><span class="num">03</span>Форма и dtype: как читать массив</h2>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Свойство</th><th>Что означает</th><th>Пример для (2, 3)</th></tr></thead>
+            <tbody>
+              <tr><td class="mono">shape</td><td>размеры по осям</td><td><code class="inl">(2, 3)</code> — 2 строки, 3 столбца</td></tr>
+              <tr><td class="mono">ndim</td><td>число осей</td><td><code class="inl">2</code></td></tr>
+              <tr><td class="mono">size</td><td>всего элементов</td><td><code class="inl">6</code></td></tr>
+              <tr><td class="mono">dtype</td><td>тип элементов, один на весь массив</td><td><code class="inl">int64</code></td></tr>
+              <tr><td class="mono">itemsize</td><td>байт на элемент</td><td><code class="inl">8</code> для int64</td></tr>
+              <tr><td class="mono">nbytes</td><td>байт на данные целиком</td><td><code class="inl">48</code></td></tr>
+              <tr><td class="mono">strides</td><td>сколько байт пройти, чтобы сдвинуться на 1 по каждой оси</td><td><code class="inl">(24, 8)</code></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="small">
+          Оси нумеруются с нуля: для таблицы <code class="inl">axis=0</code> — вниз по строкам,
+          <code class="inl">axis=1</code> — вправо по столбцам. Подробно — <a href="ref-np-axis.html">страница 03</a>.
+        </p>
+      </section>
+
+      <!-- ══════════════════ 04. Конвертации ══════════════════ -->
+      <section>
+        <h2><span class="num">04</span>Конвертации: list, dtype, reshape</h2>
+        <div class="code">
+          <div class="bar"><span class="file">конвертации</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">import numpy as np
+
+arr = np.array([[1, 2, 3], [4, 5, 6]])
+print(arr.shape, arr.ndim, arr.size, arr.dtype)
+print(arr.T.tolist())            # транспонирование → список
+print(arr.reshape(3, 2).tolist())  # другая форма, те же данные
+print(arr.ravel().tolist())      # плоский массив
+print(arr.mean(axis=0).tolist()) # среднее по столбцам
+print(arr.astype("float64").dtype)  # приведение типа — копия</pre>
+          <div class="out">(2, 3) 2 6 int64
+[[1, 4], [2, 5], [3, 6]]
+[[1, 2], [3, 4], [5, 6]]
+[1, 2, 3, 4, 5, 6]
+[2.5, 3.5, 4.5]
+float64</div>
+        </div>
+        <p class="small">
+          Вывод получен на numpy 2.3.5. <code class="inl">tolist()</code> — обратно в Python-список;
+          <code class="inl">astype</code> всегда создаёт копию, <code class="inl">reshape</code> —
+          view, если данные позволяют.
+        </p>
+      </section>
+
+      <!-- ══════════════════ 05. Страницы ══════════════════ -->
+      <section>
+        <h2><span class="num">05</span>Пять страниц</h2>
+        <div class="bridges">
+          <a class="bridge" href="ref-np-ndarray.html"><span class="to">01 · ndarray</span><span>Сетка вместо списка</span><span class="what">→ создание, shape/dtype, память</span></a>
+          <a class="bridge" href="ref-np-indexing.html"><span class="to">02 · Индексация</span><span>Трафарет поверх сетки</span><span class="what">→ срезы, маски, fancy, where</span></a>
+          <a class="bridge" href="ref-np-axis.html"><span class="to">03 · axis</span><span>Вдоль какой стены считать</span><span class="what">→ агрегаты, keepdims, argmax</span></a>
+          <a class="bridge" href="ref-np-broadcasting.html"><span class="to">04 · Broadcasting</span><span>Штамп и тесто</span><span class="what">→ правила форм, newaxis</span></a>
+          <a class="bridge" href="ref-np-views.html"><span class="to">05 · View и copy</span><span>Стекло и ксерокс</span><span class="what">→ base, shares_memory, reshape/T</span></a>
+        </div>
+        <p class="small">
+          Порядок — как в книге: массив → как выбрать → как свернуть → как совместить → где копия.
+          Каждая страница заканчивается мостиком в pandas и SQL.
+        </p>
+      </section>
+
+      <!-- ══════════════════ 06. Куда дальше ══════════════════ -->
+      <section>
+        <h2><span class="num">06</span>Куда дальше</h2>
+        <div class="bridges">
+          <a class="bridge" href="ch-07-ndarray.html"><span class="to">Глава 07</span><span>ndarray: сетка вместо списка</span><span class="what">→ устройство и память</span></a>
+          <a class="bridge" href="ch-08-indexing.html"><span class="to">Глава 08</span><span>Индексация и маски</span><span class="what">→ трафарет поверх сетки</span></a>
+          <a class="bridge" href="ch-09-axis.html"><span class="to">Глава 09</span><span>axis: вдоль какой стены считать</span><span class="what">→ свёртки по осям</span></a>
+          <a class="bridge" href="ch-10-broadcasting.html"><span class="to">Глава 10</span><span>Broadcasting: штамп и тесто</span><span class="what">→ выравнивание форм</span></a>
+          <a class="bridge" href="ch-11-views-copies.html"><span class="to">Глава 11</span><span>View и copy: стекло и ксерокс</span><span class="what">→ кто на кого смотрит</span></a>
+          <a class="bridge" href="appendix-pandas.html"><span class="to">Справочник</span><span>pandas: Series, loc, groupby, merge</span><span class="what">→ та же сетка, но с индексом</span></a>
+          <a class="bridge" href="appendix-snippets.html"><span class="to">Приложение</span><span>Файлы лабораторий</span><span class="what">→ запуск ref_np_*_lab.py</span></a>
+        </div>
+      </section>
+
+      <div class="pager">
+        <a class="prev" href="appendix-types.html"><span class="dir">← Назад</span><span class="ttl">Справочник: Python-коллекции</span></a>
+        <a class="next" href="ref-np-ndarray.html"><span class="dir">Дальше →</span><span class="ttl">01 · ndarray</span></a>
+      </div>
+
+    </div>
+  </main>
+</div>
+<script src="assets/toc.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>

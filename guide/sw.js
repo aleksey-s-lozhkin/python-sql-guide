@@ -1,6 +1,7 @@
 // Сгенерировано tools/gen_sw.cjs — не править руками.
-const CACHE = "assoc-guide-vddbecfb0";
+const CACHE = "assoc-guide-v86d501fd";
 const PRECACHE = [
+  "./appendix-numpy.html",
   "./appendix-pandas.html",
   "./appendix-snippets.html",
   "./appendix-sql.html",
@@ -80,6 +81,11 @@ const PRECACHE = [
   "./ref-dict.html",
   "./ref-frozenset.html",
   "./ref-list.html",
+  "./ref-np-axis.html",
+  "./ref-np-broadcasting.html",
+  "./ref-np-indexing.html",
+  "./ref-np-ndarray.html",
+  "./ref-np-views.html",
   "./ref-pd-filter.html",
   "./ref-pd-groupby.html",
   "./ref-pd-loc.html",
@@ -130,6 +136,11 @@ const PRECACHE = [
   "./snippets/ref_dict_lab.py",
   "./snippets/ref_frozenset_lab.py",
   "./snippets/ref_list_lab.py",
+  "./snippets/ref_np_axis_lab.py",
+  "./snippets/ref_np_broadcasting_lab.py",
+  "./snippets/ref_np_indexing_lab.py",
+  "./snippets/ref_np_ndarray_lab.py",
+  "./snippets/ref_np_views_lab.py",
   "./snippets/ref_pd_filter_lab.py",
   "./snippets/ref_pd_groupby_lab.py",
   "./snippets/ref_pd_loc_lab.py",

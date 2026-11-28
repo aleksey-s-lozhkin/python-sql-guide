@@ -1,0 +1,699 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Справочник NumPy · ndarray: сетка вместо списка — Ассоциативный гайд</title>
+<meta name="description" content="Справочник по ndarray в numpy 2.3.5: shape, dtype, strides, память, создание массивов, astype и переполнение, векторизация против списка — с реальным выводом.">
+<link rel="stylesheet" href="assets/style.css">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#fbf8f2" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#14131a" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="assets/icons/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="assets/icons/icon-180.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Гайд Py/SQL">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+</head>
+<body data-slug="ref-np-ndarray">
+<div class="app">
+  <aside class="sidebar" id="sidebar"></aside>
+  <main>
+    <div class="wrap">
+
+      <header class="chapter-head">
+        <div class="eyebrow">
+          <span class="part">Справочник · NumPy</span>
+          <span class="dot"></span>
+          <span>страница 1 из 5</span>
+          <span class="dot"></span>
+          <span>готово</span>
+        </div>
+        <h1>ndarray: сетка вместо списка
+          <span class="sub">Форма, dtype и память: числа подряд вместо указателей на объекты</span>
+        </h1>
+        <p class="lead">
+          <code class="inl">ndarray</code> — непрерывный буфер чисел плюс заголовок с формой и типом.
+          Здесь — как прочитать паспорт массива, чем создать сетку, почему <code class="inl">astype</code>
+          молча переполняется и как <code class="inl">ndarray</code> отличается от <code class="inl">list</code>
+          по памяти и по операциям.
+        </p>
+        <div class="meta">
+          <span class="chip">⏱ <b>12 минут</b></span>
+          <span class="chip">🎯 уровень <b>2</b></span>
+          <span class="chip">🧮 <b>numpy 2.3.5</b></span>
+          <span class="chip">📚 <b>глава 07</b></span>
+        </div>
+      </header>
+
+      <p class="small">
+        Справочник NumPy: <a href="appendix-numpy.html">вся карта</a> ·
+        <b>01 · ndarray</b> · <a href="ref-np-indexing.html">02 · индексация</a> ·
+        <a href="ref-np-axis.html">03 · axis</a> ·
+        <a href="ref-np-broadcasting.html">04 · broadcasting</a> ·
+        <a href="ref-np-views.html">05 · view/copy</a>
+      </p>
+
+      <div class="tldr">
+        <div class="t">Самое главное</div>
+        <ul>
+          <li><code class="inl">ndarray</code> — это буфер чисел подряд плюс паспорт:
+              <code class="inl">shape</code> (размеры), <code class="inl">dtype</code> (тип клетки),
+              <code class="inl">strides</code> (шаг в байтах). Отсюда доступ по индексу за O(1)
+              и операции над всеми элементами сразу.</li>
+          <li><b>Один dtype на весь массив</b>: смешали целые и дробные — получили
+              <code class="inl">float64</code>; <code class="inl">int8</code> при переполнении
+              молча заворачивается (<code class="inl">200 → -56</code>).</li>
+          <li><code class="inl">np.array</code> копирует данные, <code class="inl">np.asarray</code> —
+              нет, если на входе уже массив. <code class="inl">nbytes</code> считает только данные,
+              <code class="inl">sys.getsizeof</code> прибавляет заголовок объекта.</li>
+        </ul>
+      </div>
+
+      <!-- ══════════════════ 01. Что это ══════════════════ -->
+      <section>
+        <h2><span class="num">01</span>Что это и как устроено</h2>
+        <p>
+          <code class="inl">ndarray</code> — сетка элементов <em>одного типа</em>. Сами числа лежат
+          в памяти подряд, а объект-заголовок знает, сколько клеток по каждой оси
+          (<code class="inl">shape</code>), что лежит в клетке (<code class="inl">dtype</code>) и
+          сколько байт шагнуть, чтобы попасть к соседней клетке (<code class="inl">strides</code>).
+        </p>
+        <p>
+          Из этого «паспорта» вычисляется адрес любого элемента: база плюс индекс, умноженный на шаг.
+          Поэтому <code class="inl">arr[5000]</code> стоит столько же, сколько
+          <code class="inl">arr[0]</code>, а срез не копирует данные, а показывает на них окном.
+          По умолчанию порядок C: последняя ось меняется быстрее всего, строки лежат подряд.
+        </p>
+        <p>
+          Список устроен иначе: в нём лежат <em>указатели</em> на отдельные Python-объекты, разбросанные
+          по памяти. Массив хранит сами числа, поэтому миллион <code class="inl">int64</code> — это
+          8 МБ данных, а не миллион объектов. Отсюда же векторизация: цикл по элементам делает
+          интерпретатор, а операция над массивом — скомпилированный код NumPy.
+        </p>
+
+        <div class="anchor">
+          <div class="glyph">▦</div>
+          <div>
+            <div class="t">Держите эту картинку в голове</div>
+            <p class="kick"><strong>ndarray — это лист в клетку.</strong> Клетки одинакового размера
+            стоят вплотную, и у листа есть паспорт: сколько клеток по каждой стороне
+            (<code class="inl">shape</code>), что в клетке (<code class="inl">dtype</code>) и сколько
+            байт до следующей (<code class="inl">strides</code>).</p>
+            <p>Список — полка с коробками: на полке ссылки на отдельные коробки разного размера.
+            Массив — именно лист: клетки не разъезжаются, а операции идут по всей сетке сразу.
+            Метафору целиком разбирает <a href="ch-07-ndarray.html">глава 07</a>, а view и копии —
+            <a href="ch-11-views-copies.html">глава 11</a>.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ══════════════════ 02. Когда брать ══════════════════ -->
+      <section>
+        <h2><span class="num">02</span>Когда брать, а когда нет</h2>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Задача</th><th>ndarray?</th><th>Что взять вместо</th></tr></thead>
+            <tbody>
+              <tr><td>Много чисел одного типа и векторные операции</td><td><b>да</b></td><td>—</td></tr>
+              <tr><td>Матрицы и сетки: shape, срезы, маски</td><td><b>да</b></td><td>—</td></tr>
+              <tr><td>Агрегаты по осям: <code class="inl">sum</code>, <code class="inl">mean</code></td><td><b>да</b></td><td>—</td></tr>
+              <tr><td>Таблица с подписями строк и колонок</td><td>как основа</td><td><code class="inl">pandas</code></td></tr>
+              <tr><td>Разные типы в одной структуре: строка и число</td><td>нет</td><td><code class="inl">list</code> из записей, <code class="inl">dict</code></td></tr>
+              <tr><td>Вставки и удаления в середине</td><td>нет</td><td><code class="inl">list</code></td></tr>
+              <tr><td>Деньги и точные десятичные дроби</td><td>нет</td><td>целые копейки, <code class="inl">Decimal</code></td></tr>
+              <tr><td>Два-три числа без циклов</td><td>нет</td><td>обычные переменные: массив — оверхед</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="small">
+          Карта выбора структур — <a href="ch-01-python-collections.html">глава 01</a>, таблицы — <a href="appendix-pandas.html">справочник pandas</a>.
+        </p>
+      </section>
+
+      <!-- ══════════════════ 03. Как создать ══════════════════ -->
+      <section>
+        <h2><span class="num">03</span>Как создать</h2>
+        <div class="code">
+          <div class="bar"><span class="file">ref_np_ndarray_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">import numpy as np
+
+arr = np.array([1200, 800, 1500, 500])
+grid = np.array([[1, 2, 3], [4, 5, 6]])
+texts = np.array(["Anna", "Olga", "Ivan"])
+print(arr)
+print(grid)
+print(texts, texts.dtype)</pre>
+          <div class="out">[1200  800 1500  500]
+[[1 2 3]
+ [4 5 6]]
+['Anna' 'Olga' 'Ivan'] &lt;U4</div>
+        </div>
+        <p>
+          <code class="inl">np.array</code> разбирает вложенный список и <b>копирует</b> данные:
+          список списков даёт двумерную сетку, а тип выводится из значений — <code class="inl">int64</code>,
+          <code class="inl">float64</code>, строки <code class="inl">&lt;U4</code>.
+        </p>
+      </section>
+
+      <!-- ══════════════════ 04. Все операции ══════════════════ -->
+      <section>
+        <h2><span class="num">04</span>Все операции</h2>
+        <p>
+          Три таблицы по назначению. «Форма результата» — что вернёт операция, «Примечание» — копия,
+          view и память; подробности view/copy — на <a href="ref-np-views.html">странице 05</a>.
+        </p>
+
+        <h3>Создание и паспорт</h3>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Операция</th><th>Что делает</th><th>Форма результата</th><th>Примечание</th></tr></thead>
+            <tbody>
+              <tr><td class="mono">np.array(список)</td><td>сетка из вложенного списка; dtype выводится</td><td>ndarray</td><td>копия данных</td></tr>
+              <tr><td class="mono">np.zeros(shape), np.ones(shape)</td><td>массив нулей / единиц заданной формы</td><td>ndarray float64</td><td><code class="inl">dtype=</code> меняет тип</td></tr>
+              <tr><td class="mono">np.full(shape, x)</td><td>заполняет значением x</td><td>ndarray</td><td>тип из x или <code class="inl">dtype=</code></td></tr>
+              <tr><td class="mono">np.arange(a, b, step)</td><td>диапазон как <code class="inl">range</code></td><td>ndarray 1D</td><td>шаг может быть дробным</td></tr>
+              <tr><td class="mono">np.linspace(a, b, num)</td><td>num точек, включая границы</td><td>ndarray 1D</td><td>точная сетка — лучше <code class="inl">arange</code></td></tr>
+              <tr><td class="mono">np.eye(n)</td><td>единичная матрица n × n</td><td>ndarray 2D</td><td>для матричных примеров</td></tr>
+              <tr><td class="mono">np.random.default_rng(seed)</td><td>генератор; <code class="inl">.integers</code>, <code class="inl">.random</code></td><td>Generator</td><td>seed делает вывод воспроизводимым</td></tr>
+              <tr><td class="mono">.shape, .ndim, .size</td><td>размеры, число осей, всего элементов</td><td>tuple, int, int</td><td>без копирования</td></tr>
+              <tr><td class="mono">.dtype, .itemsize</td><td>тип клетки и байт на элемент</td><td>dtype, int</td><td><code class="inl">int64</code> → 8 байт</td></tr>
+              <tr><td class="mono">.nbytes</td><td>байт под данные</td><td>int</td><td><code class="inl">size × itemsize</code></td></tr>
+              <tr><td class="mono">.strides</td><td>шаг в байтах по каждой оси</td><td>tuple</td><td>адрес = база + шаги</td></tr>
+              <tr><td class="mono">.flags["C_CONTIGUOUS"]</td><td>лежат ли данные подряд по строкам</td><td>bool</td><td>важно для view/resize</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>dtype, копии и память</h3>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Операция</th><th>Что делает</th><th>Форма результата</th><th>Примечание</th></tr></thead>
+            <tbody>
+              <tr><td class="mono">.astype(dtype)</td><td>новый массив с другим типом</td><td>ndarray</td><td>копия; переполнение молча</td></tr>
+              <tr><td class="mono">np.array(x)</td><td>новая копия данных</td><td>ndarray</td><td>всегда копирует</td></tr>
+              <tr><td class="mono">np.asarray(x)</td><td>массив из x, копия только при необходимости</td><td>ndarray</td><td>для массива — тот же объект</td></tr>
+              <tr><td class="mono">.copy()</td><td>независимая копия</td><td>ndarray</td><td>данные в новой памяти</td></tr>
+              <tr><td class="mono">.nbytes</td><td>байт под данные</td><td>int</td><td>не включает заголовок</td></tr>
+              <tr><td class="mono">sys.getsizeof(arr)</td><td>размер объекта вместе с буфером</td><td>int</td><td>больше <code class="inl">nbytes</code> на заголовок</td></tr>
+              <tr><td class="mono">смешанный список</td><td>приводит всё к общему типу</td><td>dtype</td><td><code class="inl">int + float</code> → <code class="inl">float64</code></td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>Векторизация и форма</h3>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Операция</th><th>Что делает</th><th>Форма результата</th><th>Примечание</th></tr></thead>
+            <tbody>
+              <tr><td class="mono">arr + число</td><td>прибавляет число к каждой клетке</td><td>ndarray той же формы</td><td>без цикла</td></tr>
+              <tr><td class="mono">arr * число, arr / число, arr // число</td><td>умножение и деление поэлементно</td><td>ndarray</td><td><code class="inl">/</code> даёт float64, <code class="inl">//</code> — целый</td></tr>
+              <tr><td class="mono">arr ** 2</td><td>возводит каждую клетку в степень</td><td>ndarray</td><td>поэлементно, не матрично</td></tr>
+              <tr><td class="mono">arr &gt; 25</td><td>сравнивает каждую клетку с числом</td><td>ndarray bool</td><td>основа масок — страница 02</td></tr>
+              <tr><td class="mono">arr @ arr2</td><td>матричное умножение</td><td>ndarray</td><td><code class="inl">*</code> — поэлементное</td></tr>
+              <tr><td class="mono">.reshape(...)</td><td>меняет форму, не трогая данные</td><td>ndarray</td><td>view при C-порядке</td></tr>
+              <tr><td class="mono">.ravel()</td><td>разворачивает в 1D</td><td>ndarray 1D</td><td>view, если возможно</td></tr>
+              <tr><td class="mono">.T</td><td>транспонирует оси</td><td>ndarray</td><td>view, меняются strides</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ══════════════════ 05. Разбор ══════════════════ -->
+      <section>
+        <h2><span class="num">05</span>Разбор по группам</h2>
+        <p>
+          Все примеры страницы — в файле
+          <a href="snippets/view.html?f=ref_np_ndarray_lab.py"><code class="inl">ref_np_ndarray_lab.py</code></a>
+          (numpy 2.3.5): запустите и поменяйте числа.
+        </p>
+
+        <h3>Паспорт и память</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_np_ndarray_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">arr = np.array([1200, 800, 1500, 500])
+grid = np.array([[1, 2, 3], [4, 5, 6]])
+print(arr.shape, arr.ndim, arr.size)
+print(arr.dtype, arr.itemsize)
+print(grid.shape, grid.ndim, grid.size)
+print(grid.nbytes, grid.strides)
+print(grid.flags["C_CONTIGUOUS"])
+
+import sys
+
+arr = np.zeros(1000, dtype=np.int64)
+print(arr.nbytes, arr.itemsize * arr.size)
+print(sys.getsizeof(arr))
+print(np.zeros(1000, dtype=np.float32).nbytes)
+print(np.array([1200, 800]).nbytes)</pre>
+          <div class="out">(4,) 1 4
+int64 8
+(2, 3) 2 6
+48 (24, 8)
+True
+8000 8000
+8112
+4000
+16</div>
+        </div>
+        <p>
+          <code class="inl">shape</code> — кортеж длин по осям: <code class="inl">(4,)</code> у вектора,
+          <code class="inl">(2, 3)</code> у матрицы. <code class="inl">strides = (24, 8)</code>: до
+          следующей строки 24 байта, до соседней клетки — 8. Отсюда адрес клетки за O(1).
+        </p>
+        <p>
+          <code class="inl">nbytes</code> считает только данные: 1000 × 8 = 8000.
+          <code class="inl">sys.getsizeof</code> возвращает 8112 — данные плюс заголовок объекта.
+          У списка <code class="inl">getsizeof</code> показывает только массив указателей, поэтому
+          сравнивать память «в лоб» через него нельзя: у ndarray — <code class="inl">nbytes</code>.
+        </p>
+
+        <h3>Создание: генераторы и random</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_np_ndarray_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">print(np.zeros((2, 3), dtype=np.int8))
+print(np.ones(4))
+print(np.full((2, 2), 7))
+print(np.arange(0, 10, 3))
+print(np.linspace(0, 1, 5))
+print(np.eye(3, dtype=np.int8))
+
+rng = np.random.default_rng(0)
+print(rng.integers(0, 10, size=5))
+print(rng.random(3).round(2))</pre>
+          <div class="out">[[0 0 0]
+ [0 0 0]]
+[1. 1. 1. 1.]
+[[7 7]
+ [7 7]]
+[0 3 6 9]
+[0.   0.25 0.5  0.75 1.  ]
+[[1 0 0]
+ [0 1 0]
+ [0 0 1]]
+[8 6 5 2 3]
+[0.02 0.81 0.91]</div>
+        </div>
+        <p>
+          <code class="inl">zeros</code>, <code class="inl">ones</code> и
+          <code class="inl">full</code> принимают форму кортежем и по умолчанию делают
+          <code class="inl">float64</code>; <code class="inl">dtype=</code> меняет тип.
+          <code class="inl">arange</code> — это <code class="inl">range</code> для массивов,
+          <code class="inl">linspace</code> задаёт количество точек и всегда включает обе границы.
+          <code class="inl">default_rng(seed)</code> — современный генератор: с одним и тем же seed
+          последовательность одинаковая, поэтому примеры страницы воспроизводимы.
+        </p>
+
+        <h3>dtype, копия и ошибки создания</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_np_ndarray_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">mixed = np.array([1, 2.5])
+print(mixed, mixed.dtype)
+
+arr = np.array([1, 2, 3])
+print(arr.astype(np.float32), arr.astype(np.float32).dtype)
+print(np.array([200]).astype(np.int8))
+print(np.array([127], dtype=np.int8) + 1)
+print(np.array([0.1, 0.2, 0.3]).sum())
+
+arr = np.array([1200, 800, 1500, 500])
+print(np.asarray(arr) is arr)
+print(np.array(arr) is arr)
+
+copy = np.array(arr)
+copy[0] = 99
+print(arr)
+print(copy)
+
+try:
+    np.array([1, 2, 3], copy=False)
+except ValueError as e:
+    print(type(e).__name__, str(e).splitlines()[0])
+
+try:
+    np.array([[1, 2], [3]])
+except ValueError as e:
+    print(type(e).__name__, str(e).split(".")[0])</pre>
+          <div class="out">[1.  2.5] float64
+[1. 2. 3.] float32
+[-56]
+[-128]
+0.6000000000000001
+True
+False
+[1200  800 1500  500]
+[  99  800 1500  500]
+ValueError Unable to avoid copy while creating an array as requested.
+ValueError setting an array element with a sequence</div>
+        </div>
+        <p>
+          Смесь целых и дробных приводится к <code class="inl">float64</code>; <code class="inl">astype</code>
+          делает копию с новым типом. <code class="inl">200</code> в <code class="inl">int8</code> —
+          это <code class="inl">-56</code>, а <code class="inl">127 + 1</code> — <code class="inl">-128</code>:
+          переполнение у массивов происходит молча (у скаляров numpy 2 пишет
+          <code class="inl">RuntimeWarning</code>). Сумма <code class="inl">0.1 + 0.2 + 0.3</code>
+          во float64 даёт <code class="inl">0.6000000000000001</code> — двоичные дроби не точны.
+        </p>
+        <p>
+          <code class="inl">np.asarray</code> вернул тот же объект, <code class="inl">np.array</code> —
+          новый: <code class="inl">is</code> это и показывает. Поэтому <code class="inl">copy=False</code>
+          в numpy 2 — это «никогда не копировать», и он падает, если без копии не обойтись. А
+          рваный список <code class="inl">[[1, 2], [3]]</code> вообще не превращается в сетку —
+          форма должна быть прямоугольной.
+        </p>
+
+        <h3>list против ndarray</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_np_ndarray_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">amounts = [1200, 800, 1500]
+print(amounts + [500])
+print([x * 2 for x in amounts])
+print(np.array(amounts) * 2)
+print(np.array(amounts) / 2)
+try:
+    print(amounts + 1)
+except TypeError as e:
+    print(type(e).__name__, e)</pre>
+          <div class="out">[1200, 800, 1500, 500]
+[2400, 1600, 3000]
+[2400 1600 3000]
+[600. 400. 750.]
+TypeError can only concatenate list (not "int") to list</div>
+        </div>
+        <p>
+          У списка <code class="inl">+</code> — конкатенация, а прибавить число к каждому элементу
+          нельзя: нужен цикл или list comprehension. У массива <code class="inl">+</code>,
+          <code class="inl">*</code>, <code class="inl">/</code> работают поэлементно и возвращают
+          новый массив; деление <code class="inl">/</code> всегда даёт <code class="inl">float64</code>.
+          Это и есть векторизация: одна операция — ноль явных циклов.
+        </p>
+
+        <h3>Форма: reshape, ravel, T, copy</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_np_ndarray_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">grid = np.array([[1, 2, 3], [4, 5, 6]])
+print(grid.reshape(6))
+print(grid.reshape(3, 2).shape)
+print(grid.ravel())
+print(grid.T)
+print(grid.T.shape)
+print(grid.copy().shape)</pre>
+          <div class="out">[1 2 3 4 5 6]
+(3, 2)
+[1 2 3 4 5 6]
+[[1 4]
+ [2 5]
+ [3 6]]
+(3, 2)
+(2, 3)</div>
+        </div>
+        <p>
+          <code class="inl">reshape</code> и <code class="inl">ravel</code> меняют форму, не переставляя
+          данные: при C-порядке это view. <code class="inl">.T</code> тоже view — он лишь меняет
+          <code class="inl">strides</code>, поэтому «транспонирование» матрицы ничего не копирует.
+          <code class="inl">copy()</code> же создаёт независимые данные. Полный разбор view и copy —
+          на <a href="ref-np-views.html">странице 05</a>.
+        </p>
+      </section>
+
+      <!-- ══════════════════ 06. Сценарии ══════════════════ -->
+      <section>
+        <h2><span class="num">06</span>Три сценария из практики</h2>
+
+        <h3>Скидка на все заказы</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_np_ndarray_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">amounts = np.array([1200, 800, 1500, 500, 300])
+discounted = amounts * 9 // 10
+print(discounted)
+print(discounted.sum(), amounts.sum())</pre>
+          <div class="out">[1080  720 1350  450  270]
+3870 4300</div>
+        </div>
+        <p>
+          Скидка 10% — одна операция для всех заказов. Для денег оставляем целые:
+          <code class="inl">* 9 // 10</code> — без плавающей точки. В конце — суммы до и после.
+        </p>
+
+        <h3>Нормализация оценок в 0…1</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_np_ndarray_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">scores = np.array([68.0, 92.0, 81.0, 55.0])
+norm = (scores - scores.min()) / (scores.max() - scores.min())
+print(norm.round(2))</pre>
+          <div class="out">[0.35 1.   0.7  0.  ]</div>
+        </div>
+        <p>
+          Вся формула — три векторизованные операции: вычесть минимум, поделить на размах, округлить.
+          Новый массив, никаких циклов; исходные оценки не меняются.
+        </p>
+
+        <h3>float32 экономит память</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_np_ndarray_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">prices = np.array([1200, 800, 1500, 500], dtype=np.int64)
+print(prices.nbytes)
+print(prices.astype(np.float32).nbytes)
+print(prices.astype(np.float32))</pre>
+          <div class="out">32
+16
+[1200.  800. 1500.  500.]</div>
+        </div>
+        <p>
+          Четыре <code class="inl">int64</code> — 32 байта, четыре <code class="inl">float32</code> —
+          16: тип задаёт память напрямую. Экономия вдвое, но ценой точности.
+        </p>
+      </section>
+
+      <!-- ══════════════════ 07. Ошибки ══════════════════ -->
+      <section>
+        <h2><span class="num">07</span>Пять ошибок, на которых спотыкаются</h2>
+        <div class="errors">
+          <div class="err">
+            <div class="h">copy=False по привычке из NumPy 1.x</div>
+            <p>В numpy 2 <code class="inl">np.array(obj, copy=False)</code> — это «не копировать ни при
+            каких условиях»: если копия нужна, приходит
+            <code class="inl">ValueError: Unable to avoid copy while creating an array as requested.</code></p>
+            <div class="fix">Копия — <code class="inl">np.array(obj)</code>; «без копии, если
+            возможно» — <code class="inl">np.asarray(obj)</code>.</div>
+          </div>
+
+          <div class="err">
+            <div class="h">Переполнение int8</div>
+            <p><code class="inl">np.array([200]).astype(np.int8)</code> → <code class="inl">-56</code>,
+            а <code class="inl">np.array([127], dtype=np.int8) + 1</code> → <code class="inl">-128</code>.
+            Массивы заворачиваются молча, исключения не будет.</p>
+            <div class="fix">Берите тип с запасом (<code class="inl">int64</code>), проверяйте диапазон
+            до <code class="inl">astype</code>: <code class="inl">arr.max() &lt;= np.iinfo(np.int8).max</code>.</div>
+          </div>
+
+          <div class="err">
+            <div class="h">Рваная «матрица»</div>
+            <p><code class="inl">np.array([[1, 2], [3]])</code> бросает
+            <code class="inl">ValueError: setting an array element with a sequence</code>: у сетки все
+            строки обязаны быть одной длины.</p>
+            <div class="fix">Выровняйте данные (добить <code class="inl">0</code>/<code class="inl">NaN</code>)
+            или храните список списков: массив — только для прямоугольной формы.</div>
+          </div>
+
+          <div class="err">
+            <div class="h">list + 1</div>
+            <p>К списку нельзя прибавить число:
+            <code class="inl">TypeError: can only concatenate list (not "int") to list</code>.
+            Векторные операции — свойство массива, а не списка.</p>
+            <div class="fix"><code class="inl">np.array(amounts) + 1</code> или comprehension
+            <code class="inl">[x + 1 for x in amounts]</code>, если остаётесь в списке.</div>
+          </div>
+
+          <div class="err">
+            <div class="h">Ждать точных дробей от float64</div>
+            <p><code class="inl">np.array([0.1, 0.2, 0.3]).sum()</code> →
+            <code class="inl">0.6000000000000001</code>, а не <code class="inl">0.6</code>. Сравнение
+            <code class="inl">== 0.6</code> даст <code class="inl">False</code>.</p>
+            <div class="fix">Деньги — в целых копейках или <code class="inl">Decimal</code>; сравнение
+            float — через <code class="inl">np.isclose(a, b)</code>. <code class="inl">dtype=object</code>
+            точности не добавит — только замедлит.</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ══════════════════ 08. Мини-проверка ══════════════════ -->
+      <section>
+        <h2><span class="num">08</span>Мини-проверка</h2>
+        <p>Пять вопросов и две задачи. Сначала своя попытка — потом спойлер.</p>
+
+        <div class="qa">
+          <details>
+            <summary>Чем ndarray отличается от list?</summary>
+            <div class="a">
+              <p>Список хранит указатели на объекты разных типов; массив — сами числа одного типа
+              подряд. Поэтому массив компактнее, а <code class="inl">+</code> и <code class="inl">*</code>
+              поэлементные. Плата: один dtype и фиксированная форма.</p>
+              <div class="verdict">Резюме: list — про гибкость, ndarray — про однородные числа и скорость.</div>
+            </div>
+          </details>
+        </div>
+
+        <div class="qa">
+          <details>
+            <summary>Что такое strides и зачем они нужны?</summary>
+            <div class="a">
+              <p><code class="inl">strides</code> — сколько байт шагнуть по каждой оси, чтобы попасть
+              к соседнему элементу. Для матрицы <code class="inl">(2, 3)</code> из
+              <code class="inl">int64</code> это <code class="inl">(24, 8)</code>: 8 байт до соседа,
+              24 — до следующей строки.</p>
+              <p>Именно strides объясняют, почему индекс O(1), а транспонирование и reshape — view:
+              меняются не данные, а шаги.</p>
+              <div class="verdict">Резюме: strides — карта шагов по буферу.</div>
+            </div>
+          </details>
+        </div>
+
+        <div class="qa">
+          <details>
+            <summary>Почему arr * 2 работает, а list * 2 — нет?</summary>
+            <div class="a">
+              <p>У списка <code class="inl">*</code> — повторение (<code class="inl">[1, 2] * 2</code> →
+              <code class="inl">[1, 2, 1, 2]</code>), а <code class="inl">list + 1</code> —
+              <code class="inl">TypeError</code>. У массива <code class="inl">*</code> и
+              <code class="inl">+</code> поэлементные: <code class="inl">arr * 2</code> умножает каждую клетку.</p>
+              <div class="verdict">Резюме: одинаковый синтаксис, разная семантика — проверяйте тип.</div>
+            </div>
+          </details>
+        </div>
+
+        <div class="qa">
+          <details>
+            <summary>Что делает astype и что будет с 200 в int8?</summary>
+            <div class="a">
+              <p><code class="inl">astype</code> создаёт <b>новый</b> массив с указанным типом, данные
+              копируются. <code class="inl">200</code> не влезает в знаковый <code class="inl">int8</code>
+              (диапазон −128…127), поэтому получается <code class="inl">-56</code> — переполнение
+              заворачивается без ошибки.</p>
+              <div class="verdict">Резюме: astype — копия и тихая потеря данных, если тип уже.</div>
+            </div>
+          </details>
+        </div>
+
+        <div class="qa">
+          <details>
+            <summary>Чем nbytes отличается от sys.getsizeof(arr)?</summary>
+            <div class="a">
+              <p><code class="inl">nbytes</code> — только данные: <code class="inl">size × itemsize</code>.
+              <code class="inl">sys.getsizeof</code> прибавляет заголовок объекта и прочие поля: для
+              1000 <code class="inl">int64</code> это 8112 против 8000.</p>
+              <p>У списка <code class="inl">getsizeof</code> показывает лишь массив указателей, а сами
+              объекты не считает, — поэтому память массива оценивают по
+              <code class="inl">nbytes</code>.</p>
+              <div class="verdict">Резюме: nbytes — данные, getsizeof — объект с данными.</div>
+            </div>
+          </details>
+        </div>
+
+        <h3><span style="color:var(--muted);font-family:var(--mono);font-size:.8rem">01</span> Паспорт датасета</h3>
+        <p>Для матрицы заказов выведите форму, число элементов, размер данных в байтах и dtype.</p>
+        <div class="code">
+          <div class="bar"><span class="file">условие</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">orders = np.array([[1200, 800, 1500],
+                   [500, 300, 900]])
+# ожидается: (2, 3) 6 48 int64</pre>
+        </div>
+        <div class="qa">
+          <details>
+            <summary>Показать решение и разбор</summary>
+            <div class="a">
+              <div class="code" style="margin-top:0">
+                <div class="bar"><span class="file">решение</span><span class="lang">python</span><button class="copy">копировать</button></div>
+                <pre data-lang="python">print(orders.shape, orders.size, orders.nbytes, orders.dtype)</pre>
+                <div class="out">(2, 3) 6 48 int64</div>
+              </div>
+              <p><strong>Что важно.</strong> Шесть элементов по 8 байт — 48 байт данных.
+              <code class="inl">shape</code> — кортеж, <code class="inl">size</code> — произведение длин,
+              dtype напечатается как <code class="inl">int64</code>.</p>
+            </div>
+          </details>
+        </div>
+
+        <h3><span style="color:var(--muted);font-family:var(--mono);font-size:.8rem">02</span> Скидка и сумма</h3>
+        <p>Примените скидку 10% ко всем суммам в целых числах и найдите итог до и после.</p>
+        <div class="code">
+          <div class="bar"><span class="file">условие</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">amounts = np.array([1200, 800, 1500])
+# ожидается: [1080  720 1350] 3150</pre>
+        </div>
+        <div class="qa">
+          <details>
+            <summary>Показать решение и разбор</summary>
+            <div class="a">
+              <div class="code" style="margin-top:0">
+                <div class="bar"><span class="file">решение</span><span class="lang">python</span><button class="copy">копировать</button></div>
+                <pre data-lang="python">discounted = amounts * 9 // 10
+print(discounted, discounted.sum())</pre>
+                <div class="out">[1080  720 1350] 3150</div>
+              </div>
+              <p><strong>Что важно.</strong> <code class="inl">* 9 // 10</code> — целочисленная скидка
+              без float-ошибок; <code class="inl">sum()</code> — один вызов вместо цикла. Исходный
+              массив не изменился: операции вернули новые массивы.</p>
+            </div>
+          </details>
+        </div>
+      </section>
+
+      <!-- ══════════════════ 09. Мостик ══════════════════ -->
+      <section>
+        <h2><span class="num">09</span>Мостик: та же идея в pandas и SQL</h2>
+
+        <h3>pandas: Series — массив плюс индекс</h3>
+        <div class="code">
+          <div class="bar"><span class="file">мост в pandas</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">import numpy as np
+import pandas as pd
+
+s = pd.Series([1200, 800, 1500])   # колонка = массив + индекс
+s.to_numpy()                       # обратно в ndarray
+arr = np.array([1200, 800])
+pd.Series(arr * 2, index=["Anna", "Olga"])</pre>
+        </div>
+        <p>
+          <code class="inl">Series</code> внутри — тот же <code class="inl">ndarray</code> с подписями:
+          <code class="inl">.to_numpy()</code> возвращает массив, dtype и память у колонки — от него.
+          Подробнее — <a href="appendix-pandas.html">справочник pandas</a>.
+        </p>
+
+        <h3>SQL: столбец — это массив с типом</h3>
+        <div class="code">
+          <div class="bar"><span class="file">мост в SQL</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">-- агрегаты: как arr.sum() и arr.mean()
+SELECT SUM(amount) AS total, AVG(amount) AS avg_amount
+FROM orders;
+
+-- будущая маска: amounts &gt; 1000
+SELECT amount FROM orders WHERE amount &gt; 1000;</pre>
+        </div>
+        <p>
+          Тип колонки в SQL — родственник <code class="inl">dtype</code>:
+          <code class="inl">NUMERIC</code> точен, <code class="inl">FLOAT</code> — те же двоичные
+          дроби. А <code class="inl">WHERE</code> — маска со <a href="ref-np-indexing.html">страницы 02</a>.
+        </p>
+
+        <div class="bridges">
+          <a class="bridge" href="ch-07-ndarray.html"><span class="to">Глава 07</span><span>ndarray: сетка вместо списка</span><span class="what">→ память, dtype и векторизация</span></a>
+          <a class="bridge" href="ch-11-views-copies.html"><span class="to">Глава 11</span><span>view и copy: кто на что смотрит</span><span class="what">→ срезы, base и копии</span></a>
+          <a class="bridge" href="ref-np-indexing.html"><span class="to">Справочник</span><span>02 · Индексация и маски</span><span class="what">→ срезы, маски, fancy и where</span></a>
+          <a class="bridge" href="appendix-numpy.html"><span class="to">Справочник</span><span>Вся карта NumPy</span><span class="what">→ пять страниц справочника</span></a>
+        </div>
+      </section>
+
+      <div class="pager">
+        <a class="prev" href="appendix-numpy.html"><span class="dir">← Справочник NumPy</span><span class="ttl">Вся карта NumPy</span></a>
+        <a class="next" href="ref-np-indexing.html"><span class="dir">Дальше → индексация</span><span class="ttl">Индексация и маски: трафарет поверх сетки</span></a>
+      </div>
+
+    </div>
+  </main>
+</div>
+<script src="assets/toc.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>

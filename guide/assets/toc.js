@@ -48,6 +48,13 @@ window.BOOK = {
     { slug: "ref-defaultdict", file: "ref-defaultdict.html", title: "defaultdict: блокнот с группами", n: "d", group: "python" },
     { slug: "ref-deque", file: "ref-deque.html", title: "deque: очередь с двумя дверями", n: "Q", group: "python" },
 
+    { slug: "appendix-numpy", file: "appendix-numpy.html", title: "Справочник по NumPy", nav: "NumPy", group: "numpy", hub: true },
+    { slug: "ref-np-ndarray", file: "ref-np-ndarray.html", title: "ndarray: сетка вместо списка", n: "1", group: "numpy" },
+    { slug: "ref-np-indexing", file: "ref-np-indexing.html", title: "Индексация и маски", n: "2", group: "numpy" },
+    { slug: "ref-np-axis", file: "ref-np-axis.html", title: "axis: вдоль какой стены", n: "3", group: "numpy" },
+    { slug: "ref-np-broadcasting", file: "ref-np-broadcasting.html", title: "Broadcasting: штамп и тесто", n: "4", group: "numpy" },
+    { slug: "ref-np-views", file: "ref-np-views.html", title: "View и copy", n: "5", group: "numpy" },
+
     { slug: "appendix-pandas", file: "appendix-pandas.html", title: "Справочник по pandas", nav: "pandas", group: "pandas", hub: true },
     { slug: "ref-pd-series", file: "ref-pd-series.html", title: "Series и DataFrame: таблица с оглавлением", n: "1", group: "pandas" },
     { slug: "ref-pd-loc", file: "ref-pd-loc.html", title: "loc и iloc: имя против номера", n: "2", group: "pandas" },
