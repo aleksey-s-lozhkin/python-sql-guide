@@ -1,0 +1,696 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Справочник pandas · groupby — Ассоциативный гайд</title>
+<meta name="description" content="Справочник по pandas groupby: size и count, agg и transform, именованные агрегаты, filter, доли и dropna — с реальным выводом pandas 3.0.1.">
+<link rel="stylesheet" href="assets/style.css">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#fbf8f2" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#14131a" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="assets/icons/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="assets/icons/icon-180.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Гайд Py/SQL">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+</head>
+<body data-slug="ref-pd-groupby">
+<div class="app">
+  <aside class="sidebar" id="sidebar"></aside>
+  <main>
+    <div class="wrap">
+
+      <header class="chapter-head">
+        <div class="eyebrow">
+          <span class="part">Справочник · pandas</span>
+          <span class="dot"></span>
+          <span>страница 4 из 7</span>
+          <span class="dot"></span>
+          <span>готово</span>
+        </div>
+        <h1>groupby: разложить — посчитать — собрать
+          <span class="sub">size и count, agg и transform, доли — что вызвать и какой формы ждать</span>
+        </h1>
+        <p class="lead">
+          <code class="inl">groupby</code> — конвейер из трёх шагов: строки раскладываются по ключу,
+          в каждой группе считается агрегат, результаты собираются в таблицу. Здесь — все операции,
+          форма результата и пять ошибок, которые ломают отчёт тихо.
+        </p>
+        <div class="meta">
+          <span class="chip">⏱ <b>12 минут</b></span>
+          <span class="chip">🎯 уровень <b>2</b></span>
+          <span class="chip">🐼 <b>pandas 3.0.1</b></span>
+          <span class="chip">📚 <b>глава 15</b></span>
+        </div>
+      </header>
+
+      <p class="small">
+        Справочник pandas: <a href="appendix-pandas.html">вся карта</a> ·
+        <a href="ref-pd-series.html">01 · Series и DataFrame</a> ·
+        <a href="ref-pd-loc.html">02 · loc/iloc</a> ·
+        <a href="ref-pd-filter.html">03 · фильтрация</a> ·
+        <b>04 · groupby</b> · <a href="ref-pd-merge.html">05 · merge</a> ·
+        <a href="ref-pd-missing.html">06 · пропуски</a> ·
+        <a href="ref-pd-reshape.html">07 · reshape</a>
+      </p>
+
+      <div class="tldr">
+        <div class="t">Самое главное</div>
+        <ul>
+          <li><code class="inl">groupby</code> — ленивый объект: считает следующая операция.
+              <code class="inl">size()</code> — строки группы, <code class="inl">count()</code> —
+              непустые значения колонки; на NaN они расходятся.</li>
+          <li><code class="inl">agg</code> схлопывает таблицу до строки на группу,
+              <code class="inl">transform</code> возвращает результат длины исходника, а
+              <code class="inl">filter</code> — это <code class="inl">HAVING</code>.</li>
+          <li>NaN в ключе по умолчанию выпадает (<code class="inl">dropna=True</code>),
+              группы сортируются по ключу, а не по агрегату. Топ — отдельный
+              <code class="inl">sort_values</code>.</li>
+        </ul>
+      </div>
+      <section>
+        <h2><span class="num">01</span>Что это и как устроено</h2>
+        <p>
+          <code class="inl">groupby</code> реализует схему <em>split-apply-combine</em>: разложить
+          строки по группам, посчитать в каждой группе, собрать ответ. Результат — новая таблица,
+          в которой одна строка соответствует одной группе.
+        </p>
+        <p>
+          Сам вызов <code class="inl">groupby("user")</code> ничего не считает: он возвращает
+          ленивый объект-описание. Вычисление запускает следующая операция —
+          <code class="inl">size()</code>, <code class="inl">agg()</code>,
+          <code class="inl">transform()</code>, <code class="inl">filter()</code>. Пока агрегат
+          не вызван, проблемы в данных не видны: пропавшие NaN-ключи обнаружатся только в результате.
+        </p>
+
+        <div class="anchor">
+          <div class="glyph">🗂️</div>
+          <div>
+            <div class="t">Держите эту картинку в голове</div>
+            <p class="kick"><strong>Разложить — посчитать — собрать.</strong> Строки раскладываются
+            по лоткам с ярлыками, в каждом лотке считается своё число, лотки собираются в новую
+            таблицу: одна строка на группу.</p>
+            <p>Это тот же блокнот, что <code class="inl">totals[user] += amount</code> из главы 02,
+            только сразу для всех групп и с готовой таблицей на выходе. Подробный разбор — в
+            <a href="ch-15-groupby.html">главе 15</a>.</p>
+          </div>
+        </div>
+      </section>
+      <section>
+        <h2><span class="num">02</span>Когда брать, а когда нет</h2>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Задача</th><th>groupby?</th><th>Что взять вместо</th></tr></thead>
+            <tbody>
+              <tr><td>Сумма, среднее или количество по категории</td><td><b>да</b></td><td>—</td></tr>
+              <tr><td>Несколько агрегатов сразу, с именами колонок</td><td><b>да</b>, <code class="inl">agg</code></td><td>—</td></tr>
+              <tr><td>Среднее по группе в каждой строке</td><td><b>да</b>, <code class="inl">transform</code></td><td>—</td></tr>
+              <tr><td>Оставить только «крупные» группы (HAVING)</td><td><b>да</b>, <code class="inl">filter</code></td><td>—</td></tr>
+              <tr><td>Доля каждого значения в общей сумме</td><td><b>да</b></td><td>—</td></tr>
+              <tr><td>Частоты одной колонки</td><td>короче</td><td><code class="inl">value_counts</code></td></tr>
+              <tr><td>Широкая таблица по двум категориям</td><td>нет</td><td><code class="inl">pivot_table</code> — страница 07</td></tr>
+              <tr><td>Склейка двух таблиц по ключу</td><td>нет</td><td><code class="inl">merge</code> — страница 05</td></tr>
+              <tr><td>Сглаживание временного ряда</td><td>нет</td><td><code class="inl">rolling</code>, <code class="inl">resample</code></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="small">
+          groupby не заменяет фильтрацию: сначала отбирают строки маской, потом группируют.
+          Фильтр групп — это <code class="inl">filter</code>, и он дороже обычной маски.
+        </p>
+      </section>
+      <section>
+        <h2><span class="num">03</span>Как подготовить данные</h2>
+        <p>
+          Группировка любит «длинную» таблицу: одна строка — один факт (заказ, клик, платёж),
+          а ключ — обычная колонка. Отдельный индекс для ключа не нужен: <code class="inl">groupby</code>
+          принимает имя колонки и сам разложит по ней строки.
+        </p>
+        <p>
+          Проверьте три вещи до вызова агрегата: в ключе нет <code class="inl">NaN</code> (иначе строки
+          молча выпадут), ключ одного типа (смесь <code class="inl">int</code> и строк даст разные группы),
+          имена колонок уникальны — иначе агрегат по имени выберет не ту колонку.
+        </p>
+        <div class="code">
+          <div class="bar"><span class="file">ref_pd_groupby_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">orders = pd.DataFrame({
+    "order_id": [1, 2, 3, 4, 5, 6],
+    "user": ["Anna", "Ivan", "Anna", "Olga", "Ivan", "Ivan"],
+    "city": ["Москва", "Казань", "Москва", "Казань", "Москва", "Казань"],
+    "amount": [1200, 800, 500, 2100, 300, 400],
+    "discount": [100.0, None, 50.0, None, 25.0, None],
+})
+print(orders)
+print(orders.dtypes)</pre>
+          <div class="out">   order_id  user    city  amount  discount
+0         1  Anna  Москва    1200     100.0
+1         2  Ivan  Казань     800       NaN
+2         3  Anna  Москва     500      50.0
+3         4  Olga  Казань    2100       NaN
+4         5  Ivan  Москва     300      25.0
+5         6  Ivan  Казань     400       NaN
+order_id      int64
+user            str
+city            str
+amount        int64
+discount    float64
+dtype: object</div>
+        </div>
+        <p class="small">
+          Вывод получен на pandas 3.0.1: строки хранятся как dtype <code class="inl">str</code>,
+          а не <code class="inl">object</code>; <code class="inl">None</code> в
+          <code class="inl">discount</code> стал <code class="inl">NaN</code> и превратил колонку в
+          <code class="inl">float64</code>.
+        </p>
+      </section>
+      <section>
+        <h2><span class="num">04</span>Все параметры и агрегаты</h2>
+        <h3>Параметры группировки</h3>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Запись</th><th>Что делает</th><th>Форма результата</th></tr></thead>
+            <tbody>
+              <tr><td class="mono">df.groupby("key")</td><td>раскладывает строки по значениям колонки</td><td>ленивый объект</td></tr>
+              <tr><td class="mono">df.groupby(["a", "b"])</td><td>группы по паре ключей — порядок важен</td><td>MultiIndex</td></tr>
+              <tr><td class="mono">groupby("key", as_index=False)</td><td>ключ остаётся колонкой, а не индексом</td><td>DataFrame</td></tr>
+              <tr><td class="mono">groupby("key", dropna=False)</td><td>NaN в ключе — отдельная группа</td><td>DataFrame / Series</td></tr>
+              <tr><td class="mono">groupby("key", sort=False)</td><td>группы в порядке появления, не по ключу</td><td>DataFrame / Series</td></tr>
+              <tr><td class="mono">df.groupby("key")["col"]</td><td>выбрать колонку до агрегата</td><td>SeriesGroupBy</td></tr>
+              <tr><td class="mono">.agg(...)</td><td>несколько функций, в том числе именованных</td><td>Series или DataFrame</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <h3>Агрегаты: что вернут</h3>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Вызов</th><th>Что считает</th><th>Форма</th></tr></thead>
+            <tbody>
+              <tr><td class="mono">size()</td><td>строк в группе, вместе с NaN</td><td>Series</td></tr>
+              <tr><td class="mono">count()</td><td>непустых значений колонки</td><td>Series</td></tr>
+              <tr><td class="mono">sum(), mean(), median(), min(), max()</td><td>свёртка значений колонки</td><td>Series</td></tr>
+              <tr><td class="mono">agg(["count", "sum", "mean"])</td><td>несколько агрегатов одной колонки</td><td>DataFrame</td></tr>
+              <tr><td class="mono">agg(total=("amount", "sum"))</td><td>имя результата + колонка + функция</td><td>DataFrame</td></tr>
+              <tr><td class="mono">transform("mean")</td><td>агрегат, повторённый в каждой строке</td><td>Series длины n</td></tr>
+              <tr><td class="mono">filter(func)</td><td>строки групп, где func вернул True</td><td>DataFrame</td></tr>
+              <tr><td class="mono">apply(func)</td><td>произвольная функция над группой</td><td>Series / DataFrame</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="small">
+          «Цена» здесь не O(n) в чистом виде: <code class="inl">groupby</code> строит хеш по ключу,
+          агрегаты векторизованы, а <code class="inl">apply</code> — цикл по группам и потому медленнее.
+          Для больших таблиц сначала пробуют <code class="inl">agg</code>/<code class="inl">transform</code>.
+        </p>
+      </section>
+      <section>
+        <h2><span class="num">05</span>Разбор по группам</h2>
+        <p>
+          Все примеры страницы собраны в файле
+          <a href="snippets/view.html?f=ref_pd_groupby_lab.py"><code class="inl">ref_pd_groupby_lab.py</code></a> —
+          его можно запустить и менять строки.
+        </p>
+        <h3>Объект и size</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_pd_groupby_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">g = orders.groupby("user")
+print(type(g).__name__)
+print(g.size())</pre>
+          <div class="out">DataFrameGroupBy
+user
+Anna    2
+Ivan    3
+Olga    1
+dtype: int64</div>
+        </div>
+        <p>
+          <code class="inl">DataFrameGroupBy</code> — только описание: «таблица, разложенная по
+          <code class="inl">user</code>». Результат появляется после <code class="inl">size()</code>.
+          Порядок групп — по ключу, потому что <code class="inl">sort=True</code> по умолчанию.
+        </p>
+        <h3>Несколько ключей</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_pd_groupby_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">print(orders.groupby(["city", "user"])["amount"].sum())</pre>
+          <div class="out">city    user
+Казань  Ivan    1200
+        Olga    2100
+Москва  Anna    1700
+        Ivan     300
+Name: amount, dtype: int64</div>
+        </div>
+        <p>
+          Список ключей даёт <code class="inl">MultiIndex</code>: первый уровень —
+          <code class="inl">city</code>, второй — <code class="inl">user</code>. Уровни снимаются
+          <code class="inl">reset_index()</code>, а срез по городу — <code class="inl">.loc["Москва"]</code>.
+        </p>
+        <h3>Несколько агрегатов сразу</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_pd_groupby_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">print(orders.groupby("user")["amount"].agg(["sum", "mean", "median", "min", "max"]))</pre>
+          <div class="out">       sum    mean  median   min   max
+user                                  
+Anna  1700   850.0   850.0   500  1200
+Ivan  1500   500.0   400.0   300   800
+Olga  2100  2100.0  2100.0  2100  2100</div>
+        </div>
+        <p>
+          <code class="inl">agg</code> со списком функций возвращает таблицу: строки — группы,
+          столбцы — агрегаты. <code class="inl">min</code> и <code class="inl">max</code> сохраняют
+          тип колонки, а <code class="inl">mean</code> и <code class="inl">median</code> — всегда
+          <code class="inl">float</code>.
+        </p>
+        <h3>size против count</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_pd_groupby_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">print(orders.groupby("user").size())
+print(orders.groupby("user")["discount"].count())</pre>
+          <div class="out">user
+Anna    2
+Ivan    3
+Olga    1
+dtype: int64
+user
+Anna    2
+Ivan    1
+Olga    0
+Name: discount, dtype: int64</div>
+        </div>
+        <div class="note">
+          <span class="t">size — строки, count — заполненные ячейки</span>
+          <p>У Ivan три заказа, но известна только одна скидка: <code class="inl">size</code> → 3,
+          <code class="inl">count</code> → 1. Вопрос «сколько заказов» — это
+          <code class="inl">size</code>, «сколько известных значений» — <code class="inl">count</code>.</p>
+        </div>
+        <h3>Именованная агрегация по разным колонкам</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_pd_groupby_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">print(orders.groupby("user").agg(total=("amount", "sum"), orders=("order_id", "count")))</pre>
+          <div class="out">      total  orders
+user               
+Anna   1700       2
+Ivan   1500       3
+Olga   2100       1</div>
+        </div>
+        <p>
+          В именованной агрегации каждая колонка результата задаётся явно: имя, колонка, функция.
+          Так <code class="inl">total</code> считается по <code class="inl">amount</code>, а
+          <code class="inl">orders</code> — по <code class="inl">order_id</code>, и результат не
+          зависит от порядка колонок в таблице.
+        </p>
+        <h3>as_index=False и сортировка</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_pd_groupby_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">print(orders.groupby("user", as_index=False)["amount"].sum())
+print(orders.groupby("user")["amount"].sum().sort_values(ascending=False))</pre>
+          <div class="out">   user  amount
+0  Anna    1700
+1  Ivan    1500
+2  Olga    2100
+user
+Olga    2100
+Anna    1700
+Ivan    1500
+Name: amount, dtype: int64</div>
+        </div>
+        <p>
+          <code class="inl">as_index=False</code> возвращает обычную таблицу: ключ — колонка, а не
+          индекс. Такой результат проще фильтровать и соединять.
+        </p>
+        <p>
+          Вторая строка — про порядок: <code class="inl">groupby</code> сортирует группы по ключу,
+          а не по величине агрегата. Топ — это отдельный
+          <code class="inl">sort_values(ascending=False)</code>.
+        </p>
+        <h3>transform против agg</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_pd_groupby_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">print(orders.groupby("user")["amount"].agg("mean").shape)
+print(orders.groupby("user")["amount"].transform("mean").shape)
+avg = orders.groupby("user")["amount"].transform("mean")
+print(orders.assign(user_avg=avg))</pre>
+          <div class="out">(3,)
+(6,)
+   order_id  user    city  amount  discount  user_avg
+0         1  Anna  Москва    1200     100.0     850.0
+1         2  Ivan  Казань     800       NaN     500.0
+2         3  Anna  Москва     500      50.0     850.0
+3         4  Olga  Казань    2100       NaN    2100.0
+4         5  Ivan  Москва     300      25.0     500.0
+5         6  Ivan  Казань     400       NaN     500.0</div>
+        </div>
+        <p>
+          Форма результата — главное различие: <code class="inl">agg</code> схлопывает шесть строк
+          в три, <code class="inl">transform</code> возвращает шесть значений — агрегат повторён в
+          каждой строке. Поэтому <code class="inl">transform</code> сразу становится колонкой, а
+          <code class="inl">agg</code> пришлось бы присоединять через <code class="inl">merge</code>.
+        </p>
+        <h3>filter: HAVING по группам</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_pd_groupby_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">print(orders.groupby("user").filter(lambda group: len(group) &gt; 1))</pre>
+          <div class="out">   order_id  user    city  amount  discount
+0         1  Anna  Москва    1200     100.0
+1         2  Ivan  Казань     800       NaN
+2         3  Anna  Москва     500      50.0
+4         5  Ivan  Москва     300      25.0
+5         6  Ivan  Казань     400       NaN</div>
+        </div>
+        <p>
+          <code class="inl">filter</code> отдаёт группе функцию, ждёт <code class="inl">bool</code> и
+          оставляет строки прошедших групп. У Olga одна строка — вся группа отброшена; индексы
+          исходных строк сохраняются, поэтому таблицу потом легко сравнить с оригиналом.
+        </p>
+        <h3>NaN в ключе: dropna</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_pd_groupby_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">clicks = pd.DataFrame({"user": ["Anna", None, "Ivan", "Anna"], "clicks": [3, 1, 5, 2]})
+print(clicks)
+print(clicks.groupby("user").size())
+print(clicks.groupby("user", dropna=False).size())</pre>
+          <div class="out">   user  clicks
+0  Anna       3
+1   NaN       1
+2  Ivan       5
+3  Anna       2
+user
+Anna    2
+Ivan    1
+dtype: int64
+user
+Anna    2
+Ivan    1
+NaN     1
+dtype: int64</div>
+        </div>
+        <p>
+          По умолчанию <code class="inl">groupby</code> выбрасывает строки с NaN в ключе
+          (<code class="inl">dropna=True</code>): во втором выводе два клика у Anna и один у Ivan,
+          а строка с пропуском исчезла. <code class="inl">dropna=False</code> делает NaN отдельной
+          группой — это единственный способ увидеть, сколько таких строк.
+        </p>
+        <h3>Доли и value_counts</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_pd_groupby_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">share = orders.groupby("user")["amount"].sum() / orders["amount"].sum()
+print(share.round(3))
+print(orders["user"].value_counts())
+print(orders.groupby("user").size())</pre>
+          <div class="out">user
+Anna    0.321
+Ivan    0.283
+Olga    0.396
+Name: amount, dtype: float64
+user
+Ivan    3
+Anna    2
+Olga    1
+Name: count, dtype: int64
+user
+Anna    2
+Ivan    3
+Olga    1
+dtype: int64</div>
+        </div>
+        <p>
+          <code class="inl">value_counts</code> — короткий путь для одной колонки: сортирует по
+          частоте (Ivan 3, Anna 2, Olga 1). <code class="inl">groupby().size()</code> сортирует по
+          ключу и умеет несколько ключей и агрегаты по другим колонкам. Доля — это сумма группы,
+          делённая на общий итог: <code class="inl">g["amount"].sum() / df["amount"].sum()</code>.
+        </p>
+      </section>
+      <section>
+        <h2><span class="num">06</span>Три сценария из практики</h2>
+        <h3>Выручка по пользователю</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_pd_groupby_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">report = (
+    orders.groupby("user", as_index=False)
+    .agg(total=("amount", "sum"), orders=("order_id", "count"))
+    .sort_values("total", ascending=False)
+)
+print(report)</pre>
+          <div class="out">   user  total  orders
+2  Olga   2100       1
+0  Anna   1700       2
+1  Ivan   1500       3</div>
+        </div>
+        <p>
+          Самый частый отчёт: сгруппировать, агрегировать, отсортировать. <code class="inl">as_index=False</code>
+          делает результат готовым к <code class="inl">merge</code>, выгрузке в CSV и дальнейшим
+          расчётам без <code class="inl">reset_index()</code>.
+        </p>
+        <h3>Средний чек</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_pd_groupby_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">print(orders.groupby("user")["amount"].mean().round(2))</pre>
+          <div class="out">user
+Anna     850.0
+Ivan     500.0
+Olga    2100.0
+Name: amount, dtype: float64</div>
+        </div>
+        <p>
+          Средний чек — это <code class="inl">mean</code> по <code class="inl">amount</code>.
+          <code class="inl">round(2)</code> здесь только для вывода: округлять промежуточные
+          агрегаты до расчёта долей не стоит.
+        </p>
+        <h3>Доля каждого в общей сумме</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_pd_groupby_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">total = orders["amount"].sum()
+shares = (orders.groupby("user")["amount"].sum() / total * 100).round(1)
+print(shares)</pre>
+          <div class="out">user
+Anna    32.1
+Ivan    28.3
+Olga    39.6
+Name: amount, dtype: float64</div>
+        </div>
+        <p>
+          Доля — сумма группы, делённая на общий итог. Два разных вызова
+          <code class="inl">sum</code> — по группам и по всей колонке — легко перепутать; общий итог
+          считается без <code class="inl">groupby</code>.
+        </p>
+      </section>
+      <section>
+        <h2><span class="num">07</span>Пять ошибок, на которых спотыкаются</h2>
+        <div class="errors">
+          <div class="err">
+            <div class="h">count вместо size на пропусках</div>
+            <p><code class="inl">count()</code> считает заполненные ячейки: у Ivan три заказа, но
+            скидка известна одна, поэтому <code class="inl">count</code> → 1, а не 3. Отчёт
+            «сколько заказов» тихо занижается на все NaN.</p>
+            <div class="fix">Заказы — <code class="inl">size()</code> или
+            <code class="inl">count</code> по колонке без пропусков; заполненные значения —
+            <code class="inl">count</code>.</div>
+          </div>
+          <div class="err">
+            <div class="h">transform вместо agg — и наоборот</div>
+            <p><code class="inl">agg</code> уменьшает таблицу до строки на группу,
+            <code class="inl">transform</code> возвращает столько же строк. Присвоить
+            <code class="inl">agg</code>-результат колонкой нельзя: длины не совпадут, а pandas
+            выровняет по индексу и насыплет <code class="inl">NaN</code>.</p>
+            <div class="fix">Нужна колонка в исходной таблице — <code class="inl">transform</code>.
+            Нужна сводка — <code class="inl">agg</code>.</div>
+          </div>
+          <div class="err">
+            <div class="h">NaN-ключ выпал из отчёта</div>
+            <p>По умолчанию <code class="inl">dropna=True</code>: строки с NaN в ключе не попадают
+            ни в одну группу и не видны в результате. Сумма по группам при этом не сходится с общей
+            суммой колонки.</p>
+            <div class="fix"><code class="inl">dropna=False</code>, если пропуск — отдельная группа;
+            иначе <code class="inl">fillna</code> до группировки.</div>
+          </div>
+          <div class="err">
+            <div class="h">Сначала колонка, потом groupby</div>
+            <p><code class="inl">orders["amount"].groupby("user")</code> падает с
+            <code class="inl">KeyError: 'user'</code>: в Series уже нет колонки-ключа.
+            Группировать нужно таблицу, а колонку выбирать после.</p>
+            <div class="fix"><code class="inl">orders.groupby("user")["amount"]</code> — сначала
+            groupby по таблице, потом выбор колонки.</div>
+          </div>
+          <div class="err">
+            <div class="h">Забыли as_index=False — получили индекс</div>
+            <p>Результат с индексом-группой не имеет колонки <code class="inl">user</code>:
+            <code class="inl">merge(..., on="user")</code> и обращение
+            <code class="inl">result["user"]</code> не работают. Индекс виден в выводе, но код о нём
+            не знает.</p>
+            <div class="fix"><code class="inl">as_index=False</code> при группировке или
+            <code class="inl">reset_index()</code> после.</div>
+          </div>
+        </div>
+      </section>
+      <section>
+        <h2><span class="num">08</span>Мини-проверка</h2>
+        <p>Пять вопросов и две задачи. Сначала своя попытка — потом спойлер.</p>
+        <div class="qa">
+          <details>
+            <summary>Чем size отличается от count?</summary>
+            <div class="a">
+              <p><code class="inl">size()</code> считает строки группы целиком, включая пропуски.
+              <code class="inl">count()</code> — непустые значения конкретной колонки. Если в
+              колонке есть <code class="inl">NaN</code>, числа расходятся.</p>
+              <div class="verdict">Резюме: size — строки, count — заполненные ячейки.</div>
+            </div>
+          </details>
+        </div>
+        <div class="qa">
+          <details>
+            <summary>Чем agg отличается от transform и когда что брать?</summary>
+            <div class="a">
+              <p><code class="inl">agg</code> схлопывает группу в одну строку —
+              <code class="inl">(3,)</code> на нашем примере. <code class="inl">transform</code>
+              возвращает результат длины исходной таблицы — <code class="inl">(6,)</code>, поэтому
+              его можно присвоить колонкой. Это разница между <code class="inl">GROUP BY</code> и
+              оконной функцией.</p>
+              <div class="verdict">Резюме: сводка — agg, колонка в исходнике — transform.</div>
+            </div>
+          </details>
+        </div>
+        <div class="qa">
+          <details>
+            <summary>Как посчитать несколько агрегатов и назвать колонки?</summary>
+            <div class="a">
+              <p>Списком: <code class="inl">agg(["count", "sum", "mean"])</code> — колонки получат
+              имена функций. Именованно:
+              <code class="inl">agg(total=("amount", "sum"), orders=("order_id", "count"))</code> —
+              имя, колонка и функция задаются явно, можно брать разные колонки.</p>
+              <div class="verdict">Резюме: список для быстрого взгляда, именованные пары — для отчёта.</div>
+            </div>
+          </details>
+        </div>
+        <div class="qa">
+          <details>
+            <summary>Как сделать HAVING в pandas?</summary>
+            <div class="a">
+              <p><code class="inl">groupby(...).filter(lambda g: условие)</code>: функция получает
+              группу-DataFrame и возвращает <code class="inl">bool</code>. Обычная маска до
+              группировки — это <code class="inl">WHERE</code>, фильтр групп — <code class="inl">HAVING</code>.</p>
+              <div class="verdict">Резюме: WHERE — до groupby, HAVING — внутри filter.</div>
+            </div>
+          </details>
+        </div>
+        <div class="qa">
+          <details>
+            <summary>Что происходит с NaN в ключе и как посчитать долю?</summary>
+            <div class="a">
+              <p>По умолчанию строка с NaN-ключом выпадает. <code class="inl">dropna=False</code>
+              оставляет её отдельной группой. Доля — сумма группы, делённая на общий итог:
+              <code class="inl">g["amount"].sum() / df["amount"].sum()</code>.</p>
+              <div class="verdict">Резюме: проверьте ключ до группировки; доля — два разных sum.</div>
+            </div>
+          </details>
+        </div>
+        <h3><span style="color:var(--muted);font-family:var(--mono);font-size:.8rem">01</span> Выручка, заказы и средний чек</h3>
+        <p>По таблице <code class="inl">orders</code> постройте по пользователю сумму, число заказов и средний чек. Отсортируйте по сумме.</p>
+        <div class="qa">
+          <details>
+            <summary>Показать решение и разбор</summary>
+            <div class="a">
+              <div class="code" style="margin-top:0">
+                <div class="bar"><span class="file">решение</span><span class="lang">python</span><button class="copy">копировать</button></div>
+                <pre data-lang="python">result = (
+    orders.groupby("user", as_index=False)
+    .agg(total=("amount", "sum"),
+         orders=("order_id", "count"),
+         avg=("amount", "mean"))
+    .sort_values("total", ascending=False)
+)
+print(result)</pre>
+                <div class="out">   user  total  orders     avg
+2  Olga   2100       1  2100.0
+0  Anna   1700       2   850.0
+1  Ivan   1500       3   500.0</div>
+              </div>
+              <p><strong>Что важно.</strong> Три агрегата — три пары «имя, колонка, функция»;
+              <code class="inl">as_index=False</code> оставляет <code class="inl">user</code> колонкой,
+              а <code class="inl">sort_values</code> ставит группы по величине суммы.</p>
+            </div>
+          </details>
+        </div>
+        <h3><span style="color:var(--muted);font-family:var(--mono);font-size:.8rem">02</span> Доля заказа в сумме пользователя</h3>
+        <p>Добавьте колонку <code class="inl">share_in_user</code> — какую часть суммы пользователя составляет каждый заказ. Число строк не должно измениться.</p>
+        <div class="qa">
+          <details>
+            <summary>Показать решение и разбор</summary>
+            <div class="a">
+              <div class="code" style="margin-top:0">
+                <div class="bar"><span class="file">решение</span><span class="lang">python</span><button class="copy">копировать</button></div>
+                <pre data-lang="python">user_total = orders.groupby("user")["amount"].transform("sum")
+orders["share_in_user"] = (orders["amount"] / user_total).round(3)
+print(orders[["order_id", "user", "amount", "share_in_user"]])</pre>
+                <div class="out">   order_id  user  amount  share_in_user
+0         1  Anna    1200          0.706
+1         2  Ivan     800          0.533
+2         3  Anna     500          0.294
+3         4  Olga    2100          1.000
+4         5  Ivan     300          0.200
+5         6  Ivan     400          0.267</div>
+              </div>
+              <p><strong>Что важно.</strong> <code class="inl">transform("sum")</code> даёт
+              <code class="inl">NaN</code>-free колонку той же длины, поэтому деление идёт построчно.
+              <code class="inl">agg</code> здесь не подошёл бы: он вернул бы одну строку на группу.</p>
+            </div>
+          </details>
+        </div>
+      </section>
+      <section>
+        <h2><span class="num">09</span>Мостик: SQL GROUP BY и defaultdict</h2>
+        <h3>SQL: GROUP BY и HAVING</h3>
+        <div class="code">
+          <div class="bar"><span class="file">мост в SQL</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">-- groupby("user")["amount"].sum()
+SELECT user, SUM(amount) AS total
+FROM orders
+GROUP BY user
+ORDER BY total DESC;
+
+-- groupby("user").filter(lambda g: len(g) > 1) → HAVING
+SELECT user, COUNT(*) AS orders
+FROM orders
+GROUP BY user
+HAVING COUNT(*) &gt; 1;</pre>
+        </div>
+        <p>
+          <code class="inl">groupby</code> — это <code class="inl">GROUP BY</code>,
+          <code class="inl">agg</code> — агрегатные функции, <code class="inl">filter</code> —
+          <code class="inl">HAVING</code>. <code class="inl">transform</code> схож с оконной
+          функцией <code class="inl">SUM(...) OVER (PARTITION BY ...)</code>. Синтаксис SQL
+          разобран в <a href="ch-21-group-by-having.html">главе 21</a>.
+        </p>
+        <h3>Python: defaultdict</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_pd_groupby_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">totals = defaultdict(int)
+for user, amount in zip(orders["user"], orders["amount"]):
+    totals[user] += amount
+print(dict(totals))
+print(orders.groupby("user")["amount"].sum().to_dict())</pre>
+          <div class="out">{'Anna': 1700, 'Ivan': 1500, 'Olga': 2100}
+{'Anna': 1700, 'Ivan': 1500, 'Olga': 2100}</div>
+        </div>
+        <p>
+          Ручной аккумулятор из главы 02 даёт тот же словарь — и это лучший способ проверить,
+          что вы понимаете <code class="inl">groupby</code>. Разница в масштабе: цикл по строкам
+          в Python медленный, а <code class="inl">groupby</code> делает то же векторно.
+        </p>
+        <div class="bridges">
+          <a class="bridge" href="ch-15-groupby.html"><span class="to">Глава 15</span><span>groupby: разложить — посчитать — собрать</span><span class="what">→ ядро и метафора конвейера</span></a>
+          <a class="bridge" href="ch-16-merge.html"><span class="to">Глава 16</span><span>merge: кардинальность важнее синтаксиса</span><span class="what">→ соединить сводку с таблицей</span></a>
+          <a class="bridge" href="ch-21-group-by-having.html"><span class="to">Глава 21</span><span>GROUP BY и HAVING в SQL</span><span class="what">→ тот же конвейер на стороне базы</span></a>
+          <a class="bridge" href="ch-02-dict.html"><span class="to">Глава 02</span><span>dict и defaultdict</span><span class="what">→ ручной аккумулятор изнутри</span></a>
+        </div>
+      </section>
+      <div class="pager">
+        <a class="prev" href="ref-pd-filter.html"><span class="dir">← Назад</span><span class="ttl">Фильтрация: булева маска как сито</span></a>
+        <a class="next" href="ref-pd-merge.html"><span class="dir">Дальше →</span><span class="ttl">merge: кардинальность важнее синтаксиса</span></a>
+      </div>
+    </div>
+  </main>
+</div>
+<script src="assets/toc.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>

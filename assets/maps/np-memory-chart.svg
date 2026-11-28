@@ -1,0 +1,63 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 430" role="img" aria-labelledby="mc-t mc-d">
+  <title id="mc-t">Цена миллиона чисел: память и время создания</title>
+  <desc id="mc-d">Слева: список занимает около 36 МБ — 8 МБ указателей и 28 МБ объектов int; массив int64 — 8 МБ. Справа: создание миллиона чисел в списке 29,4 мс, в массиве 0,9 мс — в 32 раза быстрее.</desc>
+  <defs>
+    <style>
+      .lbl { font: 600 12px system-ui, -apple-system, "Segoe UI", sans-serif; fill: #8a7f73; letter-spacing: .12em; }
+      .big { font: 700 24px ui-monospace, "SF Mono", Menlo, monospace; fill: #1d1b26; }
+      .val { font: 700 20px system-ui, -apple-system, "Segoe UI", sans-serif; fill: #1d1b26; }
+      .unit { font: 600 13px system-ui, -apple-system, "Segoe UI", sans-serif; fill: #4a4458; }
+      .note { font: 400 14px system-ui, -apple-system, "Segoe UI", sans-serif; fill: #4a4458; }
+      .small { font: 400 12px system-ui, -apple-system, "Segoe UI", sans-serif; fill: #7a7285; }
+      .axis { font: 600 13px ui-monospace, "SF Mono", Menlo, monospace; fill: #1d1b26; }
+      .inbar { font: 700 12.5px system-ui, -apple-system, "Segoe UI", sans-serif; fill: #fff; }
+      .inbar-dark { font: 700 12.5px system-ui, -apple-system, "Segoe UI", sans-serif; fill: #1d1b26; }
+    </style>
+  </defs>
+
+  <text class="lbl" x="28" y="40">ПАМЯТЬ · 1 000 000 ЧИСЕЛ</text>
+  <text class="lbl" x="540" y="40">СОЗДАНИЕ · 1 000 000 ЧИСЕЛ</text>
+
+  <!-- ── панель 1: память ── -->
+  <line x1="28" y1="300" x2="470" y2="300" stroke="#d8d1c6"/>
+
+  <!-- список: 8 МБ указателей + 28 МБ объектов -->
+  <rect x="120" y="256" width="110" height="44" fill="#c2410c"/>
+  <rect x="120" y="100" width="110" height="156" fill="#e8b48c"/>
+  <text class="inbar" x="175" y="282" text-anchor="middle">8 МБ</text>
+  <text class="inbar-dark" x="175" y="180" text-anchor="middle">28 МБ</text>
+  <text class="small" x="175" y="196" text-anchor="middle" fill="#7a5a3a">объекты int</text>
+  <text class="big" x="175" y="88" text-anchor="middle">≈ 36 МБ</text>
+
+  <!-- массив: 8 МБ подряд -->
+  <rect x="330" y="256" width="110" height="44" fill="#2f6b4f"/>
+  <text class="inbar" x="385" y="282" text-anchor="middle">8 МБ</text>
+
+  <text class="axis" x="175" y="322" text-anchor="middle">list</text>
+  <text class="axis" x="385" y="322" text-anchor="middle">ndarray</text>
+  <text class="small" x="175" y="340" text-anchor="middle">указатели + объекты</text>
+  <text class="small" x="385" y="340" text-anchor="middle">int64 подряд</text>
+  <text class="note" x="28" y="366">В 4,5 раза больше памяти — из-за отдельных объектов int (28 байт каждый).</text>
+
+  <line x1="500" y1="60" x2="500" y2="365" stroke="#e0d9cd" stroke-dasharray="4 5"/>
+
+  <!-- ── панель 2: время создания ── -->
+  <line x1="620" y1="100" x2="620" y2="260" stroke="#d8d1c6"/>
+
+  <rect x="620" y="126" width="240" height="38" fill="#c2410c"/>
+  <text class="inbar" x="632" y="150">29,4 мс</text>
+
+  <rect x="620" y="196" width="7" height="38" fill="#2f6b4f"/>
+  <text class="val" x="640" y="218">0,9 мс</text>
+
+  <text class="axis" x="608" y="150" text-anchor="end">list</text>
+  <text class="axis" x="608" y="220" text-anchor="end">ndarray</text>
+
+  <text class="note" x="540" y="290">в 32 раза быстрее</text>
+  <text class="small" x="540" y="312">те же 8 байт на число,</text>
+  <text class="small" x="540" y="328">без отдельных объектов</text>
+
+  <!-- ── сноска ── -->
+  <rect x="28" y="384" width="922" height="30" rx="8" fill="#f4f1ea" stroke="#e0d9cd"/>
+  <text class="small" x="44" y="404">Замеры: Python 3.12, numpy 2.3.5. Указатель — 8 байт, int — 28 байт. Время — создание миллиона чисел.</text>
+</svg>

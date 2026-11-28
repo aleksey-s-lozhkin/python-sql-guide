@@ -1,0 +1,726 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Справочник pandas · Reshape, даты и строки — Ассоциативный гайд</title>
+<meta name="description" content="Справочник pandas по reshape и датам: pivot, pivot_table, melt, explode, crosstab, concat, аксессоры .dt и .str — с выводом на pandas 3.0.1.">
+<link rel="stylesheet" href="assets/style.css">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#fbf8f2" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#14131a" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="assets/icons/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="assets/icons/icon-180.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Гайд Py/SQL">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+</head>
+<body data-slug="ref-pd-reshape">
+<div class="app">
+  <aside class="sidebar" id="sidebar"></aside>
+  <main>
+    <div class="wrap">
+
+      <header class="chapter-head">
+        <div class="eyebrow">
+          <span class="part">Справочник · pandas</span>
+          <span class="dot"></span>
+          <span>страница 7 из 7</span>
+          <span class="dot"></span>
+          <span>готово</span>
+        </div>
+        <h1>Reshape, даты и строки
+          <span class="sub">pivot, melt, explode, crosstab, .dt и .str — как переложить таблицу</span>
+        </h1>
+        <p class="lead">
+          Одна и та же информация бывает длинной и широкой: <code class="inl">melt</code> складывает
+          таблицу, <code class="inl">pivot</code> растягивает, <code class="inl">explode</code> разворачивает
+          список в ячейке. Плюс два аксессора: <code class="inl">.dt</code> для дат и <code class="inl">.str</code> для текста.
+        </p>
+        <div class="meta">
+          <span class="chip">⏱ <b>12 минут</b></span>
+          <span class="chip">🎯 уровень <b>2</b></span>
+          <span class="chip">🐼 <b>pandas 3.0.1</b></span>
+          <span class="chip">📚 <b>глава 18</b></span>
+        </div>
+      </header>
+
+      <p class="small">
+        Справочник pandas: <a href="appendix-pandas.html">вся карта</a> ·
+        <a href="ref-pd-series.html">01 · Series и DataFrame</a> ·
+        <a href="ref-pd-loc.html">02 · loc/iloc</a> ·
+        <a href="ref-pd-filter.html">03 · фильтрация</a> ·
+        <a href="ref-pd-groupby.html">04 · groupby</a> ·
+        <a href="ref-pd-merge.html">05 · merge</a> ·
+        <a href="ref-pd-missing.html">06 · пропуски</a> · <b>07 · reshape</b>
+      </p>
+
+      <div class="tldr">
+        <div class="t">Самое главное</div>
+        <ul>
+          <li>Длинная форма — факты (строка = наблюдение), широкая — отчёт. <code class="inl">melt</code>
+              складывает, <code class="inl">pivot</code> растягивает.</li>
+          <li><code class="inl">pivot</code> требует уникальных пар (index, columns); при повторах —
+              <code class="inl">pivot_table</code> с <code class="inl">aggfunc</code>.</li>
+          <li><code class="inl">.dt</code> и <code class="inl">.str</code> работают только на своём dtype:
+              сначала <code class="inl">to_datetime</code> или строковая колонка, иначе <code class="inl">AttributeError</code>.</li>
+        </ul>
+      </div>
+
+      <!-- ══════════════════ 01. Что это ══════════════════ -->
+      <section>
+        <h2><span class="num">01</span>Что это и как устроено</h2>
+        <p>
+          Reshape — смена формы таблицы без потери информации. В длинной таблице строка — факт
+          («anna, Q1, 100»), в широкой — объект («anna, Q1=100, Q2=200»). Для <code class="inl">groupby</code>
+          и графиков удобнее длинная, для отчёта глазами — широкая.
+        </p>
+        <p>
+          Два аксессора достают структуру из ячейки: <code class="inl">.dt</code> — год, месяц, день,
+          формат и период из даты; <code class="inl">.str</code> — обрезать, сменить регистр, найти,
+          разбить и извлечь из текста. Оба требуют подходящего dtype.
+        </p>
+
+        <div class="anchor">
+          <div class="glyph">🪗</div>
+          <div>
+            <div class="t">Держите эту картинку в голове</div>
+            <p class="kick"><strong>Таблица — гармошка.</strong> Растянутая (широкая) — много колонок,
+            мало строк, удобно смотреть глазами. Сложенная (длинная) — мало колонок, много строк,
+            удобно фильтровать, группировать и рисовать.</p>
+            <p><strong>melt складывает гармошку, pivot растягивает, explode разворачивает список
+            в ячейке.</strong> Даты и строки — это «разобрать содержимое ячейки на части». Метафору
+            целиком разбирает <a href="ch-18-dates-reshape.html">глава 18</a>.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ══════════════════ 02. Когда брать ══════════════════ -->
+      <section>
+        <h2><span class="num">02</span>Когда брать, а когда нет</h2>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Задача</th><th>Инструмент</th><th>Осторожно</th></tr></thead>
+            <tbody>
+              <tr><td>Отчёт с месяцами или кварталами в колонках</td><td><code class="inl">pivot</code> / <code class="inl">pivot_table</code></td><td>на повторяющихся парах <code class="inl">pivot</code> падает</td></tr>
+              <tr><td>Данные для <code class="inl">groupby</code>, фильтра или графика</td><td><code class="inl">melt</code></td><td>порядок строк — по колонкам, а не по смыслу</td></tr>
+              <tr><td>В ячейке список: заказ → товары, пост → теги</td><td><code class="inl">explode</code></td><td>скаляр не разворачивается — молча остаётся как есть</td></tr>
+              <tr><td>Частоты пар категорий</td><td><code class="inl">crosstab</code></td><td>с <code class="inl">values</code> и <code class="inl">aggfunc</code> — уже сумма</td></tr>
+              <tr><td>Склеить несколько таблиц по строкам</td><td><code class="inl">concat(ignore_index=True)</code></td><td>без сброса индекса индексы дублируются</td></tr>
+              <tr><td>Склеить по колонкам</td><td><code class="inl">concat(axis=1)</code></td><td>выравнивание по индексу, а не по позиции</td></tr>
+              <tr><td>Дата пришла строкой</td><td><code class="inl">to_datetime</code> + <code class="inl">.dt</code></td><td>без приведения сортировка будет лексикографической</td></tr>
+              <tr><td>Текст: регистр, пробелы, домен, длина</td><td><code class="inl">.str</code></td><td>только на строковой колонке; числа → <code class="inl">astype(str)</code></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ══════════════════ 03. Как создать ══════════════════ -->
+      <section>
+        <h2><span class="num">03</span>Как создать и подготовить</h2>
+        <div class="code">
+          <div class="bar"><span class="file">ref_pd_reshape_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">import pandas as pd
+
+long = pd.DataFrame({
+    "user": ["anna", "anna", "ivan", "ivan"],
+    "quarter": ["Q1", "Q2", "Q1", "Q2"],
+    "amount": [100, 200, 300, 400],
+})
+raw = pd.DataFrame({
+    "user": ["  Anna ", "Ivan", "Olga"],
+    "email": [" Anna@Mail.RU ", "ivan@corp.io", "olga@mail.ru"],
+    "date": ["2024-01-05", "2024-02-11", "2024-03-02"],
+})
+print(long.to_string(index=False))
+print(raw.to_string(index=False))
+print(long.dtypes.astype(str).tolist())</pre>
+          <div class="out">user quarter  amount
+anna      Q1     100
+anna      Q2     200
+ivan      Q1     300
+ivan      Q2     400
+   user          email       date
+  Anna   Anna@Mail.RU  2024-01-05
+   Ivan   ivan@corp.io 2024-02-11
+   Olga   olga@mail.ru 2024-03-02
+['str', 'str', 'int64']</div>
+        </div>
+        <p>
+          Слева — длинная таблица фактов, справа — сырой CSV: пробелы, заглавные буквы, email и
+          дата-строка. В pandas 3.0 все три колонки получили dtype <code class="inl">str</code> —
+          «дата» тоже текст, пока не вызван <code class="inl">pd.to_datetime</code>.
+        </p>
+        <div class="note">
+          <span class="t">Шесть строк, которые надо помнить</span>
+          <p><code class="inl">pivot</code> — в широкое, <code class="inl">melt</code> — обратно,
+          <code class="inl">pivot_table</code> — с агрегацией, <code class="inl">explode</code> — список
+          в строки, <code class="inl">crosstab</code> — пары, <code class="inl">concat</code> — склейка.</p>
+        </div>
+      </section>
+
+      <!-- ══════════════════ 04. Все операции ══════════════════ -->
+      <section>
+        <h2><span class="num">04</span>Все операции</h2>
+        <p>
+          Три таблицы: форма, даты, строки. В «Примечании» — копия или view и где ловушка.
+          O(...) не привожу: цена reshape зависит от числа групп, параметров и dtype.
+        </p>
+
+        <h3>Форма таблицы</h3>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Операция</th><th>Что делает</th><th>Возвращает</th><th>Примечание</th></tr></thead>
+            <tbody>
+              <tr><td class="mono">df.pivot(index, columns, values)</td><td>длинная → широкая</td><td>новый DataFrame</td><td>копия; падает, если пара (index, columns) повторяется</td></tr>
+              <tr><td class="mono">df.pivot_table(..., aggfunc=...)</td><td>широкая с агрегацией повторов</td><td>новый DataFrame</td><td>копия; повторы суммируются или усредняются</td></tr>
+              <tr><td class="mono">df.melt(id_vars=..., value_vars=...)</td><td>широкая → длинная</td><td>новый DataFrame</td><td>копия; порядок строк — по исходным колонкам</td></tr>
+              <tr><td class="mono">df.explode(col)</td><td>список в ячейке → отдельные строки</td><td>новый DataFrame</td><td>копия; индекс повторяется; скаляры не трогает</td></tr>
+              <tr><td class="mono">pd.crosstab(rows, cols)</td><td>частота пар категорий</td><td>новый DataFrame</td><td>копия; с <code class="inl">values</code>/<code class="inl">aggfunc</code> — уже агрегат</td></tr>
+              <tr><td class="mono">pd.concat([...], ignore_index=True)</td><td>склеивает таблицы по строкам</td><td>новый DataFrame</td><td>копия; без <code class="inl">ignore_index</code> индексы дублируются</td></tr>
+              <tr><td class="mono">pd.concat([...], axis=1)</td><td>склеивает по колонкам</td><td>новый DataFrame</td><td>выравнивает по индексу, а не по порядку строк</td></tr>
+              <tr><td class="mono">df.reset_index(drop=True)</td><td>сбрасывает старый индекс</td><td>новый DataFrame</td><td>копия; частый шаг после pivot и explode</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>Аксессор .dt — даты</h3>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Операция</th><th>Что делает</th><th>Возвращает</th><th>Примечание</th></tr></thead>
+            <tbody>
+              <tr><td class="mono">pd.to_datetime(s)</td><td>строка → дата-время</td><td>Series datetime64[us]</td><td>копия; формат лучше указывать явно</td></tr>
+              <tr><td class="mono">s.dt.year / .month / .day</td><td>части даты</td><td>Series int</td><td>только на datetime-колонке</td></tr>
+              <tr><td class="mono">s.dt.strftime("%d.%m.%Y")</td><td>форматирует дату в строку</td><td>Series str</td><td>обратное преобразование — снова строки</td></tr>
+              <tr><td class="mono">s.dt.to_period("M")</td><td>приводит к периоду — месяцу</td><td>Series period[M]</td><td>удобно для группировки по месяцам</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>Аксессор .str — строки</h3>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Операция</th><th>Что делает</th><th>Возвращает</th><th>Примечание</th></tr></thead>
+            <tbody>
+              <tr><td class="mono">s.str.strip()</td><td>убирает пробелы по краям</td><td>Series str</td><td>копия; исходная колонка не меняется</td></tr>
+              <tr><td class="mono">s.str.lower()</td><td>нижний регистр</td><td>Series str</td><td>копия; для сравнения — <code class="inl">casefold</code></td></tr>
+              <tr><td class="mono">s.str.contains("@", regex=False)</td><td>есть ли подстрока</td><td>Series bool</td><td>пропуски дают <code class="inl">NaN</code>; спасает <code class="inl">na=False</code></td></tr>
+              <tr><td class="mono">s.str.split("@", expand=True)</td><td>делит строку на колонки</td><td>DataFrame</td><td>без <code class="inl">expand</code> — Series списков</td></tr>
+              <tr><td class="mono">s.str.extract(r"@([\w.]+)$")</td><td>вытаскивает группу регулярки</td><td>Series или DataFrame</td><td>без совпадения — <code class="inl">NaN</code></td></tr>
+              <tr><td class="mono">s.str.len()</td><td>длина строки</td><td>Series int</td><td>на пропусках — <code class="inl">NaN</code></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="small">
+          Аксессоры возвращают копию: результат нужно присвоить — <code class="inl">df["col"] = df["col"].str.strip()</code>.
+        </p>
+      </section>
+
+      <!-- ══════════════════ 05. Разбор ══════════════════ -->
+      <section>
+        <h2><span class="num">05</span>Разбор по группам</h2>
+        <p>
+          Все примеры страницы — в файле
+          <a href="snippets/view.html?f=ref_pd_reshape_lab.py"><code class="inl">ref_pd_reshape_lab.py</code></a>.
+          Вывод снят на pandas 3.0.1: в других версиях отличаются dtype и оформление таблиц.
+        </p>
+
+        <h3>pivot: длинная → широкая</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_pd_reshape_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">wide = long.pivot(index="user", columns="quarter", values="amount")
+print(wide)
+print(wide.columns.tolist())</pre>
+          <div class="out">quarter   Q1   Q2
+user             
+anna     100  200
+ivan     300  400
+['Q1', 'Q2']</div>
+        </div>
+        <p>
+          <code class="inl">index</code> — строки, <code class="inl">columns</code> — колонки,
+          <code class="inl">values</code> — содержимое ячеек. В выводе <code class="inl">quarter</code> стало
+          именем колонок, <code class="inl">user</code> — индексом; исходная таблица не изменилась.
+        </p>
+
+        <h3>pivot на дублях и pivot_table</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_pd_reshape_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">dup = pd.DataFrame({
+    "user": ["anna", "anna", "ivan"],
+    "quarter": ["Q1", "Q1", "Q2"],
+    "amount": [100, 150, 300],
+})
+try:
+    dup.pivot(index="user", columns="quarter", values="amount")
+except ValueError as e:
+    print(type(e).__name__, e)
+print(dup.pivot_table(index="user", columns="quarter", values="amount", aggfunc="sum"))</pre>
+          <div class="out">ValueError Index contains duplicate entries, cannot reshape
+quarter     Q1     Q2
+user                 
+anna     250.0    NaN
+ivan       NaN  300.0</div>
+        </div>
+        <p>
+          <code class="inl">pivot</code> падает с <code class="inl">ValueError: Index contains duplicate entries</code>,
+          если на пару (anna, Q1) приходится две суммы. <code class="inl">pivot_table</code> сначала
+          агрегирует (<code class="inl">aggfunc="sum"</code>), потом раскладывает — отсюда 250 у anna.
+        </p>
+
+        <h3>melt: широкая → длинная</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_pd_reshape_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">back = wide.reset_index().melt(id_vars="user", var_name="quarter", value_name="amount")
+print(back.to_string(index=False))
+print(len(wide), len(back))</pre>
+          <div class="out">user quarter  amount
+anna      Q1     100
+ivan      Q1     300
+anna      Q2     200
+ivan      Q2     400
+2 4</div>
+        </div>
+        <p>
+          <code class="inl">id_vars</code> остаются колонками, остальные <code class="inl">value_vars</code>
+          сворачиваются в две: имя переменной и значение. Две строки стали четырьмя, широких колонок нет.
+        </p>
+
+        <h3>explode: список → строки</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_pd_reshape_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">baskets = pd.DataFrame({
+    "order_id": [1, 2, 3],
+    "items": [["apple", "pear"], ["bread"], []],
+})
+print(baskets.explode("items").to_string(index=False))
+scalar = pd.DataFrame({"order_id": [1, 2], "items": ["apple", "bread"]})
+print(scalar.explode("items").to_string(index=False))
+print(len(scalar), len(scalar.explode("items")))</pre>
+          <div class="out"> order_id items
+        1 apple
+        1  pear
+        2 bread
+        3   NaN
+ order_id items
+        1 apple
+        2 bread
+2 2</div>
+        </div>
+        <p>
+          <code class="inl">explode</code> повторяет остальные колонки для каждого элемента, а пустой
+          список даёт строку с <code class="inl">NaN</code>. Скаляр он не трогает: <code class="inl">"apple"</code>
+          и <code class="inl">"bread"</code> остались как были — <code class="inl">2 → 2</code>.
+        </p>
+
+        <h3>crosstab и concat</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_pd_reshape_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">events = pd.DataFrame({
+    "user": ["anna", "anna", "ivan", "olga"],
+    "status": ["paid", "paid", "new", "paid"],
+})
+print(pd.crosstab(events["user"], events["status"]))
+jan = pd.DataFrame({"user": ["anna"], "amount": [100]})
+feb = pd.DataFrame({"user": ["ivan"], "amount": [300]})
+print(pd.concat([jan, feb], ignore_index=True).to_string(index=False))</pre>
+          <div class="out">status  new  paid
+user             
+anna      0     2
+ivan      1     0
+olga      0     1
+user  amount
+anna     100
+ivan     300</div>
+        </div>
+        <p>
+          <code class="inl">crosstab</code> считает пары «пользователь × статус» и раскладывает вторую
+          категорию по колонкам. <code class="inl">concat</code> с <code class="inl">ignore_index=True</code>
+          склеивает строки и перенумеровывает индекс — без этого остались бы два нулевых индекса.
+        </p>
+
+        <h3>Аксессор .dt</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_pd_reshape_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">orders = pd.DataFrame({
+    "date": ["2024-01-05", "2024-02-11", "2024-03-02"],
+    "amount": [100, 300, 400],
+})
+orders["date"] = pd.to_datetime(orders["date"])
+print(orders["date"].dtype)
+print(orders["date"].dt.year.tolist(), orders["date"].dt.month.tolist())
+print(orders["date"].dt.day.tolist())
+print(orders["date"].dt.strftime("%d.%m.%Y").tolist())
+orders["month"] = orders["date"].dt.to_period("M")
+print(orders.groupby("month")["amount"].sum())</pre>
+          <div class="out">datetime64[us]
+[2024, 2024, 2024] [1, 2, 3]
+[5, 11, 2]
+['05.01.2024', '11.02.2024', '02.03.2024']
+month
+2024-01    100
+2024-02    300
+2024-03    400
+Freq: M, Name: amount, dtype: int64</div>
+        </div>
+        <p>
+          <code class="inl">pd.to_datetime</code> превратил строки в <code class="inl">datetime64[us]</code>,
+          и только теперь заработали <code class="inl">.dt.year</code>, <code class="inl">.dt.month</code>,
+          <code class="inl">.dt.strftime</code>, <code class="inl">.dt.to_period</code>. Январь 2024 и январь 2025 — разные периоды.
+        </p>
+
+        <h3>Аксессор .str</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_pd_reshape_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">clean = pd.DataFrame({
+    "user": ["  Anna ", "Ivan", "Olga"],
+    "email": [" Anna@Mail.RU ", "ivan@corp.io", "olga@mail.ru"],
+})
+clean["email"] = clean["email"].str.strip().str.lower()
+clean["user"] = clean["user"].str.strip().str.lower()
+clean["domain"] = clean["email"].str.extract(r"@([\w.]+)$", expand=False)
+clean["has_at"] = clean["email"].str.contains("@", regex=False)
+print(clean.to_string(index=False))
+print(clean["email"].str.len().tolist())
+print(clean["email"].str.split("@", expand=True))</pre>
+          <div class="out">user        email  domain  has_at
+anna anna@mail.ru mail.ru    True
+ivan ivan@corp.io corp.io    True
+olga olga@mail.ru mail.ru    True
+[12, 12, 12]
+      0        1
+0  anna  mail.ru
+1  ivan  corp.io
+2  olga  mail.ru</div>
+        </div>
+        <p>
+          <code class="inl">.str.strip().str.lower()</code> нормализует email, <code class="inl">.str.extract</code>
+          вытаскивает группу после «@», <code class="inl">.str.len()</code> считает длину. Регулярка
+          <code class="inl">r"@([\w.]+)$"</code>: «@», затем буквы, цифры, подчёркивание и точка до конца.
+        </p>
+      </section>
+
+      <!-- ══════════════════ 06. Сценарии ══════════════════ -->
+      <section>
+        <h2><span class="num">06</span>Три сценария из практики</h2>
+
+        <h3>Месячная сводка</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_pd_reshape_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">orders = pd.DataFrame({
+    "date": ["2024-01-05", "2024-01-20", "2024-02-11", "2024-03-02"],
+    "amount": [100, 200, 300, 400],
+})
+orders["date"] = pd.to_datetime(orders["date"])
+monthly = orders.groupby(orders["date"].dt.to_period("M"))["amount"].sum()
+print(monthly)</pre>
+          <div class="out">date
+2024-01    300
+2024-02    300
+2024-03    400
+Freq: M, Name: amount, dtype: int64</div>
+        </div>
+        <p>
+          Дата-строка → <code class="inl">to_datetime</code> → <code class="inl">to_period("M")</code> →
+          <code class="inl">groupby</code>. В периоде есть год, поэтому разные годы не смешаются —
+          это самый частый способ получить «выручку по месяцам».
+        </p>
+
+        <h3>Wide → long</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_pd_reshape_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">wide2 = pd.DataFrame({
+    "user": ["anna", "ivan"],
+    "Q1": [100, 300],
+    "Q2": [200, 400],
+})
+long2 = wide2.melt(id_vars="user", var_name="quarter", value_name="amount")
+print(long2.sort_values(["user", "quarter"]).to_string(index=False))</pre>
+          <div class="out">user quarter  amount
+anna      Q1     100
+anna      Q2     200
+ivan      Q1     300
+ivan      Q2     400</div>
+        </div>
+        <p>
+          <code class="inl">melt</code> превращает Q1/Q2 в строки; <code class="inl">sort_values(["user", "quarter"])</code>
+          делает вывод воспроизводимым. В длинной форме таблицу можно фильтровать и группировать.
+        </p>
+
+        <h3>Даты и email-домен</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_pd_reshape_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">raw = pd.DataFrame({
+    "user": ["  Anna ", "Ivan", "Olga"],
+    "email": [" Anna@Mail.RU ", "ivan@corp.io", "olga@mail.ru"],
+    "date": ["2024-01-05", "2024-02-11", "2024-03-02"],
+})
+raw["user"] = raw["user"].str.strip().str.lower()
+raw["email"] = raw["email"].str.strip().str.lower()
+raw["domain"] = raw["email"].str.extract(r"@([\w.]+)$", expand=False)
+raw["year"] = pd.to_datetime(raw["date"]).dt.year
+print(raw.sort_values("user").to_string(index=False))</pre>
+          <div class="out">user        email       date  domain  year
+anna anna@mail.ru 2024-01-05 mail.ru  2024
+ivan ivan@corp.io 2024-02-11 corp.io  2024
+olga olga@mail.ru 2024-03-02 mail.ru  2024</div>
+        </div>
+        <p>
+          Два аксессора в одном сценарии: <code class="inl">.str</code> чистит и разбирает email,
+          <code class="inl">.dt</code> достаёт год из даты. Строки без «@» дали бы <code class="inl">NaN</code> —
+          честный сигнал битых данных.
+        </p>
+      </section>
+
+      <!-- ══════════════════ 07. Ошибки ══════════════════ -->
+      <section>
+        <h2><span class="num">07</span>Пять ошибок, на которых спотыкаются</h2>
+        <div class="errors">
+          <div class="err">
+            <div class="h">pivot на повторяющихся парах</div>
+            <p><code class="inl">ValueError: Index contains duplicate entries, cannot reshape</code>:
+            <code class="inl">pivot</code> не умеет агрегировать и падает на двух строках с одной парой.</p>
+            <div class="fix">Сначала агрегировать (<code class="inl">groupby</code>) или взять
+            <code class="inl">pivot_table(..., aggfunc="sum")</code> — он сам решит, что делать с повторами.</div>
+          </div>
+
+          <div class="err">
+            <div class="h">.str на нестроковой колонке</div>
+            <p><code class="inl">AttributeError: Can only use .str accessor with string values</code>:
+            аксессор не приводит числа к тексту сам.</p>
+            <div class="fix"><code class="inl">df["col"].astype("string").str...</code> или
+            <code class="inl">astype(str)</code>; проверьте, что колонка действительно текстовая.</div>
+          </div>
+
+          <div class="err">
+            <div class="h">explode по скаляру</div>
+            <p><code class="inl">explode</code> не разворачивает строку или число: молча оставляет их
+            одной строкой. Ошибки нет — и это хуже: данных не прибавилось.</p>
+            <div class="fix">Список в ячейке — <code class="inl">explode</code>; строка с разделителем —
+            <code class="inl">.str.split(",", expand=True)</code>, затем <code class="inl">explode</code>
+            по нужной колонке.</div>
+          </div>
+
+          <div class="err">
+            <div class="h">melt путает id_vars и value_vars</div>
+            <p>Без <code class="inl">id_vars</code> в длинную форму уйдут все колонки, включая
+            идентификаторы; перепутанные <code class="inl">var_name</code> и <code class="inl">value_name</code>
+            дадут колонки не с теми названиями.</p>
+            <div class="fix">Явно: <code class="inl">melt(id_vars=["user"], value_vars=["Q1", "Q2"], var_name="quarter", value_name="amount")</code>
+            и проверка списка колонок после.</div>
+          </div>
+
+          <div class="err">
+            <div class="h">to_datetime с неоднородным форматом</div>
+            <p><code class="inl">ValueError: time data "05.02.2024" doesn't match format "%Y-%m-%d"</code>:
+            формат выведен по первой строке, а вторая уже другая.</p>
+            <div class="fix">Единый <code class="inl">format="%d.%m.%Y"</code>, либо
+            <code class="inl">format="mixed"</code> (медленнее), либо
+            <code class="inl">errors="coerce"</code> и проверка <code class="inl">isna()</code> после.</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ══════════════════ 08. Мини-проверка ══════════════════ -->
+      <section>
+        <h2><span class="num">08</span>Мини-проверка</h2>
+        <p>Пять вопросов и две задачи. Сначала своя попытка — потом спойлер.</p>
+
+        <div class="qa">
+          <details>
+            <summary>Чем pivot отличается от pivot_table?</summary>
+            <div class="a">
+              <p><code class="inl">pivot</code> только раскладывает значения и требует уникальных пар.
+              <code class="inl">pivot_table</code> сначала агрегирует повторы через <code class="inl">aggfunc</code>
+              (по умолчанию mean). Если дубли возможны — сразу <code class="inl">pivot_table</code>.</p>
+              <div class="verdict">Резюме: pivot — раскладка, pivot_table — агрегат + раскладка.</div>
+            </div>
+          </details>
+        </div>
+
+        <div class="qa">
+          <details>
+            <summary>Что делает melt и как вернуть широкую форму?</summary>
+            <div class="a">
+              <p><code class="inl">melt</code> складывает колонки в две: имя переменной и значение;
+              обратная операция — <code class="inl">pivot</code>. <strong>Ограничение:</strong> порядок
+              смысловых групп не сохраняется, а разные dtype могут стать общим типом.</p>
+              <div class="verdict">Резюме: melt — вниз по колонкам, pivot — обратно, если пары уникальны.</div>
+            </div>
+          </details>
+        </div>
+
+        <div class="qa">
+          <details>
+            <summary>Зачем explode и чего он не делает?</summary>
+            <div class="a">
+              <p><code class="inl">explode</code> разворачивает список в ячейке в строки, повторяя
+              остальные значения. <strong>Чего не делает:</strong> не разбирает строку и не трогает
+              скаляры — для строки сначала <code class="inl">.str.split(",", expand=True)</code>.</p>
+              <div class="verdict">Резюме: explode работает со списком, а не с текстом.</div>
+            </div>
+          </details>
+        </div>
+
+        <div class="qa">
+          <details>
+            <summary>Как извлечь месяц из даты и почему строки не сортируются как даты?</summary>
+            <div class="a">
+              <p>Сначала <code class="inl">pd.to_datetime(col)</code>, затем <code class="inl">.dt.month</code>
+              и <code class="inl">.dt.to_period("M")</code> для группы с годом. Строки не подходят:
+              «2024-10-01» лексикографически меньше «2024-2-01», и арифметики дат нет.</p>
+              <div class="verdict">Резюме: сначала to_datetime, потом .dt.</div>
+            </div>
+          </details>
+        </div>
+
+        <div class="qa">
+          <details>
+            <summary>Как достать домен из email через .str?</summary>
+            <div class="a">
+              <p>Нормализовать <code class="inl">.str.strip().str.lower()</code>, затем
+              <code class="inl">.str.extract(r"@([\w.]+)$", expand=False)</code>; без
+              <code class="inl">expand=False</code> вернётся DataFrame. Строки без «@» дают
+              <code class="inl">NaN</code> — сигнал грязных данных.</p>
+              <div class="verdict">Резюме: .str.extract делает из текста колонку.</div>
+            </div>
+          </details>
+        </div>
+
+        <h3><span style="color:var(--muted);font-family:var(--mono);font-size:.8rem">01</span> Месяцы в колонки</h3>
+        <p>Из длинной таблицы заказов с датой соберите широкую сводку: пользователи в строках, месяцы в колонках.</p>
+        <div class="code">
+          <div class="bar"><span class="file">условие</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">orders = pd.DataFrame({
+    "user": ["anna", "anna", "ivan", "anna"],
+    "date": ["2024-01-05", "2024-02-11", "2024-01-20", "2024-03-02"],
+    "amount": [100, 300, 200, 400],
+})
+# ожидается: пользователи в строках, месяцы в колонках, суммы в ячейках</pre>
+        </div>
+        <div class="qa">
+          <details>
+            <summary>Показать решение и разбор</summary>
+            <div class="a">
+              <div class="code" style="margin-top:0">
+                <div class="bar"><span class="file">решение</span><span class="lang">python</span><button class="copy">копировать</button></div>
+                <pre data-lang="python">orders = pd.DataFrame({
+    "user": ["anna", "anna", "ivan", "anna"],
+    "date": ["2024-01-05", "2024-02-11", "2024-01-20", "2024-03-02"],
+    "amount": [100, 300, 200, 400],
+})
+orders["month"] = pd.to_datetime(orders["date"]).dt.strftime("%Y-%m")
+print(pd.crosstab(orders["user"], orders["month"],
+                  values=orders["amount"], aggfunc="sum"))</pre>
+                <div class="out">month  2024-01  2024-02  2024-03
+user                            
+anna     100.0    300.0    400.0
+ivan     200.0      NaN      NaN</div>
+              </div>
+              <p><strong>Что важно.</strong> Месяц — строка <code class="inl">"%Y-%m"</code>: так колонки
+              сортируются по порядку. <code class="inl">crosstab</code> с <code class="inl">values</code> и
+              <code class="inl">aggfunc="sum"</code> — это pivot_table на категориях.</p>
+            </div>
+          </details>
+        </div>
+
+        <h3><span style="color:var(--muted);font-family:var(--mono);font-size:.8rem">02</span> Домены из email</h3>
+        <p>Нормализуйте email и посчитайте, сколько адресов на каждом домене.</p>
+        <div class="code">
+          <div class="bar"><span class="file">условие</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">users = pd.DataFrame({
+    "email": [" Anna@Mail.RU ", "ivan@corp.io", "olga@mail.ru", "petr@corp.io"],
+})
+# ожидается: {'corp.io': 2, 'mail.ru': 2}</pre>
+        </div>
+        <div class="qa">
+          <details>
+            <summary>Показать решение и разбор</summary>
+            <div class="a">
+              <div class="code" style="margin-top:0">
+                <div class="bar"><span class="file">решение</span><span class="lang">python</span><button class="copy">копировать</button></div>
+                <pre data-lang="python">users = pd.DataFrame({
+    "email": [" Anna@Mail.RU ", "ivan@corp.io", "olga@mail.ru", "petr@corp.io"],
+})
+users["email"] = users["email"].str.strip().str.lower()
+users["domain"] = users["email"].str.extract(r"@([\w.]+)$", expand=False)
+print(users["domain"].value_counts().sort_index().to_dict())</pre>
+                <div class="out">{'corp.io': 2, 'mail.ru': 2}</div>
+              </div>
+              <p><strong>Что важно.</strong> Сначала <code class="inl">strip</code> и <code class="inl">lower</code>,
+              иначе « Anna@Mail.RU » и «anna@mail.ru» разные. Потом <code class="inl">extract</code>
+              и <code class="inl">value_counts</code>; <code class="inl">sort_index()</code> фиксирует порядок.</p>
+            </div>
+          </details>
+        </div>
+      </section>
+
+      <!-- ══════════════════ 09. Мостик ══════════════════ -->
+      <section>
+        <h2><span class="num">09</span>Мостик: GROUP BY, CASE и строки в SQL</h2>
+
+        <h3>Pivot в SQL делают через CASE</h3>
+        <div class="code">
+          <div class="bar"><span class="file">мост в SQL</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">-- «месяцы в колонки»: pivot_table на языке SQL
+SELECT user,
+       SUM(CASE WHEN month = '2024-01' THEN amount END) AS "2024-01",
+       SUM(CASE WHEN month = '2024-02' THEN amount END) AS "2024-02"
+FROM orders
+GROUP BY user;</pre>
+        </div>
+        <p>
+          В SQL нет <code class="inl">pivot</code>: таблица всегда длинная, а широкий отчёт собирают
+          через <code class="inl">CASE WHEN</code> и агрегаты. В pandas это <code class="inl">pivot_table</code>,
+          в SQL — <code class="inl">GROUP BY</code> с условными суммами.
+        </p>
+
+        <h3>Даты и строки: .dt и .str на языке SQL</h3>
+        <div class="code">
+          <div class="bar"><span class="file">мост в SQL</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">-- месяц: как dt.to_period("M")
+SELECT DATE_TRUNC('month', created_at) AS month,
+       SUM(amount) AS total
+FROM orders
+GROUP BY 1
+ORDER BY 1;
+
+-- части даты: как dt.year и dt.month
+SELECT EXTRACT(YEAR FROM created_at), EXTRACT(MONTH FROM created_at)
+FROM orders;
+
+-- текст: как .str.strip, .str.lower и .str.extract
+SELECT LOWER(TRIM(email)) AS email,
+       SUBSTRING(email FROM POSITION('@' IN email) + 1) AS domain
+FROM users;</pre>
+        </div>
+        <p>
+          <code class="inl">DATE_TRUNC</code> — <code class="inl">to_period</code>,
+          <code class="inl">EXTRACT</code> — <code class="inl">.dt.year</code>/<code class="inl">.dt.month</code>,
+          <code class="inl">TRIM</code>/<code class="inl">LOWER</code> — методы строк, а
+          <code class="inl">SUBSTRING</code> заменяет регулярку из <code class="inl">.str.extract</code>.
+        </p>
+
+        <div class="bridges">
+          <a class="bridge" href="ch-27-date-time.html"><span class="to">Дополнение</span><span>Глава 27: дата и время</span><span class="what">→ момент, календарь, длительность</span></a>
+          <a class="bridge" href="appendix-datetime.html"><span class="to">Справочник</span><span>«Дата и время»: четыре технологии</span><span class="what">→ Python, NumPy, pandas, SQL</span></a>
+          <a class="bridge" href="ch-18-dates-reshape.html"><span class="to">Глава 18</span><span>Даты, строки и форма таблицы</span><span class="what">→ гармошка, .dt и .str целиком</span></a>
+          <a class="bridge" href="ch-15-groupby.html"><span class="to">Глава 15</span><span>groupby: разложить — посчитать — собрать</span><span class="what">→ группы по периодам</span></a>
+          <a class="bridge" href="ch-21-group-by-having.html"><span class="to">Глава 21</span><span>GROUP BY и HAVING</span><span class="what">→ SQL-версия pivot через CASE</span></a>
+          <a class="bridge" href="appendix-pandas.html"><span class="to">Справочник</span><span>Карта pandas</span><span class="what">→ все семь страниц справочника</span></a>
+        </div>
+      </section>
+
+      <div class="pager">
+        <a class="prev" href="ref-pd-missing.html"><span class="dir">← Назад</span><span class="ttl">06 · Пропуски: NaN, None и pd.NA</span></a>
+        <a class="next" href="appendix-pandas.html"><span class="dir">Дальше →</span><span class="ttl">Вся карта pandas</span></a>
+      </div>
+
+    </div>
+  </main>
+</div>
+<script src="assets/toc.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>

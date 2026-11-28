@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 380" role="img" aria-labelledby="t1 d1">
+  <title id="t1">Три операции над множествами: пересечение, объединение, разность</title>
+  <desc id="d1">Круги Эйлера: закрашены общие элементы, все элементы и элементы только первого множества.</desc>
+  <defs>
+    <clipPath id="cb1"><circle cx="185" cy="118" r="58"/></clipPath>
+    <clipPath id="cb2"><circle cx="500" cy="118" r="58"/></clipPath>
+    <style>
+      .lbl { font: 700 11.5px system-ui, -apple-system, "Segoe UI", sans-serif; fill: #8a7f73; letter-spacing: .14em; }
+      .cap { font: 400 13px system-ui, -apple-system, "Segoe UI", sans-serif; fill: #4a4458; }
+      .code { font: 700 13px ui-monospace, "SF Mono", Menlo, monospace; fill: #1d1b26; }
+      .small { font: 400 12px system-ui, -apple-system, "Segoe UI", sans-serif; fill: #7a7285; }
+    </style>
+  </defs>
+
+  <!-- панель 1: пересечение -->
+  <text class="lbl" x="30" y="34">ПЕРЕСЕЧЕНИЕ</text>
+  <text class="code" x="30" y="58">a &amp; b</text>
+  <circle cx="120" cy="118" r="58" fill="#eef4fb" stroke="#b9cfe6" stroke-width="1.5"/>
+  <circle cx="185" cy="118" r="58" fill="#e9f2ec" stroke="#9cc0a8" stroke-width="1.5"/>
+  <circle cx="120" cy="118" r="58" fill="#c2410c" opacity=".22" clip-path="url(#cb1)"/>
+  <circle cx="120" cy="118" r="58" fill="none" stroke="#b9cfe6" stroke-width="1.5"/>
+  <text class="cap" x="30" y="206">было и там, и там</text>
+  <text class="small" x="30" y="226">общие теги, общие друзья</text>
+
+  <!-- панель 2: объединение -->
+  <text class="lbl" x="345" y="34">ОБЪЕДИНЕНИЕ</text>
+  <text class="code" x="345" y="58">a | b</text>
+  <circle cx="435" cy="118" r="58" fill="#dfeafa" stroke="#b9cfe6" stroke-width="1.5"/>
+  <circle cx="500" cy="118" r="58" fill="#dfeafa" stroke="#9cc0a8" stroke-width="1.5"/>
+  <circle cx="435" cy="118" r="58" fill="#c2410c" opacity=".13" clip-path="url(#cb2)"/>
+  <text class="cap" x="345" y="206">всё, что есть хоть у кого-то</text>
+  <text class="small" x="345" y="226">все теги из двух профилей</text>
+
+  <!-- панель 3: разность -->
+  <text class="lbl" x="660" y="34">РАЗНОСТЬ</text>
+  <text class="code" x="660" y="58">a - b</text>
+  <circle cx="750" cy="118" r="58" fill="#dfeafa" stroke="#b9cfe6" stroke-width="1.5"/>
+  <circle cx="815" cy="118" r="58" fill="#ffffff" stroke="#b9cfe6" stroke-width="1.5" stroke-dasharray="5 5"/>
+  <circle cx="750" cy="118" r="58" fill="none" stroke="#b9cfe6" stroke-width="1.5"/>
+  <text class="cap" x="660" y="206">только у первого</text>
+  <text class="small" x="660" y="226">элементы a, которых нет в b</text>
+
+  <rect x="30" y="258" width="920" height="44" rx="10" fill="#f4f1ea" stroke="#e0d9cd"/>
+  <text class="cap" x="50" y="286">Множество не хранит порядок, принимает только hashable и проверяет вход за O(1) в среднем.</text>
+  <text class="small" x="50" y="326">a ^ b — симметрическая разность: «было ровно в одном из двух».  a &lt;= b — подмножество.</text>
+</svg>

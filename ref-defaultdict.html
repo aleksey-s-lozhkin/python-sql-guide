@@ -1,0 +1,715 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Справочник · defaultdict: блокнот с группами — Ассоциативный гайд</title>
+<meta name="description" content="Справочник по defaultdict: default_factory, __missing__, группировка, счётчики, список смежности, вложенные словари и ловушки — с реальным выводом.">
+<link rel="stylesheet" href="assets/style.css">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#fbf8f2" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#14131a" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="assets/icons/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="assets/icons/icon-180.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Гайд Py/SQL">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+</head>
+<body data-slug="ref-defaultdict">
+<div class="app">
+  <aside class="sidebar" id="sidebar"></aside>
+  <main>
+    <div class="wrap">
+
+      <header class="chapter-head">
+        <div class="eyebrow">
+          <span class="part">Справочник · Python-коллекции</span>
+          <span class="dot"></span>
+          <span>тип 8 из 9</span>
+          <span class="dot"></span>
+          <span>готово</span>
+        </div>
+        <h1>defaultdict: блокнот с группами
+          <span class="sub">Фабрика значений, чтение-вставка и группировка без проверок</span>
+        </h1>
+        <p class="lead">
+          <code class="inl">defaultdict</code> — словарь, у которого для каждого нового ключа уже
+          заготовлено значение по умолчанию. Здесь — как работает <code class="inl">default_factory</code>,
+          что именно создаёт чтение и почему <code class="inl">get</code> ведёт себя иначе.
+        </p>
+        <div class="meta">
+          <span class="chip">⏱ <b>12 минут</b></span>
+          <span class="chip">🎯 уровень <b>1–2</b></span>
+          <span class="chip">🐍 Python <b>3.12</b></span>
+          <span class="chip">📚 <b>глава 06</b></span>
+        </div>
+      </header>
+
+      <p class="small">
+        Типы справочника: <a href="appendix-types.html">вся карта</a> ·
+        <a href="ref-str.html">str</a> · <a href="ref-list.html">list</a> ·
+        <a href="ref-tuple.html">tuple</a> · <a href="ref-dict.html">dict</a> ·
+        <a href="ref-set.html">set</a> · <a href="ref-frozenset.html">frozenset</a> ·
+        <a href="ref-counter.html">Counter</a> · <b>defaultdict</b> ·
+        <a href="ref-deque.html">deque</a>
+      </p>
+
+      <div class="tldr">
+        <div class="t">Самое главное</div>
+        <ul>
+          <li><code class="inl">defaultdict</code> — подкласс <code class="inl">dict</code> с фабрикой:
+              чтение отсутствующего ключа вызывает <code class="inl">default_factory</code>,
+              <b>вставляет</b> результат и возвращает его.</li>
+          <li><code class="inl">get()</code>, <code class="inl">setdefault()</code> и
+              <code class="inl">update()</code> фабрику не зовут — «посмотреть» и «создать» остаются
+              разными операциями.</li>
+          <li>Удобен для группировки (<code class="inl">list</code>), сумм (<code class="inl">int</code>),
+              графов и вложенных словарей; расплата — неявные вставки и проблемы с pickle.</li>
+        </ul>
+      </div>
+
+      <!-- ══════════════════ 01. Что это ══════════════════ -->
+      <section>
+        <h2><span class="num">01</span>Что это и как устроено</h2>
+        <p>
+          <code class="inl">defaultdict</code> — это <code class="inl">dict</code> с одной добавленной
+          идеей: у него есть <code class="inl">default_factory</code> — вызываемый объект, который
+          создаёт значение для отсутствующего ключа. Всё остальное — хеш-таблица, порядок вставки,
+          методы — наследуется от обычного словаря.
+        </p>
+        <p>
+          Когда вы пишете <code class="inl">d[key]</code>, а ключа нет, <code class="inl">dict</code>
+          вызывает <code class="inl">__missing__</code>. У <code class="inl">defaultdict</code> этот
+          метод зовёт фабрику, кладёт результат в словарь и возвращает его. Поэтому группировка
+          пишется одной строкой: <code class="inl">groups[user].append(amount)</code> — страница
+          «user» создаётся сама, вместе с пустым списком.
+        </p>
+
+        <div class="anchor">
+          <div class="glyph">🧰</div>
+          <div>
+            <div class="t">Держите эту картинку в голове</div>
+            <p class="kick"><strong>Блокнот с предзаполненными страницами.</strong> Открываете страницу
+            «Anna» — а там уже пустой список, в который можно писать. Не нужно проверять, заведена ли
+            страница: блокнот заводит её при первом открытии.</p>
+            <p>Это второй инструмент из «ящика с инструментами» <a href="ch-06-collections.html">главы 06</a>.
+            Важная деталь: страница создаётся именно <em>при открытии</em> — даже если вы только
+            заглянули.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ══════════════════ 02. Когда брать ══════════════════ -->
+      <section>
+        <h2><span class="num">02</span>Когда брать, а когда нет</h2>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Задача</th><th>defaultdict?</th><th>Что взять вместо</th></tr></thead>
+            <tbody>
+              <tr><td>Группировка «ключ → список значений»: заказы по пользователям</td><td><b>да</b></td><td>—</td></tr>
+              <tr><td>Суммы/количества по ключу без проверок</td><td><b>да</b></td><td>для частот — <code class="inl">Counter</code></td></tr>
+              <tr><td>Список смежности: граф, подписки, связи</td><td><b>да</b></td><td>—</td></tr>
+              <tr><td>Инверсия словаря, когда значения повторяются</td><td><b>да</b></td><td>—</td></tr>
+              <tr><td>Вложенные словари: город → год → счётчик</td><td><b>да</b></td><td>—</td></tr>
+              <tr><td>Отсутствие ключа — значимый факт, который нельзя терять</td><td>нет</td><td>обычный <code class="inl">dict</code> + <code class="inl">get</code>/<code class="inl">in</code></td></tr>
+              <tr><td>Топ-N по частоте</td><td>нет</td><td><code class="inl">Counter</code> + <code class="inl">most_common</code></td></tr>
+              <tr><td>Данные уходят в JSON/конфиг как есть</td><td>нет</td><td>обычный <code class="inl">dict</code>: фабрика в JSON не сохраняется</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="small">
+          Главный критерий: если пустая группа — нормальное рабочее состояние, <code class="inl">defaultdict</code>
+          удобен. Если пустая группа — сигнал о проблеме в данных, он эту проблему скроет.
+        </p>
+      </section>
+
+      <!-- ══════════════════ 03. Как создать ══════════════════ -->
+      <section>
+        <h2><span class="num">03</span>Как создать</h2>
+        <div class="code">
+          <div class="bar"><span class="file">ref_defaultdict_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">from collections import defaultdict
+
+print(defaultdict(list))                 # фабрика — list
+print(defaultdict(int)["missing"])       # фабрика int → 0
+d = defaultdict(list, {"Anna": [1200]})  # можно сразу с данными
+print(dict(d))
+print(defaultdict(None))                 # фабрики нет</pre>
+          <div class="out">defaultdict(&lt;class 'list'&gt;, {})
+0
+{'Anna': [1200]}
+defaultdict(None, {})</div>
+        </div>
+        <p>
+          Первый аргумент конструктора — фабрика: <code class="inl">list</code>, <code class="inl">int</code>,
+          <code class="inl">set</code>, <code class="inl">dict</code> или любой вызываемый объект без
+          обязательных аргументов. Второй (необязательный) — данные, как у обычного
+          <code class="inl">dict</code>: словарь или пары.
+        </p>
+        <div class="note">
+          <span class="t">defaultdict(42) — ошибка сразу</span>
+          <p>Конструктор проверяет вызываемость: <code class="inl">defaultdict(42)</code> падает с
+          <code class="inl">TypeError: first argument must be callable or None</code>. А присваивание
+          <code class="inl">d.default_factory = 42</code> пройдёт молча — ошибка вылезет только при
+          чтении отсутствующего ключа.</p>
+        </div>
+      </section>
+
+      <!-- ══════════════════ 04. Все методы ══════════════════ -->
+      <section>
+        <h2><span class="num">04</span>Все методы и операции</h2>
+        <p>
+          Своих методов у <code class="inl">defaultdict</code> почти нет — он наследует всё от
+          <code class="inl">dict</code> и добавляет поведение при чтении. «Цена» — как у словаря,
+          где <code class="inl">m</code> — число пар.
+        </p>
+
+        <h3>Создание и фабрика</h3>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Метод</th><th>Что делает</th><th>Возвращает</th><th>Цена</th></tr></thead>
+            <tbody>
+              <tr><td class="mono">defaultdict()</td><td>пустой словарь без фабрики — как обычный dict</td><td>defaultdict</td><td>O(1)</td></tr>
+              <tr><td class="mono">defaultdict(factory)</td><td>пустой словарь с фабрикой значений</td><td>defaultdict</td><td>O(1)</td></tr>
+              <tr><td class="mono">defaultdict(factory, data)</td><td>сразу с данными: словарь или пары</td><td>defaultdict</td><td>O(len(data))</td></tr>
+              <tr><td class="mono">d.default_factory</td><td>текущая фабрика; читается и присваивается</td><td>callable / <code class="inl">None</code></td><td>O(1)</td></tr>
+              <tr><td class="mono">d.copy()</td><td>поверхностная копия; фабрика сохраняется</td><td>defaultdict</td><td>O(m)</td></tr>
+              <tr><td class="mono">d.clear()</td><td>удаляет все пары; фабрика остаётся</td><td><code class="inl">None</code></td><td>O(m)</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>Чтение</h3>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Запись</th><th>Что делает</th><th>Возвращает</th><th>Цена</th></tr></thead>
+            <tbody>
+              <tr><td class="mono">d[k]</td><td>значение; нет ключа → фабрика → вставка → возврат</td><td>значение</td><td>O(1)*</td></tr>
+              <tr><td class="mono">d.get(k)</td><td>значение или <code class="inl">None</code>; фабрику не зовёт и ключ не создаёт</td><td>значение / None</td><td>O(1)*</td></tr>
+              <tr><td class="mono">d.get(k, default)</td><td>значение или явный default</td><td>значение / default</td><td>O(1)*</td></tr>
+              <tr><td class="mono">d.setdefault(k, default)</td><td>значение; нет ключа → создаёт с default (без фабрики)</td><td>значение</td><td>O(1)*</td></tr>
+              <tr><td class="mono">k in d</td><td>проверка наличия; чтение через <code class="inl">[]</code> могло уже создать ключ</td><td>bool</td><td>O(1)*</td></tr>
+              <tr><td class="mono">len(d)</td><td>число пар</td><td>int</td><td>O(1)</td></tr>
+              <tr><td class="mono">d.keys() / values() / items()</td><td>живые views, как у dict</td><td>views</td><td>O(1) на создание</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>Запись и удаление (наследуется от dict)</h3>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Запись</th><th>Что делает</th><th>Возвращает</th><th>Цена</th></tr></thead>
+            <tbody>
+              <tr><td class="mono">d[k] = v</td><td>записывает или заменяет значение</td><td>—</td><td>O(1)*</td></tr>
+              <tr><td class="mono">d.update(x)</td><td>добавляет и заменяет пары; фабрику не зовёт</td><td><code class="inl">None</code></td><td>O(len(x))</td></tr>
+              <tr><td class="mono">d.pop(k)</td><td>удаляет пару; без ключа — <code class="inl">KeyError</code></td><td>значение</td><td>O(1)*</td></tr>
+              <tr><td class="mono">d.pop(k, default)</td><td>удаляет пару или отдаёт default</td><td>значение / default</td><td>O(1)*</td></tr>
+              <tr><td class="mono">d.popitem()</td><td>удаляет и возвращает последнюю вставленную пару (LIFO)</td><td>tuple (k, v)</td><td>O(1)</td></tr>
+              <tr><td class="mono">del d[k]</td><td>удаляет пару; нет ключа — <code class="inl">KeyError</code></td><td>—</td><td>O(1)*</td></tr>
+              <tr><td class="mono">d == other</td><td>сравнение пар; фабрика <b>не учитывается</b></td><td>bool</td><td>O(m)</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="small">
+          * в среднем; при плохом распределении хешей возможно O(m), но это исключение.
+          Оператор <code class="inl">|</code> у <code class="inl">defaultdict</code> наследуется от
+          <code class="inl">dict</code> — подробности на странице <a href="ref-dict.html">dict</a>.
+        </p>
+      </section>
+
+      <!-- ══════════════════ 05. Разбор ══════════════════ -->
+      <section>
+        <h2><span class="num">05</span>Разбор по группам</h2>
+        <p>
+          Все примеры страницы собраны в файле
+          <a href="snippets/view.html?f=ref_defaultdict_lab.py"><code class="inl">ref_defaultdict_lab.py</code></a> —
+          его можно запустить и менять строки.
+        </p>
+
+        <h3>Чтение создаёт ключ</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_defaultdict_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">from collections import defaultdict
+
+d = defaultdict(int)
+print(d["x"])            # фабрика int() → 0
+print("x" in d)          # ключ уже в словаре
+print(d.get("y"))        # get фабрику не зовёт
+print("y" in d)          # и ключ не создаёт
+print(dict(d))</pre>
+          <div class="out">0
+True
+None
+False
+{'x': 0}</div>
+        </div>
+        <p>
+          Вот и вся механика: <code class="inl">d["x"]</code> — это не «посмотреть», а «получить или
+          создать». <code class="inl">get</code> — «только посмотреть». Разница в одну букву,
+          а последствия разные: после чтения через <code class="inl">[]</code> проверка
+          <code class="inl">"x" in d</code> уже не отвечает на вопрос «был ли ключ раньше».
+        </p>
+
+        <h3>default_factory: атрибут и None</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_defaultdict_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">from collections import defaultdict
+
+d = defaultdict(list)
+print(d.default_factory)
+d["a"].append(1)
+print(dict(d))
+
+d.default_factory = int          # фабрика меняется на лету
+print(d["b"])
+print(dict(d))
+
+plain = defaultdict(None)        # фабрики нет — ведёт себя как dict
+try:
+    plain["x"]
+except KeyError as e:
+    print("KeyError", e)</pre>
+          <div class="out">&lt;class 'list'&gt;
+{'a': [1]}
+0
+{'a': [1], 'b': 0}
+KeyError 'x'</div>
+        </div>
+        <p>
+          <code class="inl">default_factory</code> — обычный атрибут: его можно прочитать и заменить
+          на другую фабрику. Если фабрика <code class="inl">None</code>, словарь ведёт себя как
+          обычный <code class="inl">dict</code> и бросает <code class="inl">KeyError</code> на
+          отсутствующий ключ.
+        </p>
+
+        <h3>Унаследованные методы dict</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_defaultdict_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">from collections import defaultdict
+
+d = defaultdict(int, {"a": 1})
+print(d.get("b"))                # None, ключ не создан
+print(d.setdefault("c", 5))      # фабрика не вызывается
+print(d.pop("a"))
+print(list(d.items()))
+d.update({"e": 7})
+print(dict(d))</pre>
+          <div class="out">None
+5
+1
+[('c', 5)]
+{'c': 5, 'e': 7}</div>
+        </div>
+        <p>
+          Важно: <code class="inl">setdefault("c", 5)</code> создал ключ со значением
+          <code class="inl">5</code>, а не <code class="inl">0</code> — фабрика в этом методе не
+          участвует. <code class="inl">pop</code>, <code class="inl">items</code>,
+          <code class="inl">update</code>, <code class="inl">len</code>, views — всё работает
+          ровно как у <code class="inl">dict</code>.
+        </p>
+
+        <h3>copy() сохраняет фабрику</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_defaultdict_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">from collections import defaultdict
+
+d = defaultdict(list, {"Anna": [1200]})
+copy = d.copy()
+copy["Ivan"].append(800)
+print(dict(copy))
+print(copy.default_factory is list)
+copy["Anna"].append(500)         # копия поверхностная
+print(dict(d))</pre>
+          <div class="out">{'Anna': [1200], 'Ivan': [800]}
+True
+{'Anna': [1200, 500]}</div>
+        </div>
+        <p>
+          Копия — <code class="inl">defaultdict</code> с той же фабрикой, а не обычный
+          <code class="inl">dict</code>. Но копирование поверхностное: списки внутри общие, поэтому
+          <code class="inl">copy["Anna"].append(500)</code> меняет и исходный словарь.
+        </p>
+
+        <h3>__missing__: точка расширения</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_defaultdict_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">from collections import defaultdict
+
+class Logged(defaultdict):
+    def __missing__(self, key):
+        print("создаю", key)
+        return super().__missing__(key)
+
+d = Logged(list)
+d["Anna"].append(1200)
+d["Anna"].append(500)
+print(dict(d))</pre>
+          <div class="out">создаю Anna
+{'Anna': [1200, 500]}</div>
+        </div>
+        <p>
+          Через <code class="inl">__missing__</code> поведение можно донастроить: логировать,
+          ограничивать, подставлять computed-значение. Метод вызывается только когда ключа нет —
+          второе обращение к «Anna» прошло мимо него.
+        </p>
+
+        <h3>pickle: lambda против partial</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_defaultdict_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">import functools
+import pickle
+from collections import defaultdict
+
+try:
+    pickle.dumps(defaultdict(lambda: 0))
+except Exception as e:
+    print(type(e).__name__)
+
+nested = defaultdict(functools.partial(defaultdict, int))
+nested["Anna"]["x"] += 1
+restored = pickle.loads(pickle.dumps(nested))
+print(restored["Anna"]["x"])
+print(restored["Ivan"]["y"])     # фабрика восстановилась
+print(type(restored.default_factory).__name__)</pre>
+          <div class="out">PicklingError
+1
+0
+partial</div>
+        </div>
+        <p>
+          <code class="inl">lambda</code> нельзя сериализовать: у неё нет имени, по которому pickle
+          мог бы её найти. <code class="inl">functools.partial(defaultdict, int)</code> — обычный
+          объект с именем и аргументами, он переживает <code class="inl">pickle</code>; после
+          восстановления фабрика снова работает.
+        </p>
+      </section>
+
+      <!-- ══════════════════ 06. Сценарии ══════════════════ -->
+      <section>
+        <h2><span class="num">06</span>Три сценария из практики</h2>
+
+        <h3>Группировка и суммы по пользователям</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_defaultdict_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">from collections import defaultdict
+
+orders = [
+    ("Anna", 1200),
+    ("Ivan", 800),
+    ("Anna", 500),
+    ("Olga", 1500),
+]
+by_user = defaultdict(list)
+totals = defaultdict(int)
+for user, amount in orders:
+    by_user[user].append(amount)
+    totals[user] += amount
+
+print(dict(by_user))
+print(dict(totals))
+print(sorted(totals.items(), key=lambda kv: kv[1], reverse=True))</pre>
+          <div class="out">{'Anna': [1200, 500], 'Ivan': [800], 'Olga': [1500]}
+{'Anna': 1700, 'Ivan': 800, 'Olga': 1500}
+[('Anna', 1700), ('Olga', 1500), ('Ivan', 800)]</div>
+        </div>
+        <p>
+          Ровно две строки в цикле, и нет ни одной проверки «а есть ли уже ключ». Для сумм —
+          <code class="inl">defaultdict(int)</code>, для списков — <code class="inl">defaultdict(list)</code>.
+          Если нужен только счётчик количества, короче взять <code class="inl">Counter</code>.
+        </p>
+
+        <h3>Граф и инверсия словаря</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_defaultdict_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">from collections import defaultdict
+
+edges = [("Anna", "Ivan"), ("Anna", "Olga"), ("Ivan", "Olga")]
+graph = defaultdict(list)
+for a, b in edges:
+    graph[a].append(b)
+    graph[b].append(a)          # неориентированный граф
+print(dict(graph))
+
+prices = {"apple": 120, "pear": 90, "plum": 120}
+by_price = defaultdict(list)
+for name, price in prices.items():
+    by_price[price].append(name)
+print(dict(by_price))</pre>
+          <div class="out">{'Anna': ['Ivan', 'Olga'], 'Ivan': ['Anna', 'Olga'], 'Olga': ['Anna', 'Ivan']}
+{120: ['apple', 'plum'], 90: ['pear']}</div>
+        </div>
+        <p>
+          Список смежности — классическое применение: у каждой вершины сразу есть список соседей.
+          Инверсия словаря — то же самое, только группы строятся по значению; если значения
+          уникальны, хватит comprehension'а из <a href="ref-dict.html">справочника по dict</a>.
+        </p>
+
+        <h3>Вложенные defaultdict</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_defaultdict_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">from collections import defaultdict
+
+orders = [("Москва", 2023), ("Казань", 2023), ("Москва", 2024), ("Москва", 2024)]
+by_city_year = defaultdict(lambda: defaultdict(int))
+for city, year in orders:
+    by_city_year[city][year] += 1
+
+print(dict(by_city_year["Москва"]))
+print(dict(by_city_year["Казань"]))
+print(by_city_year["Омск"][2024])   # создалась целая ветка
+print(sorted(by_city_year))</pre>
+          <div class="out">{2023: 1, 2024: 2}
+{2023: 1}
+0
+['Казань', 'Москва', 'Омск']</div>
+        </div>
+        <p>
+          Внешняя фабрика создаёт внутренний <code class="inl">defaultdict</code> на каждый новый
+          город, внутренняя — счётчик. Обратите внимание на предпоследнюю строку: чтение
+          <code class="inl">by_city_year["Омск"]</code> создало целую ветку, и «Омск» появился
+          в <code class="inl">sorted(...)</code>. Для pickle вместо lambda используйте
+          <code class="inl">functools.partial(defaultdict, int)</code>.
+        </p>
+      </section>
+
+      <!-- ══════════════════ 07. Ошибки ══════════════════ -->
+      <section>
+        <h2><span class="num">07</span>Пять ошибок, на которых спотыкаются</h2>
+        <div class="errors">
+          <div class="err">
+            <div class="h">Чтение создаёт ключ</div>
+            <p><code class="inl">if d[key]:</code> или отладочный <code class="inl">print(d[key])</code>
+            добавляет ключ в словарь. После этого <code class="inl">key in d</code> истинно, а
+            <code class="inl">len(d)</code> вырос — проверки начинают врать.</p>
+            <div class="fix">Для «только посмотреть» — <code class="inl">d.get(key)</code>; для накопления — осознанно <code class="inl">d[key]</code>.</div>
+          </div>
+
+          <div class="err">
+            <div class="h">default_factory = None (или невызываемый)</div>
+            <p>С <code class="inl">defaultdict(None)</code> чтение отсутствующего ключа бросает
+            <code class="inl">KeyError</code>. А присваивание невызываемого объекта в
+            <code class="inl">default_factory</code> проходит молча и падает с
+            <code class="inl">TypeError</code> только при первом чтении.</p>
+            <div class="fix">Фабрика — <code class="inl">list</code>, <code class="inl">int</code>, <code class="inl">set</code>, <code class="inl">dict</code> или функция без обязательных аргументов; проверяйте <code class="inl">d.default_factory</code>.</div>
+          </div>
+
+          <div class="err">
+            <div class="h">Фабрика возвращает один и тот же объект</div>
+            <p><code class="inl">defaultdict(lambda: shared_list)</code> подставит <em>один</em> список
+            во все ключи: дописали в одну группу — изменились все. Так же ломается «общая» вложенность,
+            если внутренний объект создан снаружи.</p>
+            <div class="fix">Фабрика должна создавать новый объект на каждый вызов: <code class="inl">list</code>, <code class="inl">int</code>, <code class="inl">set</code>, <code class="inl">functools.partial(defaultdict, int)</code>.</div>
+          </div>
+
+          <div class="err">
+            <div class="h">lambda и pickle</div>
+            <p><code class="inl">pickle.dumps(defaultdict(lambda: 0))</code> падает с
+            <code class="inl">PicklingError</code>: lambda нельзя сериализовать. Многопроцессность,
+            кэш на диск и очередь задач с таким словарём не переживут передачу.</p>
+            <div class="fix">Именованная функция или <code class="inl">functools.partial(defaultdict, int)</code>; для JSON — <code class="inl">dict(d)</code> (фабрика в JSON не сохраняется в принципе).</div>
+          </div>
+
+          <div class="err">
+            <div class="h">Считать фабрику частью данных</div>
+            <p>Равенство <code class="inl">defaultdict(list, {"a": 1}) == {"a": 1}</code> — истинно:
+            фабрика не учитывается. JSON-сериализация тоже её теряет. Если логика зависит от фабрики,
+            это нужно проверять явно.</p>
+            <div class="fix">Сравнивайте <code class="inl">d.default_factory</code> отдельно; для хранения и передачи используйте обычный <code class="inl">dict</code> или данные.</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ══════════════════ 08. Мини-проверка ══════════════════ -->
+      <section>
+        <h2><span class="num">08</span>Мини-проверка</h2>
+        <p>Пять вопросов на понимание и две задачи. Сначала своя попытка — потом спойлер.</p>
+
+        <div class="qa">
+          <details>
+            <summary>Что делает defaultdict при чтении отсутствующего ключа?</summary>
+            <div class="a">
+              <p>Вызывает <code class="inl">__missing__</code>, который зовёт фабрику, вставляет
+              результат в словарь и возвращает его. Поэтому чтение через <code class="inl">[]</code>
+              меняет словарь, а <code class="inl">get</code> — нет.</p>
+              <div class="verdict">Резюме: чтение = «получить или создать».</div>
+            </div>
+          </details>
+        </div>
+
+        <div class="qa">
+          <details>
+            <summary>Чем d[k] отличается от d.get(k) и d.setdefault(k, default)?</summary>
+            <div class="a">
+              <p><code class="inl">d[k]</code> создаёт значение фабрикой и вставляет ключ.
+              <code class="inl">get(k)</code> возвращает <code class="inl">None</code> и ничего не
+              создаёт. <code class="inl">setdefault(k, default)</code> создаёт ключ, но со значением
+              <code class="inl">default</code>, а не с результатом фабрики.</p>
+              <div class="verdict">Резюме: [] — фабрика, get — смотреть, setdefault — свой default.</div>
+            </div>
+          </details>
+        </div>
+
+        <div class="qa">
+          <details>
+            <summary>Где хранится фабрика и можно ли её поменять?</summary>
+            <div class="a">
+              <p>В атрибуте <code class="inl">default_factory</code>. Его можно прочитать и заменить
+              на другую фабрику; можно даже присвоить <code class="inl">None</code> — тогда словарь
+              станет вести себя как обычный <code class="inl">dict</code>. Конструктор проверяет
+              вызываемость, а присваивание — нет.</p>
+              <div class="verdict">Резюме: фабрика — настройка словаря, а не часть данных.</div>
+            </div>
+          </details>
+        </div>
+
+        <div class="qa">
+          <details>
+            <summary>Почему defaultdict(list) не всегда заменяет setdefault?</summary>
+            <div class="a">
+              <p><code class="inl">setdefault(key, [])</code> создаёт список, только когда вы сами
+              попросили, и не срабатывает при чтении. <code class="inl">defaultdict(list)</code>
+              создаёт пустой список при <em>любом</em> чтении отсутствующего ключа, даже случайном.
+              Если пустые группы нежелательны — setdefault безопаснее.</p>
+              <div class="verdict">Резюме: defaultdict удобнее, но вставляет неявно.</div>
+            </div>
+          </details>
+        </div>
+
+        <div class="qa">
+          <details>
+            <summary>Какие ловушки у вложенных defaultdict и pickle?</summary>
+            <div class="a">
+              <p>Вложенность задаётся фабрикой, которая должна создавать новый словарь на каждый
+              ключ: <code class="inl">defaultdict(lambda: defaultdict(int))</code> или
+              <code class="inl">functools.partial(defaultdict, int)</code>. Lambda не сериализуется —
+              для pickle и многопроцессности берите partial или именованную функцию.</p>
+              <div class="verdict">Резюме: фабрика — «рецепт нового значения», и рецепт должен быть именуемым.</div>
+            </div>
+          </details>
+        </div>
+
+        <h3><span style="color:var(--muted);font-family:var(--mono);font-size:.8rem">01</span> Группировка по длине слова</h3>
+        <p>Разложите слова по длине: ключ — длина, значение — список слов.</p>
+        <div class="code">
+          <div class="bar"><span class="file">условие</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">words = ["sql", "python", "dbt", "pandas", "go", "api"]
+# ожидается: {3: ['sql', 'dbt', 'api'], 6: ['python', 'pandas'], 2: ['go']}</pre>
+        </div>
+        <div class="qa">
+          <details>
+            <summary>Показать решение и разбор</summary>
+            <div class="a">
+              <div class="code" style="margin-top:0">
+                <div class="bar"><span class="file">решение</span><span class="lang">python</span><button class="copy">копировать</button></div>
+                <pre data-lang="python">from collections import defaultdict
+
+words = ["sql", "python", "dbt", "pandas", "go", "api"]
+by_len = defaultdict(list)
+for word in words:
+    by_len[len(word)].append(word)
+print(dict(by_len))</pre>
+                <div class="out">{3: ['sql', 'dbt', 'api'], 6: ['python', 'pandas'], 2: ['go']}</div>
+              </div>
+              <p><strong>Что важно.</strong> <code class="inl">by_len[len(word)].append(word)</code>
+              — ключ создаётся первым же обращением, список приходит из фабрики. Порядок ключей — порядок
+              первого появления длины, поэтому 3, 6, 2, а не 2, 3, 6.</p>
+            </div>
+          </details>
+        </div>
+
+        <h3><span style="color:var(--muted);font-family:var(--mono);font-size:.8rem">02</span> Степени вершин</h3>
+        <p>Посчитайте количество связей у каждой вершины неориентированного графа.</p>
+        <div class="code">
+          <div class="bar"><span class="file">условие</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">edges = [("Anna", "Ivan"), ("Anna", "Olga"), ("Ivan", "Olga"), ("Olga", "Ivan")]
+# ожидается: {'Anna': 2, 'Ivan': 3, 'Olga': 3}</pre>
+        </div>
+        <div class="qa">
+          <details>
+            <summary>Показать решение и разбор</summary>
+            <div class="a">
+              <div class="code" style="margin-top:0">
+                <div class="bar"><span class="file">решение</span><span class="lang">python</span><button class="copy">копировать</button></div>
+                <pre data-lang="python">from collections import defaultdict
+
+edges = [("Anna", "Ivan"), ("Anna", "Olga"), ("Ivan", "Olga"), ("Olga", "Ivan")]
+degree = defaultdict(int)
+for a, b in edges:
+    degree[a] += 1
+    degree[b] += 1
+print(dict(degree))</pre>
+                <div class="out">{'Anna': 2, 'Ivan': 3, 'Olga': 3}</div>
+              </div>
+              <p><strong>Что важно.</strong> <code class="inl">defaultdict(int)</code> избавляет от
+              проверки «первая ли это связь вершины»: <code class="inl">degree[a] += 1</code> сам
+              создаёт нулевой счётчик. Если бы вершина встречалась только как второй конец ребра,
+              она всё равно попала бы в словарь.</p>
+            </div>
+          </details>
+        </div>
+      </section>
+
+      <!-- ══════════════════ 09. Мостик ══════════════════ -->
+      <section>
+        <h2><span class="num">09</span>Мостик: та же идея в pandas и SQL</h2>
+
+        <h3>pandas: groupby</h3>
+        <div class="code">
+          <div class="bar"><span class="file">мост в pandas</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">import pandas as pd
+
+df = pd.DataFrame({"user": ["Anna", "Ivan", "Anna"], "amount": [1200, 800, 500]})
+
+df.groupby("user")["amount"].sum()        # defaultdict(int): суммы по группам
+df.groupby("user")["amount"].apply(list)  # defaultdict(list): группы целиком
+df.groupby("user").groups                 # словарь «группа → индексы строк»</pre>
+        </div>
+        <p>
+          <code class="inl">groupby</code> — это <code class="inl">defaultdict</code> плюс агрегация:
+          ключ — значение столбца, значение — группа строк. <code class="inl">.groups</code> буквально
+          отдаёт словарь группа → метки, а <code class="inl">.apply(list)</code> собирает группы
+          так же, как <code class="inl">defaultdict(list)</code>.
+        </p>
+
+        <h3>SQL: GROUP BY и array_agg</h3>
+        <div class="code">
+          <div class="bar"><span class="file">мост в SQL</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">-- defaultdict(int): сумма по группам
+SELECT user_id, SUM(amount) AS total
+FROM orders
+GROUP BY user_id;
+
+-- defaultdict(list): собрать значения группы в массив
+SELECT user_id, array_agg(amount) AS amounts
+FROM orders
+GROUP BY user_id;</pre>
+        </div>
+        <p>
+          <code class="inl">GROUP BY</code> — тот же аккумулятор по ключу, только внутри базы.
+          <code class="inl">array_agg</code> играет роль <code class="inl">defaultdict(list)</code>,
+          <code class="inl">SUM</code> — роль <code class="inl">defaultdict(int)</code>. Группы
+          создаются из данных, и «пустых» групп, как при чтении defaultdict, здесь не бывает.
+        </p>
+
+        <div class="bridges">
+          <a class="bridge" href="ch-06-collections.html"><span class="to">Глава 06</span><span>Counter, defaultdict, deque: три специнструмента</span><span class="what">→ ящик с инструментами целиком</span></a>
+          <a class="bridge" href="ch-02-dict.html"><span class="to">Глава 02</span><span>dict: хеш, коллизии и пробирование</span><span class="what">→ база, на которой стоит defaultdict</span></a>
+          <a class="bridge" href="ch-15-groupby.html"><span class="to">Глава 15</span><span>groupby: разложить — посчитать — собрать</span><span class="what">→ та же группировка, векторно</span></a>
+          <a class="bridge" href="ch-21-group-by-having.html"><span class="to">Глава 21</span><span>GROUP BY и HAVING</span><span class="what">→ агрегация групп в SQL</span></a>
+          <a class="bridge" href="ref-counter.html"><span class="to">Справочник</span><span>Counter: счётчик частот</span><span class="what">→ предыдущий тип: частоты и топ-N</span></a>
+        </div>
+      </section>
+
+      <div class="pager">
+        <a class="prev" href="ref-counter.html"><span class="dir">← Назад</span><span class="ttl">Counter: счётчик частот</span></a>
+        <a class="next" href="ref-deque.html"><span class="dir">Дальше →</span><span class="ttl">deque: очередь с двумя дверями</span></a>
+      </div>
+
+    </div>
+  </main>
+</div>
+<script src="assets/toc.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>

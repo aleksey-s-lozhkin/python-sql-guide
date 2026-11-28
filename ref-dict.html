@@ -1,0 +1,603 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Справочник · dict: шкаф с номерками — Ассоциативный гайд</title>
+<meta name="description" content="Справочник по dict: хеш-таблица, get и setdefault, views, слияние, порядок вставки — все методы с ценой и примерами.">
+<link rel="stylesheet" href="assets/style.css">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#fbf8f2" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#14131a" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="assets/icons/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="assets/icons/icon-180.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Гайд Py/SQL">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+</head>
+<body data-slug="ref-dict">
+<div class="app">
+  <aside class="sidebar" id="sidebar"></aside>
+  <main>
+    <div class="wrap">
+
+      <header class="chapter-head">
+        <div class="eyebrow">
+          <span class="part">Справочник · Python-коллекции</span>
+          <span class="dot"></span>
+          <span>тип 4 из 9</span>
+          <span class="dot"></span>
+          <span>готово</span>
+        </div>
+        <h1>dict: шкаф с номерками
+          <span class="sub">Все методы словаря, безопасное чтение и порядок вставки</span>
+        </h1>
+        <p class="lead">
+          <code class="inl">dict</code> — основной способ сказать «найди по ключу за одно действие».
+          Здесь — полная таблица методов, разница между <code class="inl">get</code> и
+          <code class="inl">setdefault</code>, живые views и цена каждой операции.
+        </p>
+        <div class="meta">
+          <span class="chip">⏱ <b>12 минут</b></span>
+          <span class="chip">🎯 уровень <b>1–2</b></span>
+          <span class="chip">🐍 Python <b>3.12</b></span>
+          <span class="chip">📚 <b>глава 02</b></span>
+        </div>
+      </header>
+
+      <p class="small">
+        Типы справочника: <a href="appendix-types.html">вся карта</a> ·
+        <a href="ref-str.html">str</a> · <a href="ref-list.html">list</a> ·
+        <a href="ref-tuple.html">tuple</a> · <b>dict</b> ·
+        <a href="ref-set.html">set</a> · <a href="ref-frozenset.html">frozenset</a> ·
+        <a href="ref-counter.html">Counter</a> · <a href="ref-defaultdict.html">defaultdict</a> ·
+        <a href="ref-deque.html">deque</a>
+      </p>
+
+      <div class="tldr">
+        <div class="t">Самое главное</div>
+        <ul>
+          <li>Поиск по ключу — O(1) в среднем: <b>hash(key)</b> → ячейка → значение,
+              а не перебор элементов.</li>
+          <li>Ключ обязан быть <b>hashable</b>: строка, число, tuple из hashable элементов.
+              Список ключом быть не может.</li>
+          <li>Порядок — это порядок <b>вставки</b>, а не сортировки. Нужна сортировка —
+              <code class="inl">sorted(d)</code> или <code class="inl">sorted(d.items(), key=...)</code>.</li>
+        </ul>
+      </div>
+
+      <!-- ══════════════════ 01. Что это ══════════════════ -->
+      <section>
+        <h2><span class="num">01</span>Что это и как устроено</h2>
+        <p>
+          Словарь хранит пары «ключ → значение» и даёт доступ по ключу за постоянное время.
+          Ключи уникальны: повторная запись по существующему ключу заменяет значение, а не добавляет пару.
+        </p>
+        <p>
+          Внутри — хеш-таблица. Python считает <code class="inl">hash(key)</code>, превращает его в номер
+          ячейки и кладёт туда пару. При чтении номер вычисляется заново — поэтому не нужно перебирать
+          остальные ключи. Если два ключа получили одну ячейку (коллизия), это штатная ситуация:
+          пара кладётся рядом, и сравниваются один-два ключа, а не весь словарь.
+        </p>
+
+        <div class="anchor">
+          <div class="glyph">🗄️</div>
+          <div>
+            <div class="t">Держите эту картинку в голове</div>
+            <p class="kick"><strong>Шкаф с номерками.</strong> У каждой вещи свой номерок — хеш.
+            Вы не открываете все дверцы подряд, а сразу идёте к нужной. Записи при этом лежат в порядке,
+            в котором их положили.</p>
+            <p>Подробный разбор хеша, коллизий и пробирования — в
+            <a href="ch-02-dict.html">главе 02</a>.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ══════════════════ 02. Когда брать ══════════════════ -->
+      <section>
+        <h2><span class="num">02</span>Когда брать, а когда нет</h2>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Задача</th><th>dict?</th><th>Что взять вместо</th></tr></thead>
+            <tbody>
+              <tr><td>Данные — пары «ключ → значение»: JSON, конфиг, кэш</td><td><b>да</b></td><td>—</td></tr>
+              <tr><td>Нужны частоты</td><td>как основа</td><td><code class="inl">Counter</code> — то же плюс топ-N</td></tr>
+              <tr><td>Нужна группировка по ключу</td><td>как основа</td><td><code class="inl">defaultdict(list)</code></td></tr>
+              <tr><td>Нужны только уникальные значения</td><td>нет</td><td><code class="inl">set</code></td></tr>
+              <tr><td>Нужен порядок, индексы и срезы</td><td>нет</td><td><code class="inl">list</code></td></tr>
+              <tr><td>Нужна неизменяемая запись</td><td>нет</td><td><code class="inl">tuple</code> или <code class="inl">dataclass(frozen=True)</code></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="small">
+          Диктует выбор <a href="ch-01-python-collections.html">карта коллекций</a>;
+          здесь — только методы и детали поведения.
+        </p>
+      </section>
+
+      <!-- ══════════════════ 03. Как создать ══════════════════ -->
+      <section>
+        <h2><span class="num">03</span>Как создать</h2>
+        <div class="code">
+          <div class="bar"><span class="file">ref_dict_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">prices = {"apple": 120, "pear": 90}            # литерал
+empty = {}
+pairs = dict([("a", 1), ("b", 2)])              # из пар
+flags = dict.fromkeys(["read", "write"], False) # все ключи с одним значением
+squares = {x: x * x for x in range(1, 4)}       # dict comprehension
+
+print(prices, empty, pairs, flags, squares, sep="\n")</pre>
+          <div class="out">{'apple': 120, 'pear': 90}
+{}
+{'a': 1, 'b': 2}
+{'read': False, 'write': False}
+{1: 1, 2: 4, 3: 9}</div>
+        </div>
+        <div class="note">
+          <span class="t">Осторожно с fromkeys</span>
+          <p>Второе значение подставляется <em>одно и то же</em> во все ключи. Для изменяемого значения —
+          <code class="inl">dict.fromkeys(keys, [])</code> — все ключи получат общий список. Стройте
+          comprehension'ом: <code class="inl">{k: [] for k in keys}</code>.</p>
+        </div>
+      </section>
+
+      <!-- ══════════════════ 04. Все методы ══════════════════ -->
+      <section>
+        <h2><span class="num">04</span>Все методы и операции</h2>
+        <p>
+          «Цена» — средняя сложность в CPython: <code class="inl">n</code> — число пар,
+          <code class="inl">k</code> — размер второго словаря.
+        </p>
+
+        <h3>Чтение</h3>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Запись</th><th>Что делает</th><th>Возвращает</th><th>Цена</th></tr></thead>
+            <tbody>
+              <tr><td class="mono">d[k]</td><td>значение по ключу</td><td>значение</td><td>O(1)*</td></tr>
+              <tr><td class="mono">d.get(k)</td><td>значение или <code class="inl">None</code>, если ключа нет</td><td>значение / None</td><td>O(1)*</td></tr>
+              <tr><td class="mono">d.get(k, default)</td><td>значение или default</td><td>значение / default</td><td>O(1)*</td></tr>
+              <tr><td class="mono">k in d</td><td>проверка наличия ключа</td><td>bool</td><td>O(1)*</td></tr>
+              <tr><td class="mono">len(d)</td><td>число пар</td><td>int</td><td>O(1)</td></tr>
+              <tr><td class="mono">d.keys() / d.values() / d.items()</td><td>ключи / значения / пары</td><td>живые views</td><td>O(1) на создание</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="small">* в среднем; при плохом хеше возможна деградация до O(n), но это исключение.</p>
+
+        <h3>Запись</h3>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Запись</th><th>Что делает</th><th>Возвращает</th><th>Цена</th></tr></thead>
+            <tbody>
+              <tr><td class="mono">d[k] = v</td><td>записывает или заменяет значение</td><td>—</td><td>O(1)*</td></tr>
+              <tr><td class="mono">d.setdefault(k, default)</td><td>возвращает значение, а если ключа нет — создаёт с default</td><td>значение</td><td>O(1)*</td></tr>
+              <tr><td class="mono">d.update(other)</td><td>добавляет и заменяет пары из other</td><td><code class="inl">None</code></td><td>O(len(other))</td></tr>
+              <tr><td class="mono">d | other</td><td>новый словарь из двух, права второго</td><td>новый dict</td><td>O(n + k)</td></tr>
+              <tr><td class="mono">d |= other</td><td>то же на месте, как update</td><td>тот же dict</td><td>O(k)</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>Удаление</h3>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Запись</th><th>Что делает</th><th>Возвращает</th><th>Цена</th></tr></thead>
+            <tbody>
+              <tr><td class="mono">d.pop(k)</td><td>удаляет пару; без ключа — <code class="inl">KeyError</code></td><td>значение</td><td>O(1)*</td></tr>
+              <tr><td class="mono">d.pop(k, default)</td><td>удаляет пару или отдаёт default</td><td>значение / default</td><td>O(1)*</td></tr>
+              <tr><td class="mono">d.popitem()</td><td>удаляет и возвращает последнюю вставленную пару (LIFO)</td><td>tuple (k, v)</td><td>O(1)</td></tr>
+              <tr><td class="mono">del d[k]</td><td>удаляет пару; нет ключа — <code class="inl">KeyError</code></td><td>—</td><td>O(1)*</td></tr>
+              <tr><td class="mono">d.clear()</td><td>удаляет все пары</td><td><code class="inl">None</code></td><td>O(n)</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>Копирование и создание</h3>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Запись</th><th>Что делает</th><th>Возвращает</th><th>Цена</th></tr></thead>
+            <tbody>
+              <tr><td class="mono">d.copy()</td><td>поверхностная копия</td><td>новый dict</td><td>O(n)</td></tr>
+              <tr><td class="mono">dict(d)</td><td>то же самое</td><td>новый dict</td><td>O(n)</td></tr>
+              <tr><td class="mono">dict.fromkeys(keys, value)</td><td>новый словарь из ключей с одним значением</td><td>новый dict</td><td>O(len(keys))</td></tr>
+              <tr><td class="mono">{k: v for k, v in d.items()}</td><td>копия с преобразованием</td><td>новый dict</td><td>O(n)</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ══════════════════ 05. Разбор ══════════════════ -->
+      <section>
+        <h2><span class="num">05</span>Разбор по группам</h2>
+        <p>
+          Все примеры страницы — в файле
+          <a href="snippets/view.html?f=ref_dict_lab.py"><code class="inl">ref_dict_lab.py</code></a>.
+        </p>
+
+        <h3>get: безопасное чтение</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_dict_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">prices = {"apple": 120, "pear": 90}
+print(prices.get("apple"))
+print(prices.get("plum"))
+print(prices.get("plum", 0))</pre>
+          <div class="out">120
+None
+0</div>
+        </div>
+        <p>
+          <code class="inl">prices["plum"]</code> бросил бы <code class="inl">KeyError</code>.
+          <code class="inl">get</code> — для «а есть ли там что-нибудь?»: отсутствие ключа — нормальная
+          ситуация, а не авария. Обратите внимание: <code class="inl">get</code> <em>не создаёт</em> ключ.
+        </p>
+
+        <h3>setdefault: положить, если нет</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_dict_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">d = {"a": 1}
+print(d.setdefault("b", 0))     # создал ключ
+print(d.setdefault("a", 999))   # не тронул существующий
+print(d)</pre>
+          <div class="out">0
+1
+{'a': 1, 'b': 0}</div>
+        </div>
+        <p>
+          <code class="inl">setdefault</code> возвращает существующее значение и создаёт новое только при
+          отсутствии ключа. С ним группировка укладывается в одну строку:
+          <code class="inl">groups.setdefault(user, []).append(amount)</code>.
+        </p>
+
+        <h3>update, pop, popitem, del</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_dict_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">d = {"a": 1, "b": 2}
+d.update({"b": 3, "c": 4})
+print(d)
+print(d.pop("c"))
+print(d.pop("zzz", "нет"))
+print(d.popitem())              # пара, вставленная последней
+del d["a"]
+print(d)</pre>
+          <div class="out">{'a': 1, 'b': 3, 'c': 4}
+4
+нет
+('b', 3)
+{}</div>
+        </div>
+        <p>
+          <code class="inl">update</code> не удаляет «лишние» ключи: пары, которых нет во втором словаре,
+          остаются. <code class="inl">popitem</code> — LIFO, а не «случайная пара», как было в старых версиях.
+        </p>
+
+        <h3>keys, values, items — живые views</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_dict_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">prices = {"apple": 120, "pear": 90}
+print(list(prices.keys()))
+print(list(prices.values()))
+print(list(prices.items()))
+
+view = prices.keys()
+prices["plum"] = 70
+print(list(view))               # view живой</pre>
+          <div class="out">['apple', 'pear']
+[120, 90]
+[('apple', 120), ('pear', 90)]
+['apple', 'pear', 'plum']</div>
+        </div>
+        <p>
+          <code class="inl">keys</code>, <code class="inl">values</code>, <code class="inl">items</code> не
+          копируют данные: они смотрят на словарь и видят изменения. Для итерации с изменением словаря
+          делайте список: <code class="inl">for k in list(d):</code>.
+        </p>
+
+        <h3>Порядок вставки и слияние</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_dict_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">d = {"b": 2, "a": 1}
+d["c"] = 3
+print(list(d))
+
+base = {"a": 1, "b": 2}
+extra = {"b": 20, "c": 30}
+print(base | extra)
+base |= {"d": 4}
+print(base)</pre>
+          <div class="out">['b', 'a', 'c']
+{'a': 1, 'b': 20, 'c': 30}
+{'a': 1, 'b': 2, 'd': 4}</div>
+        </div>
+        <p>
+          Порядок — это порядок добавления ключей; перезапись значения позицию не меняет.
+          <code class="inl">|</code> создаёт новый словарь, при совпадении ключей побеждает правый.
+        </p>
+
+        <h3>Копия, алиас и hashable</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_dict_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">a = {"x": 1}
+alias = a
+copy = a.copy()
+alias["y"] = 2
+copy["z"] = 3
+print(a)
+print(copy)
+
+grid = {(10, 20): "start"}
+print(grid[(10, 20)])</pre>
+          <div class="out">{'x': 1, 'y': 2}
+{'x': 1, 'z': 3}
+start</div>
+        </div>
+        <p>
+          Ключом может быть только hashable объект: строка, число, tuple. Список, множество или словарь
+          — нет. Кортеж с изменяемым элементом внутри — тоже нет: <code class="inl">hash(tuple)</code>
+          считается по элементам.
+        </p>
+      </section>
+
+      <!-- ══════════════════ 06. Сценарии ══════════════════ -->
+      <section>
+        <h2><span class="num">06</span>Три сценария из практики</h2>
+
+        <h3>Счётчик без магии</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_dict_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">words = ["sql", "python", "sql", "dbt"]
+counts = {}
+for w in words:
+    counts[w] = counts.get(w, 0) + 1
+print(counts)</pre>
+          <div class="out">{'sql': 2, 'python': 1, 'dbt': 1}</div>
+        </div>
+        <p>
+          Это база, на которой построены <code class="inl">Counter</code> и
+          <code class="inl">defaultdict(int)</code>. Понимать её нужно, даже если в проде вы возьмёте
+          готовый класс.
+        </p>
+
+        <h3>Группировка по ключу</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_dict_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">orders = [("Anna", 1200), ("Ivan", 800), ("Anna", 500)]
+groups = {}
+for user, amount in orders:
+    groups.setdefault(user, []).append(amount)
+print(groups)</pre>
+          <div class="out">{'Anna': [1200, 500], 'Ivan': [800]}</div>
+        </div>
+        <p>
+          «Разложить — посчитать — собрать»: <code class="inl">setdefault</code> заменяет проверку
+          <code class="inl">if user not in groups</code>. Ровно эту операцию делает
+          <code class="inl">defaultdict(list)</code> и <code class="inl">groupby</code> в pandas.
+        </p>
+
+        <h3>Реестр обработчиков</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_dict_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">handlers = {"GET": "list_users", "POST": "create_user"}
+print(handlers.get("DELETE"))
+print(handlers.get("DELETE", "404"))</pre>
+          <div class="out">None
+404</div>
+        </div>
+        <p>
+          Вместо <code class="inl">if/elif</code> на десять веток — словарь «команда → обработчик» и
+          <code class="inl">.get()</code> с запасным значением. Так устроены роутеры, фабрики и
+          таблицы переходов.
+        </p>
+      </section>
+
+      <!-- ══════════════════ 07. Ошибки ══════════════════ -->
+      <section>
+        <h2><span class="num">07</span>Пять ошибок, на которых спотыкаются</h2>
+        <div class="errors">
+          <div class="err">
+            <div class="h">Обращение по отсутствующему ключу</div>
+            <p><code class="inl">d["missing"]</code> бросает <code class="inl">KeyError</code> — типичная причина 500-х на неполном JSON.</p>
+            <div class="fix">Для «может не быть» — <code class="inl">d.get(k, default)</code> или <code class="inl">if k in d</code>.</div>
+          </div>
+
+          <div class="err">
+            <div class="h">Изменяемый ключ</div>
+            <p><code class="inl">d[[1, 2]] = "x"</code> падает с <code class="inl">TypeError: unhashable type: 'list'</code>.</p>
+            <div class="fix">Ключ — строка, число, tuple из hashable элементов. Для своего класса — <code class="inl">dataclass(frozen=True)</code>.</div>
+          </div>
+
+          <div class="err">
+            <div class="h">fromkeys с изменяемым значением</div>
+            <p><code class="inl">dict.fromkeys(keys, [])</code> кладёт <em>один и тот же</em> список во все ключи: <code class="inl">d["a"].append(1)</code> меняет и <code class="inl">d["b"]</code>.</p>
+            <div class="fix">Comprehension: <code class="inl">{k: [] for k in keys}</code> — новый объект на каждый ключ.</div>
+          </div>
+
+          <div class="err">
+            <div class="h">Изменение словаря во время итерации</div>
+            <p>Добавление или удаление ключа внутри <code class="inl">for k in d:</code> — <code class="inl">RuntimeError: dictionary changed size during iteration</code>.</p>
+            <div class="fix">Итерируйтесь по копии ключей: <code class="inl">for k in list(d):</code>, а изменения собирайте отдельно.</div>
+          </div>
+
+          <div class="err">
+            <div class="h">Ждать сортировки от порядка вставки</div>
+            <p>Словарь хранит порядок <b>добавления</b>. Если данные пришли в случайном порядке, вывод тоже будет случайным.</p>
+            <div class="fix">Нужен порядок — сортируйте явно: <code class="inl">sorted(d)</code>, <code class="inl">sorted(d.items(), key=...)</code>.</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ══════════════════ 08. Мини-проверка ══════════════════ -->
+      <section>
+        <h2><span class="num">08</span>Мини-проверка</h2>
+        <p>Пять вопросов и две задачи. Сначала своя попытка — потом спойлер.</p>
+
+        <div class="qa">
+          <details>
+            <summary>Чем d[k] отличается от d.get(k)?</summary>
+            <div class="a">
+              <p><code class="inl">d[k]</code> бросает <code class="inl">KeyError</code>, если ключа нет.
+              <code class="inl">d.get(k)</code> возвращает <code class="inl">None</code>, а
+              <code class="inl">d.get(k, default)</code> — указанное значение по умолчанию. Ни один из них
+              не создаёт ключ.</p>
+              <div class="verdict">Резюме: [] — «ключ обязан быть», get — «может не быть».</div>
+            </div>
+          </details>
+        </div>
+
+        <div class="qa">
+          <details>
+            <summary>Почему список нельзя сделать ключом словаря?</summary>
+            <div class="a">
+              <p>Ключ обязан быть hashable: у объекта должен быть стабильный хеш и сравнение. Список
+              изменяем — его содержимое можно поменять, а хеш «поехал» бы; поэтому Python запрещает
+              <code class="inl">list</code> в ключах.</p>
+              <p>Tuple из неизменяемых элементов — можно: <code class="inl">(10, 20)</code>.</p>
+              <div class="verdict">Резюме: hashable = можно выдать стабильный номерок.</div>
+            </div>
+          </details>
+        </div>
+
+        <div class="qa">
+          <details>
+            <summary>Гарантирован ли порядок ключей? Это сортировка?</summary>
+            <div class="a">
+              <p>Порядок гарантирован, но это порядок <b>вставки</b>, а не сортировки. Перезапись значения
+              позицию не меняет, удаление и повторная вставка переносят ключ в конец.</p>
+              <div class="verdict">Резюме: dict помнит, как вы клали; сортировать нужно явно.</div>
+            </div>
+          </details>
+        </div>
+
+        <div class="qa">
+          <details>
+            <summary>Что такое keys(), values(), items() и почему их называют views?</summary>
+            <div class="a">
+              <p>Это лёгкие объекты-представления: они не копируют данные, а смотрят на словарь.
+              Добавили ключ — он сразу виден в <code class="inl">keys()</code>. Нужен снимок — оберните
+              в <code class="inl">list()</code>.</p>
+              <div class="verdict">Резюме: view — окно в словарь, а не фотография.</div>
+            </div>
+          </details>
+        </div>
+
+        <div class="qa">
+          <details>
+            <summary>Чем pop(k) отличается от del d[k]?</summary>
+            <div class="a">
+              <p><code class="inl">pop(k)</code> возвращает удалённое значение и умеет безопасный вариант
+              <code class="inl">pop(k, default)</code>. <code class="inl">del d[k]</code> ничего не
+              возвращает и без ключа падает с <code class="inl">KeyError</code>.</p>
+              <div class="verdict">Резюме: нужно значение — pop; нужен просто факт удаления — del.</div>
+            </div>
+          </details>
+        </div>
+
+        <h3><span style="color:var(--muted);font-family:var(--mono);font-size:.8rem">01</span> Перевернуть словарь</h3>
+        <p>Поменяйте местами ключи и значения. Если значения повторяются — побеждает последнее.</p>
+        <div class="code">
+          <div class="bar"><span class="file">условие</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">prices = {"apple": 120, "pear": 90}
+# ожидается: {120: 'apple', 90: 'pear'}</pre>
+        </div>
+        <div class="qa">
+          <details>
+            <summary>Показать решение и разбор</summary>
+            <div class="a">
+              <div class="code" style="margin-top:0">
+                <div class="bar"><span class="file">решение</span><span class="lang">python</span><button class="copy">копировать</button></div>
+                <pre data-lang="python">inverse = {price: name for name, price in prices.items()}
+print(inverse)</pre>
+                <div class="out">{120: 'apple', 90: 'pear'}</div>
+              </div>
+              <p><strong>Что важно.</strong> <code class="inl">items()</code> даёт пары, comprehension меняет
+              их местами. Значения становятся ключами — значит, должны быть hashable. Коллизии
+              (одинаковые цены) перезаписывают друг друга: для «списка имён на цену» нужен
+              <code class="inl">defaultdict(list)</code>.</p>
+            </div>
+          </details>
+        </div>
+
+        <h3><span style="color:var(--muted);font-family:var(--mono);font-size:.8rem">02</span> Сложить два дня</h3>
+        <p>Есть два словаря «пользователь → число заказов». Сложите значения по общим ключам.</p>
+        <div class="code">
+          <div class="bar"><span class="file">условие</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">day1 = {"anna": 2, "ivan": 1}
+day2 = {"anna": 1, "olga": 3}
+# ожидается: {'anna': 3, 'ivan': 1, 'olga': 3}</pre>
+        </div>
+        <div class="qa">
+          <details>
+            <summary>Показать решение и разбор</summary>
+            <div class="a">
+              <div class="code" style="margin-top:0">
+                <div class="bar"><span class="file">решение</span><span class="lang">python</span><button class="copy">копировать</button></div>
+                <pre data-lang="python">total = {}
+for day in (day1, day2):
+    for user, n in day.items():
+        total[user] = total.get(user, 0) + n
+print(total)</pre>
+                <div class="out">{'anna': 3, 'ivan': 1, 'olga': 3}</div>
+              </div>
+              <p><strong>Что важно.</strong> <code class="inl">get(user, 0)</code> решает проблему первого
+              появления ключа. Через <code class="inl">Counter</code> это записывается короче
+              (<code class="inl">c1 + c2</code>), но только для числовых частот.</p>
+            </div>
+          </details>
+        </div>
+      </section>
+
+      <!-- ══════════════════ 09. Мостик ══════════════════ -->
+      <section>
+        <h2><span class="num">09</span>Мостик: та же идея в pandas и SQL</h2>
+
+        <h3>pandas: индекс как словарь меток</h3>
+        <div class="code">
+          <div class="bar"><span class="file">мост в pandas</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">import pandas as pd
+
+s = pd.Series({"apple": 120, "pear": 90})   # dict → Series с индексом
+s["apple"]                                   # доступ по метке
+s.get("plum", 0)                             # аналог dict.get</pre>
+        </div>
+        <p>
+          Series — это «словарь метка → значение» плюс порядок и векторные операции.
+          Строковый индекс ищет метку через хеш-таблицу, поэтому и здесь работает O(1) в среднем.
+        </p>
+
+        <h3>SQL: тот же поиск по ключу</h3>
+        <div class="code">
+          <div class="bar"><span class="file">мост в SQL</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">-- «найти по ключу»: B-tree индекс вместо перебора строк
+SELECT * FROM users WHERE id = 42;
+
+-- «соединить по ключу»: hash join строит таблицу, как dict
+SELECT o.id, u.name
+FROM orders o JOIN users u ON u.id = o.user_id;</pre>
+        </div>
+        <p>
+          Индекс в базе — это «оглавление»: база не читает всю таблицу, а идёт к нужной строке.
+          А <code class="inl">hash join</code> буквально строит хеш-таблицу по ключу соединения —
+          тот же <code class="inl">dict</code>, только внутри PostgreSQL.
+        </p>
+
+        <div class="bridges">
+          <a class="bridge" href="ch-02-dict.html"><span class="to">Глава 02</span><span>dict: хеш, коллизии и пробирование</span><span class="what">→ почему поиск O(1) в среднем</span></a>
+          <a class="bridge" href="ch-15-groupby.html"><span class="to">Глава 15</span><span>groupby: разложить — посчитать — собрать</span><span class="what">→ та же группировка, векторно</span></a>
+          <a class="bridge" href="ch-24-indexes-explain.html"><span class="to">Глава 24</span><span>Индексы и EXPLAIN</span><span class="what">→ «оглавление» базы данных</span></a>
+          <a class="bridge" href="ref-set.html"><span class="to">Справочник</span><span>set: фейс-контроль</span><span class="what">→ когда значения не нужны</span></a>
+        </div>
+      </section>
+
+      <div class="pager">
+        <a class="prev" href="ref-tuple.html"><span class="dir">← Назад</span><span class="ttl">tuple: опечатанный контейнер</span></a>
+        <a class="next" href="ref-set.html"><span class="dir">Дальше →</span><span class="ttl">set: фейс-контроль</span></a>
+      </div>
+
+    </div>
+  </main>
+</div>
+<script src="assets/toc.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>

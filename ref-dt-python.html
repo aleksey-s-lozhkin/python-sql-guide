@@ -1,0 +1,699 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Справочник · Python datetime: момент, зона и длительность — Ассоциативный гайд</title>
+<meta name="description" content="Справочник по Python datetime: datetime, date, time, timedelta, naive и aware, zoneinfo, ISO-строки, strftime, epoch, арифметика и DST — с реальным выводом.">
+<link rel="stylesheet" href="assets/style.css">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#fbf8f2" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#14131a" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="assets/icons/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="assets/icons/icon-180.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Гайд Py/SQL">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+</head>
+<body data-slug="ref-dt-python">
+<div class="app">
+  <aside class="sidebar" id="sidebar"></aside>
+  <main>
+    <div class="wrap">
+      <header class="chapter-head">
+        <div class="eyebrow">
+          <span class="part">Справочник · дата и время</span>
+          <span class="dot"></span>
+          <span>страница 1 из 4</span>
+          <span class="dot"></span>
+          <span>готово</span>
+        </div>
+        <h1>Python datetime: момент, зона и длительность
+          <span class="sub">Четыре типа, aware и naive, epoch и DST — стандартная библиотека 3.12</span>
+        </h1>
+        <p class="lead">
+          <code class="inl">datetime</code> — точка на линии времени, <code class="inl">date</code> —
+          лист календаря, <code class="inl">timedelta</code> — песочные часы. Здесь — как создать
+          и разобрать момент, чем aware отличается от naive и где обычно теряются часы.
+        </p>
+        <div class="meta">
+          <span class="chip">⏱ <b>12 минут</b></span>
+          <span class="chip">🎯 уровень <b>2</b></span>
+          <span class="chip">🐍 Python <b>3.12</b></span>
+          <span class="chip">📚 <b>docs: datetime</b></span>
+        </div>
+      </header>
+      <p class="small">
+        Справочник «Дата и время»: <a href="appendix-datetime.html">вся карта</a> ·
+        <b>01 · Python</b> · <a href="ref-dt-numpy.html">02 · NumPy</a> ·
+        <a href="ref-dt-pandas.html">03 · pandas</a> · <a href="ref-dt-sql.html">04 · SQL</a>
+      </p>
+      <div class="tldr">
+        <div class="t">Самое главное</div>
+        <ul>
+          <li><code class="inl">datetime</code> — момент (дата + время), <code class="inl">date</code> —
+              день, <code class="inl">time</code> — время суток, <code class="inl">timedelta</code> —
+              длительность. Все четыре типа неизменяемые.</li>
+          <li><b>naive</b> не знает зону, <b>aware</b> знает (несёт <code class="inl">tzinfo</code>).
+              Вычитать и сравнивать можно только одинаковые; epoch — это <b>секунды</b>, не ms.</li>
+          <li>ISO-строка — общий язык обмена: <code class="inl">isoformat()</code> и
+              <code class="inl">fromisoformat()</code>. Для поясов — <code class="inl">zoneinfo.ZoneInfo</code>,
+              а не фиксированный offset.</li>
+        </ul>
+      </div>
+      <!-- ══════════════════ 01. Что это ══════════════════ -->
+      <section>
+        <h2><span class="num">01</span>Что это и как устроено</h2>
+        <p>
+          <code class="inl">datetime</code> — неизменяемый объект, который хранит поля настенных часов:
+          год, месяц, день, час, минуту, секунду, микросекунду — и, если повезёт,
+          <code class="inl">tzinfo</code>. Без <code class="inl">tzinfo</code> объект <b>naive</b>:
+          его 14:30 — это «где-то 14:30», без привязки к зоне. С <code class="inl">tzinfo</code> — <b>aware</b>:
+          момент знает, как он относится к UTC.
+        </p>
+        <p>
+          <code class="inl">date</code> хранит только день, <code class="inl">time</code> — только время
+          суток (и тоже может быть aware), <code class="inl">timedelta</code> — длительность в днях,
+          секундах и микросекундах. Отдельно живёт epoch — число секунд от
+          <code class="inl">1970-01-01T00:00:00Z</code>; это уже не дата, а число.
+        </p>
+        <div class="anchor">
+          <div class="glyph">⏳</div>
+          <div>
+            <div class="t">Держите эту картинку в голове</div>
+            <p class="kick"><strong>Линия времени, отрывной календарь и песочные часы.</strong>
+            <code class="inl">datetime</code> — точка на линии: aware-точка знает, где именно она
+            на линии, naive — только показывает настенные часы. <code class="inl">date</code> — лист
+            отрывного календаря: один день, без времени. <code class="inl">timedelta</code> — песочные
+            часы: не точка, а количество времени, которое можно пересыпать.</p>
+            <p>Та же тройка понятий живёт в pandas и SQL; спецглава —
+            <a href="ch-27-date-time.html">глава 27</a>, а pandas-версия —
+            <a href="ch-18-dates-reshape.html">глава 18</a>.</p>
+          </div>
+        </div>
+      </section>
+      <!-- ══════════════════ 02. Когда брать ══════════════════ -->
+      <section>
+        <h2><span class="num">02</span>Когда брать, а когда нет</h2>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Задача</th><th>datetime?</th><th>Что взять вместо</th></tr></thead>
+            <tbody>
+              <tr><td>Момент с точностью до микросекунд</td><td><b>да</b></td><td>—</td></tr>
+              <tr><td>Только дата: день рождения, отчётный день</td><td>нет</td><td><code class="inl">date</code></td></tr>
+              <tr><td>Только время суток: расписание, слот</td><td>нет</td><td><code class="inl">time</code></td></tr>
+              <tr><td>Длительность, TTL, интервал</td><td>нет</td><td><code class="inl">timedelta</code></td></tr>
+              <tr><td>Сравнить моменты из разных зон</td><td><b>да</b> (aware)</td><td>—</td></tr>
+              <tr><td>Много дат в таблице, векторные операции</td><td>нет</td><td><code class="inl">datetime64</code> в pandas, <a href="ref-dt-pandas.html">страница 03</a></td></tr>
+              <tr><td>Хранение в базе</td><td>как значение</td><td><code class="inl">date</code>, <code class="inl">timestamp</code>, <code class="inl">timestamptz</code> — <a href="ref-dt-sql.html">страница 04</a></td></tr>
+              <tr><td>Обмен по API</td><td>через ISO</td><td><code class="inl">isoformat()</code> / <code class="inl">fromisoformat()</code></td></tr>
+              <tr><td>Строки для сортировки и сравнения</td><td>нет</td><td>ISO-8601: сортируется как текст</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="small">
+          Если в задаче есть «часовой пояс», «таймзона» или «перевод часов» — почти всегда нужен
+          <b>aware</b> <code class="inl">datetime</code> с <code class="inl">ZoneInfo</code>, а не
+          строка и не naive-объект.
+        </p>
+      </section>
+      <!-- ══════════════════ 03. Как создать ══════════════════ -->
+      <section>
+        <h2><span class="num">03</span>Как создать</h2>
+        <div class="code">
+          <div class="bar"><span class="file">ref_dt_python_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">from datetime import date, datetime, time, timedelta
+dt = datetime(2024, 3, 15, 14, 30, 45)
+d = date(2024, 3, 15)
+t = time(14, 30, 45)
+delta = timedelta(days=2, hours=3, minutes=30)
+print(dt)
+print(d)
+print(t)
+print(delta)
+print(dt.year, dt.month, dt.day, dt.hour, dt.minute)</pre>
+          <div class="out">2024-03-15 14:30:45
+2024-03-15
+14:30:45
+2 days, 3:30:00
+2024 3 15 14 30</div>
+        </div>
+        <p>
+          Аргументы у <code class="inl">datetime</code> позиционные и необязательные: можно передать
+          только дату — время станет <code class="inl">00:00:00</code>. <code class="inl">timedelta</code>
+          нормализует всё в дни, секунды и микросекунды, поэтому 2 дня 3 часа 30 минут печатаются как
+          <code class="inl">2 days, 3:30:00</code>.
+        </p>
+        <div class="note">
+          <span class="t">now() и today() — только для реального времени</span>
+          <p><code class="inl">datetime.now()</code> и <code class="inl">date.today()</code> читают
+          системные часы. На странице они не используются — все примеры на фиксированных датах,
+          чтобы вывод не менялся. В коде читайте их один раз на границе приложения.</p>
+        </div>
+      </section>
+      <!-- ══════════════════ 04. Все операции ══════════════════ -->
+      <section>
+        <h2><span class="num">04</span>Все операции</h2>
+        <p>Три таблицы по назначению: «Результат» — что вернёт операция, «Примечание» — где ловушка.</p>
+        <h3>Создание и разбор</h3>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Операция</th><th>Что делает</th><th>Результат</th><th>Примечание</th></tr></thead>
+            <tbody>
+              <tr><td class="mono">datetime(y, m, d, h, min, s, us)</td><td>собирает момент из полей</td><td>datetime</td><td>naive, если не передать tzinfo</td></tr>
+              <tr><td class="mono">date(y, m, d)</td><td>собирает дату</td><td>date</td><td>без времени и зоны</td></tr>
+              <tr><td class="mono">time(h, min, s, us)</td><td>собирает время суток</td><td>time</td><td>tzinfo необязателен</td></tr>
+              <tr><td class="mono">timedelta(days, seconds, us)</td><td>собирает длительность</td><td>timedelta</td><td>нормализует часы в дни</td></tr>
+              <tr><td class="mono">datetime.fromisoformat(s)</td><td>разбирает ISO-8601</td><td>datetime</td><td>с 3.11 понимает «Z»</td></tr>
+              <tr><td class="mono">datetime.strptime(s, fmt)</td><td>разбирает по формату</td><td>datetime</td><td>формат должен совпасть точно</td></tr>
+              <tr><td class="mono">datetime.fromtimestamp(ts, tz)</td><td>момент из epoch-секунд</td><td>datetime</td><td>секунды; tz лучше указать</td></tr>
+              <tr><td class="mono">date.fromisoformat(s)</td><td>дата из строки «2024-03-15»</td><td>date</td><td>без времени</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <h3>Свойства и форматы</h3>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Операция</th><th>Что делает</th><th>Результат</th><th>Примечание</th></tr></thead>
+            <tbody>
+              <tr><td class="mono">.year, .month, .day</td><td>поля даты</td><td>int</td><td>только чтение</td></tr>
+              <tr><td class="mono">.hour, .minute, .second, .microsecond</td><td>поля времени</td><td>int</td><td>микросекунды 0..999999</td></tr>
+              <tr><td class="mono">.date(), .time()</td><td>выделяет дату или время</td><td>date, time</td><td>у time теряется tzinfo</td></tr>
+              <tr><td class="mono">.isoformat()</td><td>форматирует по ISO-8601</td><td>str</td><td>основной формат обмена</td></tr>
+              <tr><td class="mono">.strftime(fmt)</td><td>форматирует по шаблону</td><td>str</td><td>не для обратного разбора</td></tr>
+              <tr><td class="mono">.timestamp()</td><td>переводит в epoch-секунды</td><td>float</td><td>naive считает по локальной зоне</td></tr>
+              <tr><td class="mono">.tzinfo, .utcoffset()</td><td>зона и смещение от UTC</td><td>tzinfo, timedelta</td><td>у naive — <code class="inl">None</code></td></tr>
+              <tr><td class="mono">.replace(...)</td><td>копия с заменой полей</td><td>datetime</td><td>не переводит в другую зону</td></tr>
+              <tr><td class="mono">.astimezone(tz)</td><td>переводит момент в зону</td><td>datetime</td><td>только для aware</td></tr>
+              <tr><td class="mono">.weekday(), .isoweekday()</td><td>день недели: 0..6 / 1..7</td><td>int</td><td>понедельник — 0 или 1</td></tr>
+              <tr><td class="mono">.isocalendar()</td><td>год, неделя, день недели ISO</td><td>named tuple</td><td>неделя может сменить год</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <h3>Арифметика и сравнение</h3>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Операция</th><th>Что делает</th><th>Результат</th><th>Примечание</th></tr></thead>
+            <tbody>
+              <tr><td class="mono">dt + timedelta</td><td>сдвигает момент</td><td>datetime</td><td>aware: календарная арифметика</td></tr>
+              <tr><td class="mono">dt - timedelta</td><td>сдвигает назад</td><td>datetime</td><td>через границу месяца — ок</td></tr>
+              <tr><td class="mono">dt2 - dt1</td><td>разница моментов</td><td>timedelta</td><td>только одинаковый awareness</td></tr>
+              <tr><td class="mono">d2 - d1</td><td>разница дат</td><td>timedelta</td><td><code class="inl">.days</code> — целые дни</td></tr>
+              <tr><td class="mono">d + timedelta</td><td>сдвигает дату</td><td>date</td><td>часы отбрасываются</td></tr>
+              <tr><td class="mono">dt1 == dt2 (aware)</td><td>сравнивает моменты</td><td>bool</td><td>один миг в разных зонах равен</td></tr>
+              <tr><td class="mono">aware vs naive</td><td>сравнение или разность</td><td>TypeError</td><td>сначала привести к одной зоне</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+      <!-- ══════════════════ 05. Разбор ══════════════════ -->
+      <section>
+        <h2><span class="num">05</span>Разбор по группам</h2>
+        <p>
+          Все примеры — в файле <a href="snippets/view.html?f=ref_dt_python_lab.py"><code class="inl">ref_dt_python_lab.py</code></a>;
+          запуск: <code class="inl">/tmp/ref-pd-venv/bin/python guide/snippets/ref_dt_python_lab.py</code>.
+          Нужен Python 3.12 (stdlib).
+        </p>
+        <h3>Части момента</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_dt_python_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">from datetime import datetime
+dt = datetime(2024, 3, 15, 14, 30, 45, 123456)
+print(dt.isoformat())
+print(dt.date().isoformat())
+print(dt.time().isoformat())
+print(dt.weekday(), dt.isoweekday())
+print(dt.isocalendar())</pre>
+          <div class="out">2024-03-15T14:30:45.123456
+2024-03-15
+14:30:45.123456
+4 5
+datetime.IsoCalendarDate(year=2024, week=11, weekday=5)</div>
+        </div>
+        <p>
+          <code class="inl">.date()</code> и <code class="inl">.time()</code> выделяют части, но
+          <code class="inl">.time()</code> отбрасывает <code class="inl">tzinfo</code>. Пятница — это
+          <code class="inl">weekday()</code> 4 и <code class="inl">isoweekday()</code> 5, а
+          <code class="inl">isocalendar()</code> даёт 2024, неделю 11, день 5.
+        </p>
+        <h3>naive и aware</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_dt_python_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
+naive = datetime(2024, 3, 15, 14, 30)
+utc = naive.replace(tzinfo=timezone.utc)
+moscow = naive.replace(tzinfo=ZoneInfo("Europe/Moscow"))
+print(naive.isoformat())
+print(utc.isoformat())
+print(moscow.isoformat())
+print(moscow.utcoffset())
+print(moscow.tzinfo)</pre>
+          <div class="out">2024-03-15T14:30:00
+2024-03-15T14:30:00+00:00
+2024-03-15T14:30:00+03:00
+3:00:00
+Europe/Moscow</div>
+        </div>
+        <p>
+          <code class="inl">replace(tzinfo=...)</code> не переводит время, а <b>вешает ярлык зоны</b>
+          на те же 14:30; перевод момента, а не ярлыка, — это <code class="inl">astimezone()</code> ниже.
+        </p>
+        <h3>ISO-строки: isoformat и fromisoformat</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_dt_python_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">from datetime import datetime, timezone
+raw = "2024-03-15T14:30:00+03:00"
+dt = datetime.fromisoformat(raw)
+print(dt)
+print(dt.isoformat())
+print(dt.astimezone(timezone.utc).isoformat())
+print(datetime.fromisoformat("2024-03-15T11:30:00Z"))</pre>
+          <div class="out">2024-03-15 14:30:00+03:00
+2024-03-15T14:30:00+03:00
+2024-03-15T11:30:00+00:00
+2024-03-15 11:30:00+00:00</div>
+        </div>
+        <p>
+          <code class="inl">fromisoformat()</code> сохраняет смещение: строка с
+          <code class="inl">+03:00</code> даёт aware-объект, а <code class="inl">astimezone(utc)</code> —
+          тот же момент в UTC. Суффикс <code class="inl">Z</code> — синоним <code class="inl">+00:00</code>
+          (с 3.11).
+        </p>
+        <h3>strftime и strptime</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_dt_python_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">from datetime import datetime
+dt = datetime(2024, 3, 15, 14, 30, 45)
+print(dt.strftime("%Y-%m-%d %H:%M"))
+print(dt.strftime("%d.%m.%Y, %H:%M:%S"))
+print(dt.strftime("%j"), dt.strftime("%V"))
+parsed = datetime.strptime("15.03.2024 14:30", "%d.%m.%Y %H:%M")
+print(parsed)</pre>
+          <div class="out">2024-03-15 14:30
+15.03.2024, 14:30:45
+075 11
+2024-03-15 14:30:00</div>
+        </div>
+        <p>
+          <code class="inl">strftime</code> — формат, <code class="inl">strptime</code> — разбор, шаблон
+          совпадает посимвольно. <code class="inl">%Y-%m-%d</code>, <code class="inl">%H:%M</code>,
+          <code class="inl">%j</code>, <code class="inl">%V</code> — числовые; <code class="inl">%B</code>
+          зависит от локали.
+        </p>
+        <h3>epoch: timestamp и fromtimestamp</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_dt_python_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">from datetime import datetime, timezone
+stamp = 1704067200
+dt = datetime.fromtimestamp(stamp, tz=timezone.utc)
+print(dt.isoformat())
+print(dt.timestamp())
+print(datetime(2024, 1, 1, tzinfo=timezone.utc).timestamp())
+print(int(datetime.fromtimestamp(0, tz=timezone.utc).timestamp()))</pre>
+          <div class="out">2024-01-01T00:00:00+00:00
+1704067200.0
+1704067200.0
+0</div>
+        </div>
+        <p>
+          epoch — число <b>секунд</b> от 1970-01-01 UTC. 1704067200 — это полночь 1 января 2024 года.
+          <code class="inl">timestamp()</code> возвращает float; <code class="inl">fromtimestamp</code>
+          принимает секунды. Если передать миллисекунды, момент уедет в 55969 год — об этом в ошибках.
+          Для воспроизводимости <code class="inl">fromtimestamp</code> вызывают с явным
+          <code class="inl">tz</code>.
+        </p>
+        <h3>astimezone: перевод между зонами</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_dt_python_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
+utc = datetime(2024, 3, 15, 11, 30, tzinfo=timezone.utc)
+moscow = utc.astimezone(ZoneInfo("Europe/Moscow"))
+berlin = utc.astimezone(ZoneInfo("Europe/Berlin"))
+print(utc.isoformat())
+print(moscow.isoformat())
+print(berlin.isoformat())
+print(moscow == berlin)</pre>
+          <div class="out">2024-03-15T11:30:00+00:00
+2024-03-15T14:30:00+03:00
+2024-03-15T12:30:00+01:00
+True</div>
+        </div>
+        <p>
+          Один и тот же момент — 11:30 UTC — в Москве 14:30, а в Берлине 12:30. Настенные часы
+          разные, момент один, поэтому <code class="inl">moscow == berlin</code> истинно: aware-сравнение
+          идёт по абсолютному времени. <code class="inl">astimezone()</code> меняет зону, не меняя момент;
+          <code class="inl">replace(tzinfo=...)</code>, наоборот, меняет ярлык, не меняя поля.
+        </p>
+        <h3>Арифметика и replace</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_dt_python_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">from datetime import date, datetime, timedelta
+d = date(2024, 3, 15)
+print(d + timedelta(days=10))
+print(d + timedelta(days=20))
+print((date(2024, 4, 1) - d).days)
+dt = datetime(2024, 1, 31, 10, 0)
+print(dt.replace(month=2, day=1))
+print((dt + timedelta(days=1)).isoformat())</pre>
+          <div class="out">2024-03-25
+2024-04-04
+17
+2024-02-01 10:00:00
+2024-02-01T10:00:00</div>
+        </div>
+        <p>
+          <code class="inl">date + timedelta</code> переходит через границу месяца сама: 15 марта плюс
+          10 дней — 25 марта, плюс 20 дней — 4 апреля. Разность дат даёт <code class="inl">timedelta</code>,
+          у неё <code class="inl">.days</code> — целые дни. <code class="inl">replace</code> собирает
+          новую дату из полей — удобно для «первое число месяца»; если поле станет некорректным
+          (30 февраля), будет <code class="inl">ValueError</code>.
+        </p>
+        <h3>DST: несуществующее и неоднозначное время</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_dt_python_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">from datetime import datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
+berlin = ZoneInfo("Europe/Berlin")
+spring = datetime(2024, 3, 31, 2, 30, tzinfo=berlin)
+print(spring.isoformat())
+print(spring.astimezone(timezone.utc).isoformat())
+print(spring.astimezone(timezone.utc).astimezone(berlin).isoformat())
+fall0 = datetime(2024, 10, 27, 2, 30, tzinfo=berlin, fold=0)
+fall1 = datetime(2024, 10, 27, 2, 30, tzinfo=berlin, fold=1)
+print(fall0.isoformat(), fall0.utcoffset())
+print(fall1.isoformat(), fall1.utcoffset())
+w = datetime(2024, 3, 30, 12, tzinfo=berlin)
+print((w + timedelta(days=1)).isoformat())
+next_utc = w.astimezone(timezone.utc) + timedelta(days=1)
+print(next_utc.astimezone(berlin).isoformat())</pre>
+          <div class="out">2024-03-31T02:30:00+01:00
+2024-03-31T01:30:00+00:00
+2024-03-31T03:30:00+02:00
+2024-10-27T02:30:00+02:00 2:00:00
+2024-10-27T02:30:00+01:00 1:00:00
+2024-03-31T12:00:00+02:00
+2024-03-31T13:00:00+02:00</div>
+        </div>
+        <p>
+          В Берлине 31 марта 2024 года 02:30 <b>не существует</b>: часы прыгают с 02:00 на 03:00.
+          <code class="inl">datetime(...)</code> всё равно создаст объект — он молча возьмёт смещение
+          до перехода (<code class="inl">+01:00</code>), а перевод в UTC и обратно даст 03:30
+          (<code class="inl">+02:00</code>). Осенью 27 октября 02:30 существует дважды: различаются
+          <code class="inl">fold=0</code> (<code class="inl">+02:00</code>) и
+          <code class="inl">fold=1</code> (<code class="inl">+01:00</code>). Наконец, прибавление
+          <code class="inl">timedelta(days=1)</code> к aware-времени сохраняет настенное время
+          (12:00 → 12:00), а прибавление суток в UTC сдвигает его на 13:00.
+        </p>
+      </section>
+      <!-- ══════════════════ 06. Сценарии ══════════════════ -->
+      <section>
+        <h2><span class="num">06</span>Три сценария из практики</h2>
+        <h3>Разбор ISO из API</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_dt_python_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">from datetime import datetime, timezone
+raw = "2024-03-15T14:30:00+03:00"
+dt = datetime.fromisoformat(raw)
+print(dt.isoformat())
+print(dt.astimezone(timezone.utc).isoformat())
+print(dt.utcoffset())</pre>
+          <div class="out">2024-03-15T14:30:00+03:00
+2024-03-15T11:30:00+00:00
+3:00:00</div>
+        </div>
+        <p>
+          API присылает ISO-строку со смещением; <code class="inl">fromisoformat</code> даёт
+          aware-момент. Дальше два решения: хранить как есть или привести к UTC и хранить момент —
+          второй вариант обычно удобнее для базы и сравнений.
+        </p>
+        <h3>TTL и интервал</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_dt_python_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">from datetime import datetime, timedelta, timezone
+created = datetime(2024, 3, 15, 14, 30, tzinfo=timezone.utc)
+ttl = timedelta(hours=1, minutes=30)
+expires = created + ttl
+check_at = datetime(2024, 3, 15, 15, 45, tzinfo=timezone.utc)
+print(created.isoformat())
+print(expires.isoformat())
+print(check_at &lt; expires)
+print((expires - created).total_seconds())</pre>
+          <div class="out">2024-03-15T14:30:00+00:00
+2024-03-15T16:00:00+00:00
+True
+5400.0</div>
+        </div>
+        <p>
+          <code class="inl">timedelta</code> — естественный TTL: момент создания плюс длительность;
+          проверка «истёк ли» — сравнение двух aware-моментов. <code class="inl">total_seconds()</code>
+          переводит длительность в секунды — 1:30 — это 5400 секунд. Если сравнивать naive с aware,
+          будет <code class="inl">TypeError</code>, поэтому обе границы должны быть в одной зоне.
+        </p>
+        <h3>Группировка по месяцам</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_dt_python_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">from collections import Counter
+from datetime import datetime
+stamps = [
+    "2024-01-05T10:00:00",
+    "2024-01-19T08:30:00",
+    "2024-02-01T14:00:00",
+    "2024-03-07T19:30:00",
+    "2024-03-20T15:55:00",
+]
+by_month = Counter()
+for raw in stamps:
+    d = datetime.fromisoformat(raw).date().replace(day=1)
+    by_month[d.isoformat()] += 1
+print(dict(sorted(by_month.items())))</pre>
+          <div class="out">{'2024-01-01': 2, '2024-02-01': 1, '2024-03-01': 2}</div>
+        </div>
+        <p>
+          Ключ группы — первое число месяца: <code class="inl">.date().replace(day=1)</code>.
+          Дальше обычный <code class="inl">Counter</code>: январь — 2, февраль — 1, март — 2.
+          В pandas то же самое делает <code class="inl">.dt.to_period("M")</code>, в SQL —
+          <code class="inl">DATE_TRUNC('month', ...)</code>.
+        </p>
+      </section>
+      <!-- ══════════════════ 07. Ошибки ══════════════════ -->
+      <section>
+        <h2><span class="num">07</span>Пять ошибок, на которых спотыкаются</h2>
+        <div class="errors">
+          <div class="err">
+            <div class="h">naive и aware в одной операции</div>
+            <p><code class="inl">naive - aware</code> падает с
+            <code class="inl">TypeError: can't subtract offset-naive and offset-aware datetimes</code>:
+            Python не знает, в какой зоне трактовать naive-объект.</p>
+            <div class="fix">Привести обе стороны к одной зоне: <code class="inl">dt.replace(tzinfo=tz)</code> для naive или <code class="inl">astimezone(tz)</code> для aware.</div>
+          </div>
+          <div class="err">
+            <div class="h">Миллисекунды вместо секунд в epoch</div>
+            <p><code class="inl">timestamp()</code> и <code class="inl">fromtimestamp()</code> считают
+            <b>секунды</b>. Передали <code class="inl">1704067200000</code> — получили год 55969
+            и <code class="inl">ValueError: year ... is out of range</code> (на других платформах —
+            <code class="inl">OSError</code>).</p>
+            <div class="fix">Миллисекунды делить на 1000: <code class="inl">ts / 1000</code>; наоборот — умножать и округлять.</div>
+          </div>
+          <div class="err">
+            <div class="h">strptime без формата и с локалью</div>
+            <p><code class="inl">strptime</code> требует шаблон и точное совпадение: для
+            <code class="inl">"15.03.2024"</code> шаблон <code class="inl">%Y-%m-%d</code> даст
+            <code class="inl">ValueError: time data does not match format</code>. Шаблоны с
+            <code class="inl">%B</code>/<code class="inl">%A</code> зависят от локали процесса.</p>
+            <div class="fix">Хранить и передавать ISO-8601; для разбора — <code class="inl">fromisoformat</code> или точный числовой формат.</div>
+          </div>
+          <div class="err">
+            <div class="h">Несуществующее время при переходе на летнее</div>
+            <p>31 марта 2024 в Берлине 02:30 не существует, но <code class="inl">datetime(...)</code>
+            не падает: объект получает смещение <code class="inl">+01:00</code>, а после перевода
+            в UTC и обратно оказывается 03:30. Код «молча получает другое время».</p>
+            <div class="fix">Работать в UTC, а в локальную зону переводить только для вывода; проверять round-trip через <code class="inl">astimezone</code>.</div>
+          </div>
+          <div class="err">
+            <div class="h">now() в тестах и кэше</div>
+            <p><code class="inl">datetime.now()</code> внутри функции делает результат
+            недетерминированным: тесты «плавают», кэш зависит от запуска, а вчерашний баг
+            не воспроизводится.</p>
+            <div class="fix">Передавать момент параметром (<code class="inl">now=datetime.now(tz)</code>) или подменять часы в тесте; в примерах — фиксированные даты.</div>
+          </div>
+        </div>
+      </section>
+      <!-- ══════════════════ 08. Мини-проверка ══════════════════ -->
+      <section>
+        <h2><span class="num">08</span>Мини-проверка</h2>
+        <p>Пять вопросов на понимание и две задачи. Сначала своя попытка — потом спойлер.</p>
+        <div class="qa">
+          <details>
+            <summary>Чем naive datetime отличается от aware?</summary>
+            <div class="a">
+              <p>Naive не имеет <code class="inl">tzinfo</code> и означает «настенные часы без зоны».
+              Aware несёт <code class="inl">tzinfo</code> и знает смещение от UTC, поэтому его можно
+              сравнивать и вычитать с другими aware-моментами.</p>
+              <div class="verdict">Резюме: naive — картинка часов, aware — точка на линии времени.</div>
+            </div>
+          </details>
+        </div>
+        <div class="qa">
+          <details>
+            <summary>Зачем zoneinfo.ZoneInfo, если есть timezone(timedelta(hours=3))?</summary>
+            <div class="a">
+              <p><code class="inl">timezone(timedelta(...))</code> — фиксированное смещение: оно не знает
+              про переходы на летнее время и меняющиеся правила стран. <code class="inl">ZoneInfo</code>
+              берёт правила из базы IANA и сам выбирает смещение для конкретной даты.</p>
+              <div class="verdict">Резюме: фиксированный offset — для UTC и редких случаев, зона — для людей.</div>
+            </div>
+          </details>
+        </div>
+        <div class="qa">
+          <details>
+            <summary>Чем isoformat/fromisoformat отличаются от strftime/strptime?</summary>
+            <div class="a">
+              <p>ISO-пара — стандартный машинный формат: <code class="inl">isoformat()</code>
+              и <code class="inl">fromisoformat()</code> понимают друг друга без шаблона.
+              <code class="inl">strftime</code>/<code class="inl">strptime</code> — произвольный шаблон:
+              гибко для человека, но формат нужно держать в двух местах и он зависит от локали.</p>
+              <div class="verdict">Резюме: ISO — для обмена, strftime — для показа.</div>
+            </div>
+          </details>
+        </div>
+        <div class="qa">
+          <details>
+            <summary>timestamp() — это секунды или миллисекунды?</summary>
+            <div class="a">
+              <p>Секунды, тип <code class="inl">float</code>. Миллисекунды — это
+              <code class="inl">timestamp() * 1000</code>; в <code class="inl">fromtimestamp</code>
+              их нужно делить на 1000, иначе год уезжает в далёкое будущее.</p>
+              <div class="verdict">Резюме: epoch в Python — секунды.</div>
+            </div>
+          </details>
+        </div>
+        <div class="qa">
+          <details>
+            <summary>Почему 31 марта 02:30 в Берлине — проблема?</summary>
+            <div class="a">
+              <p>В этот момент часы переводятся вперёд, и такого настенного времени не существует.
+              <code class="inl">datetime</code> не падает, а выбирает смещение до перехода; потом
+              момент «переезжает» на 03:30. Осенью наоборот: 02:30 существует дважды, и различие
+              задаёт <code class="inl">fold</code>.</p>
+              <div class="verdict">Резюме: локальное время неоднозначно — считайте в UTC.</div>
+            </div>
+          </details>
+        </div>
+        <h3><span style="color:var(--muted);font-family:var(--mono);font-size:.8rem">01</span> ISO с Z в московское время</h3>
+        <p>Разберите строку <code class="inl">2024-03-15T11:30:00Z</code> и покажите её в Москве.</p>
+        <div class="code">
+          <div class="bar"><span class="file">условие</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">raw = "2024-03-15T11:30:00Z"
+# ожидается: 2024-03-15T14:30:00+03:00</pre>
+        </div>
+        <div class="qa">
+          <details>
+            <summary>Показать решение и разбор</summary>
+            <div class="a">
+              <div class="code" style="margin-top:0">
+                <div class="bar"><span class="file">решение</span><span class="lang">python</span><button class="copy">копировать</button></div>
+                <pre data-lang="python">from datetime import datetime
+from zoneinfo import ZoneInfo
+dt = datetime.fromisoformat("2024-03-15T11:30:00Z")
+print(dt.isoformat())
+print(dt.astimezone(ZoneInfo("Europe/Moscow")).isoformat())</pre>
+                <div class="out">2024-03-15T11:30:00+00:00
+2024-03-15T14:30:00+03:00</div>
+              </div>
+              <p><strong>Что важно.</strong> <code class="inl">fromisoformat</code> понимает «Z»
+              с Python 3.11 и возвращает aware-объект в UTC. <code class="inl">astimezone</code>
+              переводит момент в московскую зону, а не переставляет ярлык: 11:30 UTC и 14:30 MSK —
+              один и тот же миг.</p>
+            </div>
+          </details>
+        </div>
+        <h3><span style="color:var(--muted);font-family:var(--mono);font-size:.8rem">02</span> Сколько дней до дедлайна</h3>
+        <p>Посчитайте, сколько целых дней между 15 марта и 1 апреля 2024 года.</p>
+        <div class="code">
+          <div class="bar"><span class="file">условие</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">start = date(2024, 3, 15)
+deadline = date(2024, 4, 1)
+# ожидается: 17 дней</pre>
+        </div>
+        <div class="qa">
+          <details>
+            <summary>Показать решение и разбор</summary>
+            <div class="a">
+              <div class="code" style="margin-top:0">
+                <div class="bar"><span class="file">решение</span><span class="lang">python</span><button class="copy">копировать</button></div>
+                <pre data-lang="python">from datetime import date
+start = date(2024, 3, 15)
+deadline = date(2024, 4, 1)
+left = deadline - start
+print(left.days)
+print(left.total_seconds())
+print(deadline &gt; start)</pre>
+                <div class="out">17
+1468800.0
+True</div>
+              </div>
+              <p><strong>Что важно.</strong> Разность двух <code class="inl">date</code> — это
+              <code class="inl">timedelta</code>; <code class="inl">.days</code> даёт целые дни (17),
+              <code class="inl">total_seconds()</code> — секунды (1468800.0). Для дат без времени
+              достаточно <code class="inl">date</code>: меньше шансов запутаться в зонах.</p>
+            </div>
+          </details>
+        </div>
+      </section>
+      <!-- ══════════════════ 09. Мостик ══════════════════ -->
+      <section>
+        <h2><span class="num">09</span>Мостик: pandas, SQL и соседние страницы</h2>
+        <h3>pandas: Timestamp и .dt</h3>
+        <div class="code">
+          <div class="bar"><span class="file">datetime → pandas</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">import pandas as pd
+s = pd.Series(["2024-03-15T14:30:00+03:00"])
+ts = pd.to_datetime(s, utc=True)       # разбор + приведение к UTC
+ts.dt.tz_convert("Europe/Moscow")      # аналог astimezone
+ts.dt.floor("D")                       # начало дня
+ts.dt.month, ts.dt.day                 # поля, как .month и .day</pre>
+        </div>
+        <p>
+          <code class="inl">pd.Timestamp</code> — наследник <code class="inl">datetime</code>, а
+          <code class="inl">datetime64[ns]</code> хранит моменты компактно. <code class="inl">.dt</code>
+          — аксессор с полями и методами; <code class="inl">tz_localize</code> вешает зону (как
+          <code class="inl">replace(tzinfo=...)</code>), <code class="inl">tz_convert</code> переводит
+          (как <code class="inl">astimezone</code>). Подробно — <a href="ref-dt-pandas.html">страница 03</a>.
+        </p>
+        <h3>SQL: date, timestamp, timestamptz</h3>
+        <div class="code">
+          <div class="bar"><span class="file">datetime → SQL</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">-- timestamptz хранит момент (внутри — UTC)
+SELECT created_at AT TIME ZONE 'Europe/Moscow' AS msk
+FROM orders;
+-- арифметика: дата + интервал
+SELECT created_at + INTERVAL '1 day' AS next_day
+FROM orders;</pre>
+        </div>
+        <p>
+          <code class="inl">date</code> — день, <code class="inl">timestamp</code> — настенные часы,
+          <code class="inl">timestamptz</code> — момент; строкой хранят, только если нужен «сырой»
+          текст — иначе теряются сравнение, сортировка и зона. <code class="inl">INTERVAL</code> —
+          <code class="inl">timedelta</code> базы; тонкости — на <a href="ref-dt-sql.html">странице 04</a>.
+        </p>
+        <div class="bridges">
+          <a class="bridge" href="ch-27-date-time.html"><span class="to">Глава 27</span><span>Дата и время: момент, календарь и длительность</span><span class="what">→ спецглава целиком</span></a>
+          <a class="bridge" href="ch-18-dates-reshape.html"><span class="to">Глава 18</span><span>Даты, строки и форма таблицы</span><span class="what">→ datetime64 и .dt в pandas</span></a>
+          <a class="bridge" href="ch-21-group-by-having.html"><span class="to">Глава 21</span><span>GROUP BY и HAVING</span><span class="what">→ группировка по месяцам в SQL</span></a>
+          <a class="bridge" href="appendix-datetime.html"><span class="to">Справочник</span><span>«Дата и время»: вся карта</span><span class="what">→ Python, NumPy, pandas, SQL</span></a>
+        </div>
+      </section>
+      <div class="pager">
+        <a class="prev" href="appendix-datetime.html"><span class="dir">← Назад</span><span class="ttl">Справочник «Дата и время»</span></a>
+        <a class="next" href="ref-dt-numpy.html"><span class="dir">Дальше →</span><span class="ttl">02 · NumPy datetime64</span></a>
+      </div>
+    </div>
+  </main>
+</div>
+<script src="assets/toc.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>

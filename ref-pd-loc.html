@@ -1,0 +1,650 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Справочник pandas · loc и iloc — Ассоциативный гайд</title>
+<meta name="description" content="Справочник по loc и iloc в pandas 3.0.1: выбор по метке и позиции, срезы, маски, at/iat, запись через .loc и пять ошибок — с реальным выводом лаборатории.">
+<link rel="stylesheet" href="assets/style.css">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#fbf8f2" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#14131a" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="assets/icons/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="assets/icons/icon-180.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Гайд Py/SQL">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+</head>
+<body data-slug="ref-pd-loc">
+<div class="app">
+  <aside class="sidebar" id="sidebar"></aside>
+  <main>
+    <div class="wrap">
+
+      <header class="chapter-head">
+        <div class="eyebrow">
+          <span class="part">Справочник · pandas</span>
+          <span class="dot"></span>
+          <span>страница 2 из 7</span>
+          <span class="dot"></span>
+          <span>готово</span>
+        </div>
+        <h1>loc и iloc: имя против номера
+          <span class="sub">Выбор строк и колонок по подписи и по позиции: срезы, маски, запись и пять ошибок</span>
+        </h1>
+        <p class="lead">
+          <code class="inl">loc</code> ищет по подписи — как человека по фамилии в списке гостей.
+          <code class="inl">iloc</code> ищет по позиции — как вагон по номеру в составе. Здесь собрано,
+          что обычно ищут в документации: полная таблица выборок, включительная граница loc,
+          безопасная запись и ловушки, из-за которых pandas молча возвращает не то.
+        </p>
+        <div class="meta">
+          <span class="chip">⏱ <b>12 минут</b></span>
+          <span class="chip">🎯 уровень <b>2</b></span>
+          <span class="chip">🐼 <b>pandas 3.0.1</b></span>
+          <span class="chip">📚 <b>глава 13</b></span>
+        </div>
+      </header>
+
+      <p class="small">
+        Справочник pandas: <a href="appendix-pandas.html">вся карта</a> ·
+        <a href="ref-pd-series.html">01 · Series и DataFrame</a> ·
+        <b>02 · loc/iloc</b> · <a href="ref-pd-filter.html">03 · фильтрация</a> ·
+        <a href="ref-pd-groupby.html">04 · groupby</a> ·
+        <a href="ref-pd-merge.html">05 · merge</a> ·
+        <a href="ref-pd-missing.html">06 · пропуски</a> ·
+        <a href="ref-pd-reshape.html">07 · reshape</a>
+      </p>
+
+      <div class="tldr">
+        <div class="t">Самое главное</div>
+        <ul>
+          <li><code class="inl">loc</code> выбирает по меткам индекса и именам колонок, <code class="inl">iloc</code> —
+              по целочисленным позициям. При <code class="inl">RangeIndex</code> они совпадают, поэтому путаница
+              долго остаётся незамеченной.</li>
+          <li>Срез <code class="inl">loc</code> включает правую границу (<code class="inl">"anna":"olga"</code> —
+              три строки), срез <code class="inl">iloc</code> — нет (<code class="inl">0:2</code> — две).
+              Отрицательные позиции есть только у <code class="inl">iloc</code>.</li>
+          <li>Писать — только через <code class="inl">.loc[...] = value</code>: маска, метка или новая метка.
+              Цепочка <code class="inl">df[...][...] = 0</code> в pandas 3 ничего не меняет (Copy-on-Write),
+              а несуществующая метка расширяет таблицу новой строкой.</li>
+        </ul>
+      </div>
+
+      <!-- ══════════════════ 01. Что это ══════════════════ -->
+      <section>
+        <h2><span class="num">01</span>Что это и как устроено</h2>
+        <p>
+          DataFrame — таблица с двумя видами подписей: именами колонок и метками строк (индексом).
+          <code class="inl">loc</code> выбирает по этим подписям, <code class="inl">iloc</code> — по номерам
+          позиций. Позиция — это «который по счёту», метка — «под каким именем записан».
+        </p>
+        <p>
+          Отсюда два следствия. Метка переживает сортировку и фильтрацию, номер — нет: после
+          <code class="inl">sort_values</code> прежняя «третья строка» уже не та. И отрицательные позиции
+          работают (<code class="inl">iloc[-1]</code> — последняя строка), а отрицательных меток не бывает:
+          <code class="inl">loc[-1]</code> ищет подпись −1 и падает.
+        </p>
+
+        <div class="anchor">
+          <div class="glyph">🎭</div>
+          <div>
+            <div class="t">Держите эту картинку в голове</div>
+            <p class="kick"><strong>Имя против номера.</strong> <code class="inl">loc</code> — «найти по фамилии
+            в списке гостей»: вы не знаете, каким по счёту идёт человек, но знаете его подпись.</p>
+            <p><code class="inl">iloc</code> — «взять третьего по списку»: подпись не важна, важен порядок.
+            Поэтому «с Ивана по Ольгу» включает обоих, а «первые два» — ровно два. Метафора и внутреннее
+            устройство — в <a href="ch-13-loc-iloc.html">главе 13</a>.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ══════════════════ 02. Когда брать ══════════════════ -->
+      <section>
+        <h2><span class="num">02</span>Когда брать, а когда нет</h2>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Задача</th><th>Чем</th><th>Почему так</th></tr></thead>
+            <tbody>
+              <tr><td>Строка по id, имени, дате</td><td class="mono">df.loc[метка]</td><td>метка не зависит от порядка</td></tr>
+              <tr><td>N-я строка по порядку</td><td class="mono">df.iloc[n]</td><td>метки могут быть какими угодно</td></tr>
+              <tr><td>Одна ячейка</td><td class="mono">df.at / df.iat</td><td>скаляр без промежуточного Series</td></tr>
+              <tr><td>Колонка целиком</td><td class="mono">df["col"]</td><td>квадратные скобки выбирают колонки</td></tr>
+              <tr><td>Строки по условию</td><td class="mono">df.loc[mask]</td><td>маска — Series из bool</td></tr>
+              <tr><td>Срез «с 10-й по 20-ю»</td><td class="mono">df.iloc[10:21]</td><td>правая позиция не включается</td></tr>
+              <tr><td>Записать значение</td><td class="mono">df.loc[...] = value</td><td>единственный надёжный путь</td></tr>
+              <tr><td>Сменить индекс</td><td class="mono">set_index / reset_index</td><td>метка должна быть однозначной</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="small">
+          Сомневаетесь — посмотрите <code class="inl">df.index</code>: при RangeIndex loc и iloc
+          совпадают, при строковых метках — нет.
+        </p>
+      </section>
+
+      <!-- ══════════════════ 03. Как создать ══════════════════ -->
+      <section>
+        <h2><span class="num">03</span>Как создать и подготовить</h2>
+        <p>
+          Для примеров хватает двух колонок и трёх строк. Если индекс не задан, pandas поставит
+          <code class="inl">RangeIndex</code> — метки 0, 1, 2. Именно на нём loc и iloc неразличимы.
+        </p>
+        <div class="code">
+          <div class="bar"><span class="file">ref_pd_loc_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">frame = pd.DataFrame({"amount": [1200, 800], "city": ["Москва", "Казань"]})
+print(frame)
+print(type(frame.index).__name__, frame.index.tolist())
+
+named = frame.set_index("city")
+print(named)
+print(named.index.tolist())
+
+back = named.reset_index()
+print(back)
+print(type(back.index).__name__)</pre>
+          <div class="out">   amount    city
+0    1200  Москва
+1     800  Казань
+RangeIndex [0, 1]
+        amount
+city          
+Москва    1200
+Казань     800
+['Москва', 'Казань']
+     city  amount
+0  Москва    1200
+1  Казань     800
+RangeIndex</div>
+        </div>
+        <p>
+          <code class="inl">set_index("city")</code> переносит колонку в индекс: теперь строка ищется
+          по городу. <code class="inl">reset_index()</code> возвращает колонку обратно и снова нумерует
+          строки, <code class="inl">reset_index(drop=True)</code> просто выбрасывает старые метки.
+        </p>
+        <div class="note">
+          <span class="t">Индекс — это подписи, а не порядок</span>
+          <p>После <code class="inl">set_index</code> или сортировки метки могут идти не по возрастанию
+          и даже повторяться. Поэтому <code class="inl">loc</code> по дублю возвращает <b>все</b> совпадения —
+          DataFrame, а не Series.</p>
+        </div>
+      </section>
+
+      <!-- ══════════════════ 04. Все операции ══════════════════ -->
+      <section>
+        <h2><span class="num">04</span>Все операции и методы</h2>
+        <p>Три таблицы: выбор строк и ячеек, границы срезов и запись.</p>
+
+        <h3>Выбор строк, колонок и ячеек</h3>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Запись</th><th>Что выбирает</th><th>Результат</th></tr></thead>
+            <tbody>
+              <tr><td class="mono">df.loc["ivan"]</td><td>строку по метке</td><td>Series</td></tr>
+              <tr><td class="mono">df.loc["ivan", "amount"]</td><td>ячейку по метке и имени колонки</td><td>скаляр</td></tr>
+              <tr><td class="mono">df.loc[["anna", "olga"]]</td><td>несколько строк по списку меток</td><td>DataFrame</td></tr>
+              <tr><td class="mono">df.loc["anna":"olga"]</td><td>срез по меткам, <b>обе</b> границы включены</td><td>DataFrame</td></tr>
+              <tr><td class="mono">df.loc[:, "amount"]</td><td>все строки + колонку по имени</td><td>Series</td></tr>
+              <tr><td class="mono">df.loc[mask, ["city"]]</td><td>строки по маске + список колонок</td><td>DataFrame</td></tr>
+              <tr><td class="mono">df.iloc[1]</td><td>вторую строку по позиции</td><td>Series</td></tr>
+              <tr><td class="mono">df.iloc[-1]</td><td>последнюю строку</td><td>Series</td></tr>
+              <tr><td class="mono">df.iloc[0:2]</td><td>позиции 0 и 1, правая не включена</td><td>DataFrame</td></tr>
+              <tr><td class="mono">df.iloc[[0, 2], [0]]</td><td>строки и колонки по номерам</td><td>DataFrame</td></tr>
+              <tr><td class="mono">df.at["ivan", "amount"]</td><td>одну ячейку по меткам</td><td>скаляр</td></tr>
+              <tr><td class="mono">df.iat[1, 0]</td><td>одну ячейку по позициям</td><td>скаляр</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>Срезы: где проходит граница</h3>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Срез</th><th>Границы</th><th>Строк из трёх</th></tr></thead>
+            <tbody>
+              <tr><td class="mono">df.loc["anna":"olga"]</td><td>обе метки включены</td><td>3</td></tr>
+              <tr><td class="mono">df.loc["anna":"ivan"]</td><td>обе метки включены</td><td>2</td></tr>
+              <tr><td class="mono">df.iloc[0:2]</td><td>правая позиция не включена</td><td>2</td></tr>
+              <tr><td class="mono">df.iloc[0:3]</td><td>правая позиция не включена</td><td>3</td></tr>
+              <tr><td class="mono">df.iloc[-1]</td><td>отрицательный индекс — с конца</td><td>1</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="small">
+          Метки — имена, поэтому «от anna до olga» естественно включает обоих. Позиции — счёт, и срез
+          <code class="inl">0:3</code> традиционно не включает четвёртый элемент.
+        </p>
+
+        <h3>Запись и присваивание</h3>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Запись</th><th>Что делает</th><th>Безопасно?</th></tr></thead>
+            <tbody>
+              <tr><td class="mono">df.loc["ivan", "amount"] = 850</td><td>меняет одну ячейку по метке</td><td>да</td></tr>
+              <tr><td class="mono">df.loc[mask, "flag"] = True</td><td>ставит значение строкам по маске</td><td>да</td></tr>
+              <tr><td class="mono">df.loc["petr"] = {...}</td><td>добавляет <b>новую строку</b></td><td>если расширение задумано</td></tr>
+              <tr><td class="mono">df.loc["maria", "amount"] = 450</td><td>новая строка, остальные колонки — NaN</td><td>если расширение задумано</td></tr>
+              <tr><td class="mono">df.iloc[0, 0] = 0</td><td>меняет ячейку по позиции</td><td>да, но хрупко</td></tr>
+              <tr><td class="mono">df[mask]["amount"] = 0</td><td><b>ничего не меняет</b> (Copy-on-Write)</td><td>нет</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+      </section>
+
+      <!-- ══════════════════ 05. Разбор ══════════════════ -->
+      <section>
+        <h2><span class="num">05</span>Разбор по группам</h2>
+        <p>
+          Все примеры страницы собраны в
+          <a href="snippets/view.html?f=ref_pd_loc_lab.py"><code class="inl">ref_pd_loc_lab.py</code></a>:
+          его можно запустить и менять строки. Вывод снят с прогона на pandas 3.0.1.
+        </p>
+
+        <h3>Одна таблица, два способа</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_pd_loc_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">print(df.loc["ivan", "amount"])   # подпись строки и имя колонки
+print(df.iloc[1, 0])              # номер строки и номер колонки
+
+odd = pd.DataFrame({"v": [10, 20, 30]}, index=[10, 20, 30])
+print(odd.loc[30].tolist())       # строка с меткой 30
+print(odd.iloc[1].tolist())       # вторая строка по счёту</pre>
+          <div class="out">800
+800
+[30]
+[20]</div>
+        </div>
+        <p>
+          Оба первых вызова дают 800: loc нашёл строку по подписи ivan, iloc отсчитал вторую. Пока
+          индекс — 0, 1, 2, способы неразличимы. На индексе <code class="inl">[10, 20, 30]</code> видно:
+          <code class="inl">loc[30]</code> — строка с меткой 30, <code class="inl">iloc[1]</code> —
+          вторая по счёту. Скаляры берут так же: <code class="inl">at</code> — по метке,
+          <code class="inl">iat</code> — по позиции.
+        </p>
+
+        <h3>Срезы: где проходит граница</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_pd_loc_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">print(df.loc["anna":"olga"])      # правая метка включена
+print(df.iloc[0:2])               # правая позиция не включена</pre>
+          <div class="out">      amount    city
+anna    1200  Москва
+ivan     800  Казань
+olga     500  Москва
+      amount    city
+anna    1200  Москва
+ivan     800  Казань</div>
+        </div>
+        <p>
+          <code class="inl">loc</code> вернул три строки — обе метки включены. <code class="inl">iloc</code>
+          вернул две: правая позиция не входит, как в списках Python. Отрицательный индекс есть только
+          у iloc: <code class="inl">df.iloc[-1]</code> — последняя строка, а <code class="inl">df.loc[-1]</code>
+          ищет метку −1.
+        </p>
+
+        <h3>Строки и колонки вместе</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_pd_loc_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">print(df.columns.tolist(), df.index.tolist())
+print(df.loc[:, "city"].tolist())
+print(df.loc[["anna", "olga"], ["amount"]])
+print(df.iloc[[0, 2], [0]])</pre>
+          <div class="out">['amount', 'city'] ['anna', 'ivan', 'olga']
+['Москва', 'Казань', 'Москва']
+      amount
+anna    1200
+olga     500
+      amount
+anna    1200
+olga     500</div>
+        </div>
+        <p>
+          У loc первый аргумент — метки строк, второй — имена колонок; iloc принимает номера и там, и там.
+          <code class="inl">df.loc[:, "city"]</code> — та же колонка, что <code class="inl">df["city"]</code>,
+          а <code class="inl">df[0]</code> ищет колонку с именем 0, а не первую строку.
+        </p>
+
+        <h3>Маска внутри loc</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_pd_loc_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">print(df.loc[df["amount"] &gt; 600, ["city", "amount"]])</pre>
+          <div class="out">        city  amount
+anna  Москва    1200
+ivan  Казань     800</div>
+        </div>
+        <p>
+          Маска — Series из True/False с индексом таблицы. loc оставляет строки с True и берёт только
+          указанные колонки — это та же фильтрация, что разобрана на
+          <a href="ref-pd-filter.html">следующей странице</a>.
+        </p>
+
+        <h3>Запись: маска и метка</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_pd_loc_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">d = df.copy()
+d.loc[d["amount"] &gt; 1000, "flag"] = True
+d.loc["ivan", "amount"] = 850
+print(d.to_string())</pre>
+          <div class="out">      amount    city  flag
+anna    1200  Москва  True
+ivan     850  Казань   NaN
+olga     500  Москва   NaN</div>
+        </div>
+        <p>
+          Запись по маске ставит значение только прошедшим строкам, остальным достаётся
+          <code class="inl">NaN</code>: pandas расширяет колонку до object. Запись по метке меняет ровно
+          одну ячейку. Это единственный надёжный путь — <code class="inl">df.loc[...] = value</code>.
+          Цепочка <code class="inl">df[mask]["col"] = 0</code> таблицу не меняет (Copy-on-Write) —
+          подробнее в ошибках.
+        </p>
+
+        <h3>Новая метка расширяет таблицу</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_pd_loc_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">d = df.copy()
+d.loc["petr"] = {"amount": 700, "city": "Тверь"}
+d.loc["maria", "amount"] = 450
+print(d.to_string())
+print(d["amount"].dtype, d.index.tolist())</pre>
+          <div class="out">       amount    city
+anna   1200.0  Москва
+ivan    800.0  Казань
+olga    500.0  Москва
+petr    700.0   Тверь
+maria   450.0     NaN
+float64 ['anna', 'ivan', 'olga', 'petr', 'maria']</div>
+        </div>
+        <p>
+          loc не различает «заменить» и «создать»: метки нет — появится новая строка. Целая строка
+          сохраняет типы, а присваивание по ячейке — нет: <code class="inl">amount</code> стала float64,
+          чтобы вместить NaN в остальных колонках новой строки. Если расширение не задумано, это тихая
+          ошибка.
+        </p>
+      </section>
+
+      <!-- ══════════════════ 06. Сценарии ══════════════════ -->
+      <section>
+        <h2><span class="num">06</span>Три сценария из практики</h2>
+
+        <h3>Заказ по id</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_pd_loc_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">print(orders.loc["A-102"].to_string())
+print(orders.loc["A-102", "amount"])</pre>
+          <div class="out">user      ivan
+amount     800
+800</div>
+        </div>
+        <p>
+          Заказы лежат с индексом-номером. Метка — надёжный ключ: <code class="inl">loc["A-102"]</code>
+          возвращает строку как Series, <code class="inl">loc["A-102", "amount"]</code> — одно число.
+          После сортировки или фильтрации id не «съедет», в отличие от позиции.
+        </p>
+
+        <h3>Срез строк 10–20</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_pd_loc_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">print(big.loc[10:20, "id"].tolist())
+print(big.iloc[10:21, 0].tolist())
+print(len(big.loc[10:20]), len(big.iloc[10:21]))</pre>
+          <div class="out">[110, 111, 112, 113, 114, 115, 116, 117, 118, 119, 120]
+[110, 111, 112, 113, 114, 115, 116, 117, 118, 119, 120]
+11 11</div>
+        </div>
+        <p>
+          Два способа дают одно и то же: <code class="inl">loc[10:20]</code> — по меткам RangeIndex
+          (20 включено), <code class="inl">iloc[10:21]</code> — по позициям (21 уже нет). Рабочее правило:
+          переводите «строки с 10-й по 20-ю» в <code class="inl">iloc[10:21]</code>, иначе потеряете
+          последнюю.
+        </p>
+
+        <h3>Флаг дорогим заказам</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_pd_loc_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">d = df.copy()
+d["vip"] = False
+d.loc[d["amount"] &gt; 1000, "vip"] = True
+print(d.to_string())</pre>
+          <div class="out">      amount    city    vip
+anna    1200  Москва   True
+ivan     800  Казань  False
+olga     500  Москва  False</div>
+        </div>
+        <p>
+          Флаг создают заранее (<code class="inl">False</code>), затем ставят <code class="inl">True</code>
+          по маске. Иначе остальные строки получат <code class="inl">NaN</code> — как в примере с
+          <code class="inl">flag</code> выше. Две строки кода вместо цикла и без риска промахнуться мимо
+          строки.
+        </p>
+      </section>
+
+      <!-- ══════════════════ 07. Ошибки ══════════════════ -->
+      <section>
+        <h2><span class="num">07</span>Пять ошибок, на которых спотыкаются</h2>
+        <div class="errors">
+          <div class="err">
+            <div class="h">loc по номеру при строковом индексе</div>
+            <p><code class="inl">df.loc[0]</code> при строковом индексе бросает
+            <code class="inl">KeyError: 0</code>: 0 — это метка, а не позиция. Коварно тем, что раньше
+            таблица могла иметь RangeIndex и код работал.</p>
+            <div class="fix">Проверьте <code class="inl">df.index</code>. Нужна первая строка — <code class="inl">df.iloc[0]</code>;
+            нужна строка по метке — <code class="inl">df.loc["anna"]</code>.</div>
+          </div>
+
+          <div class="err">
+            <div class="h">iloc по метке</div>
+            <p><code class="inl">df.iloc["anna"]</code> бросает
+            <code class="inl">TypeError: Cannot index by location index with a non-integer key</code>:
+            iloc принимает только номера. Симметричная ошибка к предыдущей.</p>
+            <div class="fix">Имя — <code class="inl">.loc</code>, номер — <code class="inl">.iloc</code>;
+            не заменяйте одно другим «на удачу».</div>
+          </div>
+
+          <div class="err">
+            <div class="h">Путаница включительной границы</div>
+            <p><code class="inl">df.loc["anna":"olga"]</code> — три строки, а <code class="inl">df.iloc[0:2]</code> —
+            две. Код, перенесённый с loc на iloc без правки границы, тихо теряет последнюю строку
+            (или наоборот, захватывает лишнюю).</p>
+            <div class="fix">loc включает правую метку, iloc — нет. Проверяйте срез на трёх строках:
+            <code class="inl">loc["a":"c"]</code> и <code class="inl">iloc[0:3]</code> должны совпасть.</div>
+          </div>
+
+          <div class="err">
+            <div class="h">Цепочка присваиваний</div>
+            <p><code class="inl">df[df["amount"] &gt; 1000]["amount"] = 0</code> не меняет таблицу:
+            промежуточный объект ведёт себя как копия. В pandas 3 (Copy-on-Write) это гарантированно,
+            а pandas дополнительно пишет <code class="inl">ChainedAssignmentError</code>.</p>
+            <div class="fix">Один вызов: <code class="inl">df.loc[df["amount"] &gt; 1000, "amount"] = 0</code>.
+            Для записи всегда явный <code class="inl">.loc</code>.</div>
+          </div>
+
+          <div class="err">
+            <div class="h">Присваивание по несуществующей метке</div>
+            <p><code class="inl">df.loc["petr"] = {...}</code> не падает, а <b>добавляет строку</b>;
+            <code class="inl">df.loc["maria", "amount"] = 450</code> — строку с NaN и dtype float64.
+            Опечатка в метке превращается в новую строку.</p>
+            <div class="fix">Перед записью проверяйте <code class="inl">"petr" in df.index</code> или
+            <code class="inl">df.index.is_unique</code>. Расширяйте таблицу только намеренно.</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ══════════════════ 08. Мини-проверка ══════════════════ -->
+      <section>
+        <h2><span class="num">08</span>Мини-проверка</h2>
+        <p>Пять вопросов на понимание и две задачи. Сначала своя попытка — потом спойлер.</p>
+
+        <div class="qa">
+          <details>
+            <summary>Чем loc отличается от iloc?</summary>
+            <div class="a">
+              <p><code class="inl">loc</code> — выбор по метке индекса и именам колонок, <code class="inl">iloc</code> —
+              по целочисленным позициям. Срезы: loc включает правую границу, iloc — нет.</p>
+              <div class="verdict">Резюме: имя против номера.</div>
+            </div>
+          </details>
+        </div>
+
+        <div class="qa">
+          <details>
+            <summary>Почему срез loc включает правую границу, а iloc — нет?</summary>
+            <div class="a">
+              <p>Метки — имена: «от anna до olga» включает обоих. Позиции — счёт, и срез
+              <code class="inl">0:2</code> следует правилу Python: правая граница не входит.</p>
+              <div class="verdict">Резюме: loc — включительно, iloc — исключительно.</div>
+            </div>
+          </details>
+        </div>
+
+        <div class="qa">
+          <details>
+            <summary>Что вернёт df.loc["a"], если метка встречается дважды?</summary>
+            <div class="a">
+              <p>DataFrame со всеми совпавшими строками, а не Series. Код, который ждёт Series, сломается
+              или молча получит не ту форму данных. Проверка — <code class="inl">df.index.is_unique</code>.</p>
+              <div class="verdict">Резюме: дубль метки меняет тип результата.</div>
+            </div>
+          </details>
+        </div>
+
+        <div class="qa">
+          <details>
+            <summary>Почему df[0] не выбирает первую строку?</summary>
+            <div class="a">
+              <p>Квадратные скобки DataFrame — это выбор колонок по имени. <code class="inl">df[0]</code>
+              ищет колонку с именем 0 и падает, если её нет. Строка по позиции — <code class="inl">df.iloc[0]</code>,
+              строка по метке — <code class="inl">df.loc[метка]</code>.</p>
+              <div class="verdict">Резюме: скобки — для колонок, строки — через loc/iloc.</div>
+            </div>
+          </details>
+        </div>
+
+        <div class="qa">
+          <details>
+            <summary>Как записать значение и почему цепочка не работает?</summary>
+            <div class="a">
+              <p>Только <code class="inl">df.loc[строка, "колонка"] = value</code> или
+              <code class="inl">df.loc[mask, "колонка"] = value</code>. Цепочка
+              <code class="inl">df[mask]["колонка"] = value</code> пишет в копию (Copy-on-Write).</p>
+              <div class="verdict">Резюме: одна операция индексации — одна запись.</div>
+            </div>
+          </details>
+        </div>
+
+        <h3><span style="color:var(--muted);font-family:var(--mono);font-size:.8rem">01</span> Строка по id и её сумма</h3>
+        <p>У заказов индекс — номера. Получите строку <code class="inl">A-103</code> и отдельно её сумму.</p>
+        <div class="code">
+          <div class="bar"><span class="file">условие</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">orders = pd.DataFrame(
+    {"user": ["anna", "ivan", "olga"], "amount": [1200, 800, 500]},
+    index=["A-101", "A-102", "A-103"],
+)
+# ожидается: строка olga и число 500</pre>
+        </div>
+        <div class="qa">
+          <details>
+            <summary>Показать решение и разбор</summary>
+            <div class="a">
+              <div class="code" style="margin-top:0">
+                <div class="bar"><span class="file">решение</span><span class="lang">python</span><button class="copy">копировать</button></div>
+                <pre data-lang="python">print(orders.loc["A-103"].to_string())
+print(orders.loc["A-103", "amount"])</pre>
+                <div class="out">user      olga
+amount     500
+500</div>
+              </div>
+              <p><strong>Что важно.</strong> Первый вызов возвращает Series, второй — скаляр.
+              <code class="inl">.to_string()</code> здесь только для компактной печати.</p>
+            </div>
+          </details>
+        </div>
+
+        <h3><span style="color:var(--muted);font-family:var(--mono);font-size:.8rem">02</span> Последние пять по позиции</h3>
+        <p>Возьмите последние пять строк таблицы <code class="inl">big</code>, не зная её длины.</p>
+        <div class="code">
+          <div class="bar"><span class="file">условие</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">big = pd.DataFrame({"id": range(100, 125), "amount": range(25)})
+# ожидается: [120, 121, 122, 123, 124]</pre>
+        </div>
+        <div class="qa">
+          <details>
+            <summary>Показать решение и разбор</summary>
+            <div class="a">
+              <div class="code" style="margin-top:0">
+                <div class="bar"><span class="file">решение</span><span class="lang">python</span><button class="copy">копировать</button></div>
+                <pre data-lang="python">print(big.iloc[-5:]["id"].tolist())</pre>
+                <div class="out">[120, 121, 122, 123, 124]</div>
+              </div>
+              <p><strong>Что важно.</strong> Отрицательный индекс работает только у iloc:
+              <code class="inl">iloc[-5:]</code> — «от пятого с конца до конца», а
+              <code class="inl">df.loc[-5]</code> искал бы метку −5.</p>
+            </div>
+          </details>
+        </div>
+      </section>
+
+      <!-- ══════════════════ 09. Мостик ══════════════════ -->
+      <section>
+        <h2><span class="num">09</span>Мостик: та же идея в SQL и NumPy</h2>
+
+        <h3>SQL: WHERE, LIMIT и UPDATE</h3>
+        <div class="code">
+          <div class="bar"><span class="file">мост в SQL</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">-- выбор по ключу: как df.loc["A-102"]
+SELECT * FROM orders WHERE id = 'A-102';
+
+-- фильтр по условию: как df.loc[mask]
+SELECT * FROM orders WHERE amount &gt; 1000;
+
+-- запись: как df.loc[mask, "flag"] = TRUE
+UPDATE orders SET flag = TRUE WHERE amount &gt; 1000;
+
+-- срез строк: как df.iloc[10:20]
+SELECT * FROM orders ORDER BY id LIMIT 10 OFFSET 10;</pre>
+        </div>
+        <p>
+          <code class="inl">loc</code> по метке — это поиск по ключу, маска — это
+          <code class="inl">WHERE</code>, <code class="inl">iloc</code> с позицией —
+          <code class="inl">LIMIT/OFFSET</code>, а запись через loc — <code class="inl">UPDATE</code>.
+          Разница в подписях: SQL не хранит позицию строки, pandas хранит индекс.
+        </p>
+
+        <h3>NumPy: срезы и маски</h3>
+        <div class="code">
+          <div class="bar"><span class="file">мост в NumPy</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">import numpy as np
+
+a = np.array([1200, 800, 500])
+a[0:2]                        # срез: правая граница не включена — как iloc
+a[a &gt; 1000]                   # маска: как loc с условием
+df.loc[df["amount"] &gt; 1000, "amount"].to_numpy()   # pandas → NumPy</pre>
+        </div>
+        <p>
+          Срезы в NumPy исключительные — то же правило, что у iloc. Булева маска в NumPy — Series bool
+          в pandas: <code class="inl">a[a &gt; 1000]</code> и <code class="inl">df[mask]</code> — одна
+          и та же операция отбора. Подробно — в <a href="ch-07-ndarray.html">главе 07</a> и
+          <a href="ch-08-indexing.html">главе 08</a>.
+        </p>
+
+        <div class="bridges">
+          <a class="bridge" href="ch-13-loc-iloc.html"><span class="to">Глава 13</span><span>loc и iloc: имя против номера</span><span class="what">→ устройство индекса и полная теория</span></a>
+          <a class="bridge" href="ch-12-series-dataframe.html"><span class="to">Глава 12</span><span>Series и DataFrame</span><span class="what">→ что такое индекс и метка</span></a>
+          <a class="bridge" href="ch-08-indexing.html"><span class="to">Глава 08</span><span>Индексация NumPy</span><span class="what">→ срезы и маски без pandas</span></a>
+          <a class="bridge" href="ref-pd-filter.html"><span class="to">Справочник</span><span>03 · Фильтрация</span><span class="what">→ маски, isin, query и NaN</span></a>
+          <a class="bridge" href="appendix-pandas.html"><span class="to">Приложение</span><span>Карта pandas-справочника</span><span class="what">→ все семь страниц и выбор пути</span></a>
+        </div>
+      </section>
+
+      <div class="pager">
+        <a class="prev" href="ref-pd-series.html"><span class="dir">← Назад</span><span class="ttl">Series и DataFrame</span></a>
+        <a class="next" href="ref-pd-filter.html"><span class="dir">Дальше →</span><span class="ttl">Фильтрация: булева маска как сито</span></a>
+      </div>
+
+    </div>
+  </main>
+</div>
+<script src="assets/toc.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>

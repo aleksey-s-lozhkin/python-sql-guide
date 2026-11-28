@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Справочник «Дата и время» — Ассоциативный гайд</title>
+<meta name="description" content="Справочник по дате и времени в Python, NumPy, pandas и SQL: моменты, таймзоны, календарные даты, длительности, epoch, date_trunc и индексы.">
+<link rel="stylesheet" href="assets/style.css">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#fbf8f2" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#14131a" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="assets/icons/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="assets/icons/icon-180.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Гайд Py/SQL">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+</head>
+<body data-slug="appendix-datetime">
+<div class="app">
+  <aside class="sidebar" id="sidebar"></aside>
+  <main>
+    <div class="wrap">
+
+      <header class="chapter-head">
+        <div class="eyebrow">
+          <span class="part">Приложение · Справочник</span>
+          <span class="dot"></span>
+          <span>дата и время · вне недель</span>
+          <span class="dot"></span>
+          <span>готово</span>
+        </div>
+        <h1>Справочник «Дата и время»
+          <span class="sub">Четыре технологии и три сущности: момент, календарь, длительность</span>
+        </h1>
+        <p class="lead">
+          Дата и время — сквозная тема: один и тот же момент живёт в Python, NumPy, pandas и
+          PostgreSQL, но типы и правила у каждого свои. Здесь — операции, форматы, таймзоны и
+          ловушки; модель разобрана в <a href="ch-27-date-time.html">главе 27</a>.
+        </p>
+        <div class="meta">
+          <span class="chip">⏱ <b>5 минут</b> на выбор</span>
+          <span class="chip">🎯 уровень <b>2</b></span>
+          <span class="chip">🧭 <b>сквозная тема</b></span>
+          <span class="chip">📚 <b>глава 27</b></span>
+        </div>
+      </header>
+
+            <p class="small">
+        Справочники: <a href="appendix-types.html">Python-коллекции</a> · <a href="appendix-numpy.html">NumPy</a> · <a href="appendix-pandas.html">pandas</a> · <a href="appendix-sql.html">SQL</a> · <b>Дата и время</b>
+      </p>
+
+      <div class="tldr">
+        <div class="t">Самое главное</div>
+        <ul>
+          <li>Разделяйте три вещи: <b>момент</b> (точка на линии UTC), <b>календарную дату</b>
+              (листок: 2024-03-15) и <b>длительность</b> (интервал, 3 дня).</li>
+          <li>Момент храните в UTC и снабжайте зоной; дату — без зоны. Смешивать naive и aware —
+              главный источник `TypeError` и сдвигов на час.</li>
+          <li>В SQL <code class="inl">timestamp</code> — «наивный», <code class="inl">timestamptz</code> —
+              момент; в pandas — <code class="inl">Timestamp</code> с <code class="inl">tz</code>;
+              в Python — <code class="inl">datetime</code> с <code class="inl">tzinfo</code>.</li>
+        </ul>
+      </div>
+
+      <!-- ══════════════════ 01. Как пользоваться ══════════════════ -->
+      <section>
+        <h2><span class="num">01</span>Как пользоваться</h2>
+        <ol>
+          <li><strong>Поймите сущность.</strong> Момент, календарная дата или длительность? От этого
+              зависит тип и страница.</li>
+          <li><strong>Откройте нужную технологию.</strong> Python, NumPy, pandas или SQL — у каждой
+              своя таблица операций с результатом и примечаниями про зоны.</li>
+          <li><strong>Сверьтесь с главой 27</strong>, если нужна модель и мосты между технологиями;
+              справочник — для точного синтаксиса.</li>
+        </ol>
+        <div class="note">
+          <span class="t">Правило хранения</span>
+          <p>Момент времени — <code class="inl">timestamptz</code> в PostgreSQL и aware
+          <code class="inl">datetime</code> в Python. Календарная дата — <code class="inl">date</code>
+          / <code class="inl">datetime.date</code>. Длительность — <code class="inl">interval</code> /
+          <code class="inl">timedelta</code> / <code class="inl">Timedelta</code>. Не храните моменты
+          строкой и не сравнивайте дату с временем.</p>
+        </div>
+      </section>
+
+      <!-- ══════════════════ 02. Три сущности ══════════════════ -->
+      <section>
+        <h2><span class="num">02</span>Три сущности и где они живут</h2>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Сущность</th><th>Python</th><th>NumPy</th><th>pandas</th><th>SQL</th></tr></thead>
+            <tbody>
+              <tr><td>Момент (UTC + зона)</td><td><code class="inl">datetime</code> aware</td><td><code class="inl">datetime64[us]</code> (без зоны)</td><td><code class="inl">Timestamp(tz=…)</code></td><td><code class="inl">timestamptz</code></td></tr>
+              <tr><td>Календарная дата</td><td><code class="inl">date</code></td><td><code class="inl">datetime64[D]</code></td><td><code class="inl">Period</code> / <code class="inl">date</code></td><td><code class="inl">date</code></td></tr>
+              <tr><td>Длительность</td><td><code class="inl">timedelta</code></td><td><code class="inl">timedelta64</code></td><td><code class="inl">Timedelta</code></td><td><code class="inl">interval</code></td></tr>
+              <tr><td>Точность по умолчанию</td><td>микросекунды</td><td>зависит от единицы</td><td><code class="inl">datetime64[us]</code> в pandas 3</td><td>микросекунды</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="small">
+          NumPy и SQL-<code class="inl">timestamp</code> не хранят зону: это «наивные» значения.
+          Момент получается только вместе с зоной или в <code class="inl">timestamptz</code>.
+        </p>
+      </section>
+
+      <!-- ══════════════════ 03. Карта выбора ══════════════════ -->
+      <section>
+        <h2><span class="num">03</span>Карта выбора: от задачи к странице</h2>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Задача</th><th>Куда смотреть</th></tr></thead>
+            <tbody>
+              <tr><td>Разобрать ISO/строку, посчитать epoch, TTL</td><td><a href="ref-dt-python.html">Python datetime</a></td></tr>
+              <tr><td>Массив дат, временной ряд, разности</td><td><a href="ref-dt-numpy.html">NumPy datetime64</a></td></tr>
+              <tr><td>Колонка дат: `.dt`, таймзоны, `date_range`, `resample`</td><td><a href="ref-dt-pandas.html">pandas</a></td></tr>
+              <tr><td>`date_trunc`, интервалы, `AT TIME ZONE`, границы периода, индекс по дате</td><td><a href="ref-dt-sql.html">SQL</a></td></tr>
+              <tr><td>Понять модель и мосты между технологиями</td><td><a href="ch-27-date-time.html">глава 27</a></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ══════════════════ 04. Ловушки ══════════════════ -->
+      <section>
+        <h2><span class="num">04</span>Семь ловушек, общих для всех</h2>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Ловушка</th><th>Что происходит</th><th>Как правильно</th></tr></thead>
+            <tbody>
+              <tr><td>naive + aware</td><td><code class="inl">TypeError</code> при сравнении</td><td>всё привести к UTC, затем конвертировать</td></tr>
+              <tr><td><code class="inl">timestamp</code> вместо <code class="inl">timestamptz</code></td><td>момент «плывёт» в другой зоне</td><td><code class="inl">timestamptz</code> для моментов</td></tr>
+              <tr><td>DST</td><td>час пропадает или повторяется</td><td>хранить UTC, конвертировать при показе</td></tr>
+              <tr><td>epoch единицы</td><td>секунды вместо миллисекунд → 1970</td><td>явно указывать <code class="inl">s</code>/<code class="inl">ms</code></td></tr>
+              <tr><td><code class="inl">BETWEEN</code> по датам</td><td>правая граница включена</td><td><code class="inl">&gt;= начало AND &lt; конец</code></td></tr>
+              <tr><td>сортировка строк как дат</td><td>лексикографический порядок</td><td>сначала <code class="inl">to_datetime</code></td></tr>
+              <tr><td>функция на колонке</td><td><code class="inl">created_at::date</code> ломает индекс</td><td>диапазон по колонке или expression-индекс</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ══════════════════ 05. Страницы ══════════════════ -->
+      <section>
+        <h2><span class="num">05</span>Четыре страницы</h2>
+        <div class="bridges">
+          <a class="bridge" href="ref-dt-python.html"><span class="to">01 · Python</span><span>datetime, date, timedelta</span><span class="what">→ aware/naive, zoneinfo, ISO, epoch</span></a>
+          <a class="bridge" href="ref-dt-numpy.html"><span class="to">02 · NumPy</span><span>datetime64 и timedelta64</span><span class="what">→ единицы, NaT, массивы дат</span></a>
+          <a class="bridge" href="ref-dt-pandas.html"><span class="to">03 · pandas</span><span>Timestamp, .dt и таймзоны</span><span class="what">→ date_range, resample, Period</span></a>
+          <a class="bridge" href="ref-dt-sql.html"><span class="to">04 · SQL</span><span>date, timestamp, timestamptz, interval</span><span class="what">→ date_trunc, AT TIME ZONE, индексы</span></a>
+        </div>
+        <p class="small">
+          Каждая страница заканчивается мостиком в соседнюю технологию; модель целиком —
+          в <a href="ch-27-date-time.html">главе 27</a>.
+        </p>
+      </section>
+
+      <!-- ══════════════════ 06. Куда дальше ══════════════════ -->
+      <section>
+        <h2><span class="num">06</span>Куда дальше</h2>
+        <div class="bridges">
+          <a class="bridge" href="ch-27-date-time.html"><span class="to">Глава 27</span><span>Дата и время: момент, календарь и длительность</span><span class="what">→ модель, лаборатория и три сущности</span></a>
+          <a class="bridge" href="ch-18-dates-reshape.html"><span class="to">Глава 18</span><span>Даты, строки и форма таблицы</span><span class="what">→ `.dt` и группировка по месяцам</span></a>
+          <a class="bridge" href="ch-21-group-by-having.html"><span class="to">Глава 21</span><span>GROUP BY и HAVING</span><span class="what">→ `DATE_TRUNC` в отчётах</span></a>
+          <a class="bridge" href="ch-24-indexes-explain.html"><span class="to">Глава 24</span><span>Индексы и EXPLAIN</span><span class="what">→ почему `created_at::date` не использует индекс</span></a>
+          <a class="bridge" href="appendix-snippets.html"><span class="to">Приложение</span><span>Файлы лабораторий</span><span class="what">→ запуск `ref_dt_*` и `27_datetime_lab`</span></a>
+        </div>
+      </section>
+
+      <div class="pager">
+        <a class="prev" href="appendix-sql.html"><span class="dir">← Назад</span><span class="ttl">Справочник: SQL</span></a>
+        <a class="next" href="ref-dt-python.html"><span class="dir">Дальше →</span><span class="ttl">01 · Python datetime</span></a>
+      </div>
+
+    </div>
+  </main>
+</div>
+<script src="assets/toc.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>

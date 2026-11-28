@@ -1,0 +1,689 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Справочник · Индексы и EXPLAIN: оглавление книги — Ассоциативный гайд</title>
+<meta name="description" content="Справочник по индексам PostgreSQL 14: btree, Seq Scan и Index Scan, селективность, составные и covering-индексы, чтение EXPLAIN на реальных планах learning_shop.">
+<link rel="stylesheet" href="assets/style.css">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#fbf8f2" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#14131a" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="assets/icons/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="assets/icons/icon-180.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Гайд Py/SQL">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+</head>
+<body data-slug="ref-sql-index">
+<div class="app">
+  <aside class="sidebar" id="sidebar"></aside>
+  <main>
+    <div class="wrap">
+
+      <header class="chapter-head">
+        <div class="eyebrow">
+          <span class="part">Справочник · SQL</span>
+          <span class="dot"></span>
+          <span>страница 6 из 6</span>
+          <span class="dot"></span>
+          <span>готово</span>
+        </div>
+        <h1>Индексы и EXPLAIN: оглавление книги
+          <span class="sub">Seq Scan, Index Scan, селективность и планы на PostgreSQL 14</span>
+        </h1>
+        <p class="lead">
+          Индекс — отдельная структура «ключ → строка», как оглавление у книги. Когда запрос тормозит,
+          смотрят <code class="inl">EXPLAIN</code>: что планировщик выбрал и почему. Здесь — типы сканов,
+          селективность, составные и covering-индексы, ошибки на реальных планах
+          <code class="inl">orders_big</code>.
+        </p>
+        <div class="meta">
+          <span class="chip">⏱ <b>12 минут</b></span>
+          <span class="chip">🎯 уровень <b>2</b></span>
+          <span class="chip">🐘 PostgreSQL <b>14</b></span>
+          <span class="chip">📚 <b>глава 24</b></span>
+        </div>
+      </header>
+
+      <p class="small">
+        Справочник SQL: <a href="appendix-sql.html">вся карта</a> ·
+        <a href="ref-sql-select.html">01 · SELECT и NULL</a> ·
+        <a href="ref-sql-join.html">02 · JOIN</a> ·
+        <a href="ref-sql-group.html">03 · GROUP BY</a> ·
+        <a href="ref-sql-window.html">04 · окна</a> ·
+        <a href="ref-sql-cte.html">05 · CTE</a> · <b>06 · индексы</b>
+      </p>
+
+      <div class="tldr">
+        <div class="t">Самое главное</div>
+        <ul>
+          <li>Индекс — отсортированная структура «ключ → ссылка на строку». Он ускоряет поиск
+              и порядок, но занимает память и замедляет запись.</li>
+          <li>Планировщик выбирает Seq Scan или Index Scan по <b>селективности</b> и статистике:
+              маленькая доля строк — индекс, большая — чтение всей таблицы.</li>
+          <li>Функция или приведение типа на колонке (<code class="inl">created_at::date</code>,
+              <code class="inl">id::text</code>) выключают обычный индекс — условие перестаёт быть
+              «по колонке».</li>
+        </ul>
+      </div>
+
+      <p class="small">
+        Планы ниже сняты на этой базе командой <code class="inl">EXPLAIN</code> без
+        <code class="inl">ANALYZE</code> — поэтому в них нет времени, только оценка
+        <code class="inl">cost</code> и <code class="inl">rows</code>. Числа зависят от статистики
+        и железа: на другой машине cost будет другим, а выбранный тип скана — как правило тем же.
+      </p>
+
+      <!-- ══════════════════ 01. Что это ══════════════════ -->
+      <section>
+        <h2><span class="num">01</span>Что это и как устроено</h2>
+        <p>
+          Индекс в PostgreSQL — отдельная структура, в которой хранятся значения колонки и ссылки
+          на строки таблицы. По умолчанию это <b>btree</b>: отсортированное дерево, где поиск по
+          ключу — O(log n), а ещё есть диапазоны и порядок. Индекс не заменяет таблицу: найдя ссылку,
+          база всё равно читает строку из heap.
+        </p>
+        <p>
+          Планировщик сравнивает цену вариантов по статистике. <b>Seq Scan</b> — прочитать всю таблицу
+          подряд; <b>Index Scan</b> — идти по индексу и прыгать к строкам; <b>Bitmap Heap Scan</b> —
+          собрать страницы с подходящими строками и прочитать их пачкой. Если строк много, чтение
+          подряд оказывается дешевле — и индекс «не используется» вовсе не потому, что сломан.
+        </p>
+
+        <div class="anchor">
+          <div class="glyph">📖</div>
+          <div>
+            <div class="t">Держите эту картинку в голове</div>
+            <p class="kick"><strong>Индекс — оглавление книги.</strong> Без него, чтобы найти главу,
+            приходится листать весь том (Seq Scan). С ним вы идёте по оглавлению к нужной странице
+            (Index Scan) — быстро, но только если ищете по тому, что в оглавлении есть.</p>
+            <p><strong>Не всякой книге нужно оглавление, и не всякому запросу — индекс.</strong>
+            Планировщик решает по статистике: иногда пролистать десять страниц быстрее, чем открывать
+            оглавление. Подробный разбор — в <a href="ch-24-indexes-explain.html">главе 24</a>.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ══════════════════ 02. Когда индекс ══════════════════ -->
+      <section>
+        <h2><span class="num">02</span>Когда индекс нужен, а когда нет</h2>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Запрос</th><th>Индекс btree?</th><th>Почему</th></tr></thead>
+            <tbody>
+              <tr><td>Точное совпадение: <code class="inl">WHERE user_id = 3</code></td><td><b>да</b></td><td>равенство — базовый случай</td></tr>
+              <tr><td>Диапазон: <code class="inl">created_at &gt;= ... AND &lt; ...</code></td><td><b>да</b></td><td>дерево хранит порядок</td></tr>
+              <tr><td><code class="inl">ORDER BY created_at DESC LIMIT 10</code></td><td><b>да</b></td><td>index scan backward, без сортировки</td></tr>
+              <tr><td>Доля строк мала — 1–5%</td><td><b>да</b></td><td>высокая селективность</td></tr>
+              <tr><td>Доля строк велика — 20–100%</td><td>обычно нет</td><td>Seq Scan дешевле прыжков</td></tr>
+              <tr><td><code class="inl">WHERE lower(name) = 'anna'</code></td><td>нет</td><td>индекс по <code class="inl">name</code> не знает про функцию</td></tr>
+              <tr><td><code class="inl">WHERE created_at::date = ...</code></td><td>нет</td><td>приведение меняет значение — нужен индекс по выражению</td></tr>
+              <tr><td><code class="inl">LIKE '%anna%'</code></td><td>нет</td><td>ведущий <code class="inl">%</code> — поиск по суффиксу</td></tr>
+              <tr><td>Таблица на пять строк</td><td>не нужен</td><td>Seq Scan и так мгновенный</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="small">
+          В <code class="inl">learning_shop</code> нужные индексы уже созданы:
+          <code class="inl">orders_big_pkey</code> (<code class="inl">id</code>),
+          <code class="inl">idx_orders_big_user</code> (<code class="inl">user_id</code>),
+          <code class="inl">idx_orders_big_created</code> (<code class="inl">created_at</code>).
+          Лаборатория их только читает — ничего не создаёт.
+        </p>
+      </section>
+
+      <!-- ══════════════════ 03. Синтаксис ══════════════════ -->
+      <section>
+        <h2><span class="num">03</span>Синтаксис-шаблон</h2>
+        <p>
+          План запрашивают командой <code class="inl">EXPLAIN</code>. Она <em>не выполняет</em> запрос:
+          возвращает дерево узлов с оценкой стоимости. Вот точечный поиск по первичному ключу:
+        </p>
+        <div class="code">
+          <div class="bar"><span class="file">ref_sql_index_lab.sql</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">EXPLAIN SELECT * FROM orders_big WHERE id = 4242;</pre>
+          <div class="out">                                    QUERY PLAN
+-----------------------------------------------------------------------------------
+ Index Scan using orders_big_pkey on orders_big  (cost=0.29..8.31 rows=1 width=24)
+   Index Cond: (id = 4242)
+(2 rows)</div>
+        </div>
+        <p>
+          Читается снизу вверх: <code class="inl">Index Scan using orders_big_pkey</code> —
+          выбран индекс, <code class="inl">Index Cond: (id = 4242)</code> — по какому условию.
+          А сам индекс в базе выглядит так (выполнять не нужно, это шаблон):
+        </p>
+        <div class="code">
+          <div class="bar"><span class="file">шаблон DDL</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">CREATE INDEX idx_orders_big_user ON orders_big (user_id);
+
+-- covering: все нужные колонки внутри индекса
+CREATE INDEX idx_orders_big_user_created
+    ON orders_big (user_id) INCLUDE (created_at);
+
+-- индекс по выражению — для условий вида created_at::date
+CREATE INDEX idx_orders_big_day ON orders_big ((created_at::date));</pre>
+        </div>
+        <p class="small">
+          В лаборатории эти команды не выполняются: только <code class="inl">SELECT</code> и
+          <code class="inl">EXPLAIN</code>. Синтаксис DDL приведён для справки.
+        </p>
+      </section>
+
+      <!-- ══════════════════ 04. Все конструкции ══════════════════ -->
+      <section>
+        <h2><span class="num">04</span>Все конструкции и типы планов</h2>
+
+        <h3>Узлы плана</h3>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Узел</th><th>Что делает</th><th>Когда появляется</th><th>Примечание</th></tr></thead>
+            <tbody>
+              <tr><td class="mono">Seq Scan</td><td>читает таблицу целиком</td><td>индекса нет или фильтр неселективен</td><td>на маленькой таблице — норма</td></tr>
+              <tr><td class="mono">Index Scan</td><td>идёт по индексу и читает строки по одной</td><td>точное совпадение, узкий диапазон</td><td>cost = индекс + чтение heap</td></tr>
+              <tr><td class="mono">Index Only Scan</td><td>отвечает прямо из индекса</td><td>все нужные колонки есть в индексе</td><td>covering; зависит от visibility map</td></tr>
+              <tr><td class="mono">Bitmap Index Scan</td><td>собирает битмап подходящих страниц</td><td>строк много (10–30%)</td><td>всегда идёт в паре с Bitmap Heap Scan</td></tr>
+              <tr><td class="mono">Bitmap Heap Scan</td><td>читает страницы пачкой по битмапу</td><td>средняя селективность</td><td><code class="inl">Recheck Cond</code> — перепроверка условия</td></tr>
+              <tr><td class="mono">Nested Loop</td><td>для каждой внешней строки ищет внутреннюю</td><td>маленькие наборы, индекс на внутренней стороне</td><td>быстрый на десятках строк</td></tr>
+              <tr><td class="mono">Hash Join</td><td>строит хеш-таблицу по одной стороне</td><td>большие наборы без индекса</td><td>читает обе таблицы по разу</td></tr>
+              <tr><td class="mono">Sort / Limit</td><td>сортирует и отрезает строки</td><td><code class="inl">ORDER BY ... LIMIT</code></td><td>Index Scan Backward убирает Sort</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>Команды</h3>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Конструкция</th><th>Что делает</th><th>Результат</th><th>Примечание</th></tr></thead>
+            <tbody>
+              <tr><td class="mono">EXPLAIN</td><td>показывает план без выполнения</td><td>дерево узлов, cost, rows</td><td>безопасно для любых запросов</td></tr>
+              <tr><td class="mono">EXPLAIN ANALYZE</td><td>выполняет запрос и показывает факт</td><td>план + actual time, loops</td><td>запрос реально выполняется</td></tr>
+              <tr><td class="mono">CREATE INDEX</td><td>создаёт btree по колонке</td><td>DDL</td><td>блокирует запись на время создания</td></tr>
+              <tr><td class="mono">CREATE INDEX ON t (a, b)</td><td>составной индекс по двум колонкам</td><td>DDL</td><td>левая колонка работает и сама; порядок важен</td></tr>
+              <tr><td class="mono">CREATE INDEX ... INCLUDE</td><td>добавляет колонки в листья индекса</td><td>DDL</td><td>covering без смены ключа</td></tr>
+              <tr><td class="mono">CREATE INDEX ON t (lower(col))</td><td>индекс по выражению</td><td>DDL</td><td>условие запроса должно совпадать с выражением</td></tr>
+              <tr><td class="mono">ANALYZE t</td><td>обновляет статистику</td><td>—</td><td>планировщик опирается на неё</td></tr>
+              <tr><td class="mono">DROP INDEX</td><td>удаляет индекс</td><td>DDL</td><td>освобождает память и запись</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>Когда btree работает</h3>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Условие</th><th>Индекс?</th><th>Объяснение</th></tr></thead>
+            <tbody>
+              <tr><td class="mono">=, IN, BETWEEN</td><td>да</td><td>равенство и диапазон — родные операции дерева</td></tr>
+              <tr><td class="mono">ORDER BY col [DESC]</td><td>да</td><td>дерево уже отсортировано; можно читать в обе стороны</td></tr>
+              <tr><td class="mono">LIKE 'anna%'</td><td>иногда</td><td>префикс — только с <code class="inl">text_pattern_ops</code> или в C-локали</td></tr>
+              <tr><td class="mono">LIKE '%anna%'</td><td>нет</td><td>суффикс/подстрока — нужен <code class="inl">pg_trgm</code></td></tr>
+              <tr><td class="mono">lower(col) = ...</td><td>нет</td><td>нужен индекс по выражению <code class="inl">lower(col)</code></td></tr>
+              <tr><td class="mono">col::date = ...</td><td>нет</td><td>то же: индекс по выражению или диапазон по <code class="inl">col</code></td></tr>
+              <tr><td class="mono">1 = 1 (все строки)</td><td>нет</td><td>селективность нулевая — Seq Scan дешевле</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ══════════════════ 05. Разбор ══════════════════ -->
+      <section>
+        <h2><span class="num">05</span>Разбор по вариантам</h2>
+        <p>
+          Все примеры — в файле
+          <a href="snippets/view.html?f=ref_sql_index_lab.sql"><code class="inl">ref_sql_index_lab.sql</code></a>.
+          База <code class="inl">learning_shop</code>, таблица <code class="inl">orders_big</code> —
+          100 000 строк, по 20 000 на каждого из пяти пользователей.
+        </p>
+        <div class="note">
+          <span class="t">Перед запуском</span>
+          <p>Нужна таблица <code class="inl">orders_big</code> (100 000 строк). Если её нет:
+          <code class="inl">psql -d learning_shop -f guide/snippets/ref_sql_setup.sql</code> —
+          скрипт создаст таблицу и зафиксирует статистику; базовая схема создаётся
+          <code class="inl">bash tools/setup_db.sh</code>.</p>
+        </div>
+
+        <h3>Seq Scan: подходящего индекса нет</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_sql_index_lab.sql</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">EXPLAIN SELECT * FROM orders_big WHERE quantity = 2;</pre>
+          <div class="out">                            QUERY PLAN
+------------------------------------------------------------------
+ Seq Scan on orders_big  (cost=0.00..1887.00 rows=33334 width=24)
+   Filter: (quantity = 2)
+(2 rows)</div>
+        </div>
+        <p>
+          По <code class="inl">quantity</code> индекса нет, и фильтр пропускает примерно треть строк —
+          читать всё подряд дешевле. <code class="inl">rows=33157</code> — это оценка планировщика,
+          а не факт: фактические числа показывает <code class="inl">EXPLAIN ANALYZE</code>.
+        </p>
+
+        <h3>Index Scan: узкий диапазон дат</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_sql_index_lab.sql</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">EXPLAIN SELECT * FROM orders_big
+WHERE created_at &gt;= '2024-01-02' AND created_at &lt; '2024-01-03';</pre>
+          <div class="out">                                                                        QUERY PLAN
+----------------------------------------------------------------------------------------------------------------------------------------------------------
+ Index Scan using idx_orders_big_created on orders_big  (cost=0.29..58.09 rows=1440 width=24)
+   Index Cond: ((created_at &gt;= '2024-01-02 00:00:00'::timestamp without time zone) AND (created_at &lt; '2024-01-03 00:00:00'::timestamp without time zone))
+(2 rows)</div>
+        </div>
+        <p>
+          Диапазон в сутки — около 1,5% строк. Индекс даёт и условие
+          (<code class="inl">Index Cond</code>), и дешёвый порядок: cost 62 против 2137 у Seq Scan.
+          Именно так выглядит «селективный фильтр».
+        </p>
+
+        <h3>Bitmap Heap Scan: 20% строк</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_sql_index_lab.sql</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">EXPLAIN SELECT * FROM orders_big
+WHERE user_id = 3 AND quantity = 2;</pre>
+          <div class="out">                                       QUERY PLAN
+----------------------------------------------------------------------------------------
+ Bitmap Heap Scan on orders_big  (cost=223.96..1160.96 rows=6667 width=24)
+   Recheck Cond: (user_id = 3)
+   Filter: (quantity = 2)
+   -&gt;  Bitmap Index Scan on idx_orders_big_user  (cost=0.00..222.29 rows=20000 width=0)
+         Index Cond: (user_id = 3)
+(5 rows)</div>
+        </div>
+        <p>
+          Один пользователь — это 20% таблицы. Индекс на <code class="inl">user_id</code> используется,
+          но не для точечных прыжков: база собирает битмап страниц и читает их пачкой. Условие по
+          <code class="inl">quantity</code> индекса не имеет и проверяется фильтром после чтения —
+          <code class="inl">Filter</code> в плане. Составной индекс
+          <code class="inl">(user_id, quantity)</code> позволил бы проверить оба условия по индексу;
+          порядок колонок важен — первым идёт то, по чему фильтруют чаще.
+        </p>
+
+        <h3>Index Only Scan: индекс покрывает запрос</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_sql_index_lab.sql</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">EXPLAIN SELECT user_id FROM orders_big WHERE user_id = 3;</pre>
+          <div class="out">                                           QUERY PLAN
+-------------------------------------------------------------------------------------------------
+ Index Only Scan using idx_orders_big_user on orders_big  (cost=0.29..422.29 rows=20000 width=4)
+   Index Cond: (user_id = 3)
+(2 rows)</div>
+        </div>
+        <p>
+          Запросу нужен только <code class="inl">user_id</code>, а он уже есть в индексе — таблицу
+          можно не читать совсем. Это <b>covering</b>-эффект: <code class="inl">width=4</code> вместо
+          <code class="inl">24</code>. Добиться его для более широкого набора колонок помогает
+          <code class="inl">INCLUDE</code> (см. раздел 04).
+        </p>
+
+        <h3>Index Scan Backward: порядок и LIMIT</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_sql_index_lab.sql</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">EXPLAIN SELECT * FROM orders_big
+WHERE created_at &gt;= '2024-03-01'
+ORDER BY created_at DESC
+LIMIT 10;</pre>
+          <div class="out">                                                  QUERY PLAN
+---------------------------------------------------------------------------------------------------------------
+ Limit  (cost=0.29..0.65 rows=10 width=24)
+   -&gt;  Index Scan Backward using idx_orders_big_created on orders_big  (cost=0.29..480.31 rows=13601 width=24)
+         Index Cond: (created_at &gt;= '2024-03-01 00:00:00'::timestamp without time zone)
+(3 rows)</div>
+        </div>
+        <p>
+          Сортировки в плане нет: индекс по <code class="inl">created_at</code> читается в обратную
+          сторону, а <code class="inl">LIMIT</code> останавливает чтение после десяти строк. Так
+          «последние N» работают без полной сортировки таблицы.
+        </p>
+
+        <h3>Функция и приведение ломают индекс</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_sql_index_lab.sql</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">EXPLAIN SELECT * FROM orders_big
+WHERE created_at::date = DATE '2024-01-02';
+
+EXPLAIN SELECT * FROM orders_big WHERE id::text = '4242';</pre>
+          <div class="out">                           QUERY PLAN
+----------------------------------------------------------------
+ Seq Scan on orders_big  (cost=0.00..2137.00 rows=500 width=24)
+   Filter: ((created_at)::date = '2024-01-02'::date)
+(2 rows)
+
+                           QUERY PLAN
+----------------------------------------------------------------
+ Seq Scan on orders_big  (cost=0.00..2387.00 rows=500 width=24)
+   Filter: ((id)::text = '4242'::text)
+(2 rows)</div>
+        </div>
+        <p>
+          Оба раза — Seq Scan, хотя индексы на <code class="inl">created_at</code> и
+          <code class="inl">id</code> есть. Причина в <code class="inl">Filter</code>: условие
+          применяется к <em>результату</em> функции/приведения, а индекс хранит исходные значения.
+          Это называется «условие не sargable».
+        </p>
+
+        <h3>JOIN-план</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_sql_index_lab.sql</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">EXPLAIN SELECT o.id, u.name
+FROM orders_big o JOIN users u ON u.id = o.user_id
+WHERE o.user_id = 3;</pre>
+          <div class="out">                                          QUERY PLAN
+----------------------------------------------------------------------------------------------
+ Nested Loop  (cost=227.29..1315.36 rows=20000 width=9)
+   -&gt;  Seq Scan on users u  (cost=0.00..1.06 rows=1 width=9)
+         Filter: (id = 3)
+   -&gt;  Bitmap Heap Scan on orders_big o  (cost=227.29..1114.29 rows=20000 width=8)
+         Recheck Cond: (user_id = 3)
+         -&gt;  Bitmap Index Scan on idx_orders_big_user  (cost=0.00..222.29 rows=20000 width=0)
+               Index Cond: (user_id = 3)
+(7 rows)</div>
+        </div>
+        <p>
+          Соединение на маленьком <code class="inl">users</code> — через первичный ключ, на большой
+          <code class="inl">orders_big</code> — через Bitmap Heap Scan. Порядок в плане читается
+          снизу вверх: сначала одна сторона, затем для каждой её строки — поиск по индексу другой.
+        </p>
+      </section>
+
+      <!-- ══════════════════ 06. Сценарии ══════════════════ -->
+      <section>
+        <h2><span class="num">06</span>Три сценария на learning_shop</h2>
+
+        <h3>Заказы пользователя: <code class="inl">WHERE user_id = 3</code></h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_sql_index_lab.sql</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">EXPLAIN SELECT * FROM orders_big WHERE user_id = 3;</pre>
+          <div class="out">                                       QUERY PLAN
+----------------------------------------------------------------------------------------
+ Bitmap Heap Scan on orders_big  (cost=227.29..1114.29 rows=20000 width=24)
+   Recheck Cond: (user_id = 3)
+   -&gt;  Bitmap Index Scan on idx_orders_big_user  (cost=0.00..222.29 rows=20000 width=0)
+         Index Cond: (user_id = 3)
+(4 rows)</div>
+        </div>
+        <p>
+          Планировщик выбрал Bitmap Heap Scan: 20 000 строк — это пятая часть таблицы. Индекс
+          <code class="inl">idx_orders_big_user</code> участвует, но читает страницы пачкой через
+          битмап. Если нужен более узкий срез, добавьте условие по дате — тогда доля строк упадёт.
+        </p>
+
+        <h3>Последние 10 заказов</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_sql_index_lab.sql</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">EXPLAIN SELECT * FROM orders_big
+ORDER BY created_at DESC
+LIMIT 10;</pre>
+          <div class="out">                                                   QUERY PLAN
+-----------------------------------------------------------------------------------------------------------------
+ Limit  (cost=0.29..0.62 rows=10 width=24)
+   -&gt;  Index Scan Backward using idx_orders_big_created on orders_big  (cost=0.29..3244.29 rows=100000 width=24)
+(2 rows)</div>
+        </div>
+        <p>
+          Обратный Index Scan по <code class="inl">created_at</code> плюс <code class="inl">LIMIT</code> —
+          чтение десяти строк вместо сортировки ста тысяч. Обратите внимание на
+          <code class="inl">cost</code> внешнего узла: он почти нулевой, потому что оценка ограничена
+          лимитом.
+        </p>
+
+        <h3>Отчёт по пользователям: EXPLAIN запроса с join</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_sql_index_lab.sql</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">EXPLAIN SELECT u.name, COUNT(*) AS orders
+FROM orders_big o JOIN users u ON u.id = o.user_id
+GROUP BY u.name
+ORDER BY orders DESC, u.name;</pre>
+          <div class="out">                                      QUERY PLAN
+--------------------------------------------------------------------------------------
+ Sort  (cost=2623.22..2623.23 rows=5 width=13)
+   Sort Key: (count(*)) DESC, u.name
+   -&gt;  HashAggregate  (cost=2623.11..2623.16 rows=5 width=13)
+         Group Key: u.name
+         -&gt;  Hash Join  (cost=1.11..2123.11 rows=100000 width=5)
+               Hash Cond: (o.user_id = u.id)
+               -&gt;  Seq Scan on orders_big o  (cost=0.00..1637.00 rows=100000 width=4)
+               -&gt;  Hash  (cost=1.05..1.05 rows=5 width=9)
+                     -&gt;  Seq Scan on users u  (cost=0.00..1.05 rows=5 width=9)
+(9 rows)</div>
+        </div>
+        <p>
+          Когда нужны все строки, а не выборка, индексы не помогают: план честно читает обе таблицы
+          (<code class="inl">Seq Scan</code>) и соединяет через <code class="inl">Hash Join</code>.
+          <code class="inl">HashAggregate</code> считает <code class="inl">COUNT(*)</code> по группам,
+          <code class="inl">Sort</code> упорядочивает результат. Это нормальный план отчёта.
+        </p>
+      </section>
+
+      <!-- ══════════════════ 07. Ошибки ══════════════════ -->
+      <section>
+        <h2><span class="num">07</span>Пять ошибок, на которых спотыкаются</h2>
+        <div class="errors">
+          <div class="err">
+            <div class="h">Функция на колонке в WHERE</div>
+            <p><code class="inl">WHERE created_at::date = DATE '2024-01-02'</code> и
+            <code class="inl">WHERE lower(name) = 'anna'</code> не используют обычный индекс: условие
+            применяется к результату выражения. План — Seq Scan (раздел 05).</p>
+            <div class="fix">Переписать в диапазон по колонке (<code class="inl">created_at &gt;= ... AND &lt; ...</code>) или создать индекс по выражению: <code class="inl">CREATE INDEX ... ON orders_big ((created_at::date))</code>.</div>
+          </div>
+
+          <div class="err">
+            <div class="h">Ведущий % в LIKE</div>
+            <p><code class="inl">LIKE '%anna%'</code> ищет подстроку в любом месте, а btree умеет
+            только префикс и то не всегда: в локали <code class="inl">en_US.UTF-8</code> нужен индекс
+            с <code class="inl">text_pattern_ops</code>. Обычный индекс такой запрос не ускорит.</p>
+            <div class="fix">Для подстроки — <code class="inl">pg_trgm</code> и GIN-индекс, либо полнотекстовый поиск. Для префикса — индекс с <code class="inl">text_pattern_ops</code>.</div>
+          </div>
+
+          <div class="err">
+            <div class="h">Ждать индекс при низкой селективности</div>
+            <p>Индекс на <code class="inl">user_id</code> есть, но <code class="inl">WHERE user_id BETWEEN 1 AND 5</code> пропускает все строки — Seq Scan дешевле. В лаборатории этот запрос так и планируется.</p>
+            <div class="fix">Проверяйте долю строк: индекс нужен для узкого среза. Расширяйте условие датами/статусом, а не «всеми значениями».</div>
+          </div>
+
+          <div class="err">
+            <div class="h">Приведение типа в условии</div>
+            <p><code class="inl">WHERE id::text = '4242'</code> читает всю таблицу: индекс хранит
+            <code class="inl">integer</code>, а сравнивается текст. Та же история с датой и строкой.</p>
+            <div class="fix">Сравнивайте в родном типе: <code class="inl">WHERE id = 4242</code>. Приведение — только если оно есть в индексе.</div>
+          </div>
+
+          <div class="err">
+            <div class="h">Индексы «на всякий случай»</div>
+            <p>Каждый индекс замедляет <code class="inl">INSERT</code>/<code class="inl">UPDATE</code>
+            и занимает место. Индексы-дубликаты и индексы, которые никто не выбирает, — чистая
+            стоимость записи без выгоды чтения.</p>
+            <div class="fix">Держите индексы под реальные запросы; лишние удаляйте. Использование видно в статистике вроде <code class="inl">pg_stat_user_indexes</code>.</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ══════════════════ 08. Мини-проверка ══════════════════ -->
+      <section>
+        <h2><span class="num">08</span>Мини-проверка</h2>
+        <p>Пять вопросов на понимание и две задачи. Сначала своя попытка — потом спойлер.</p>
+
+        <div class="qa">
+          <details>
+            <summary>Чем EXPLAIN отличается от EXPLAIN ANALYZE?</summary>
+            <div class="a">
+              <p><code class="inl">EXPLAIN</code> только строит план по статистике.
+              <code class="inl">EXPLAIN ANALYZE</code> реально выполняет запрос и добавляет
+              <code class="inl">actual time</code>, <code class="inl">rows</code> и
+              <code class="inl">loops</code>. Второй вариант нельзя бездумно запускать для
+              <code class="inl">INSERT</code>/<code class="inl">UPDATE</code> — изменения произойдут.</p>
+              <div class="verdict">Резюме: EXPLAIN — оценка, ANALYZE — факт и выполнение.</div>
+            </div>
+          </details>
+        </div>
+
+        <div class="qa">
+          <details>
+            <summary>Почему Seq Scan иногда лучше Index Scan?</summary>
+            <div class="a">
+              <p>Seq Scan читает страницы подряд, а Index Scan прыгает по таблице. Если фильтр
+              пропускает большую долю строк или таблица маленькая, последовательное чтение дешевле.
+              Планировщик сравнивает cost и выбирает.</p>
+              <div class="verdict">Резюме: индекс — не всегда быстрее; он выгоден на узком срезе.</div>
+            </div>
+          </details>
+        </div>
+
+        <div class="qa">
+          <details>
+            <summary>Что такое селективность?</summary>
+            <div class="a">
+              <p>Доля строк, которые проходят фильтр. 1% — высокая селективность (индекс выгоден),
+              50% — низкая (обычно Seq Scan). Оценку планировщик берёт из статистики, которую
+              обновляет <code class="inl">ANALYZE</code>.</p>
+              <div class="verdict">Резюме: чем меньше строк проходит, тем полезнее индекс.</div>
+            </div>
+          </details>
+        </div>
+
+        <div class="qa">
+          <details>
+            <summary>Что такое covering index и Index Only Scan?</summary>
+            <div class="a">
+              <p>Это индекс, в котором есть все колонки, нужные запросу: таблицу можно не читать.
+              В плане — <code class="inl">Index Only Scan</code>. Расширить индекс без смены ключа
+              можно через <code class="inl">INCLUDE</code>.</p>
+              <div class="verdict">Резюме: всё нужное в оглавлении — в книгу идти не обязательно.</div>
+            </div>
+          </details>
+        </div>
+
+        <div class="qa">
+          <details>
+            <summary>Почему created_at::date = ... не использует индекс?</summary>
+            <div class="a">
+              <p>Индекс хранит <code class="inl">created_at</code>, а условие — про
+              <code class="inl">created_at::date</code>: это разные значения. Помогает индекс по
+              выражению <code class="inl">((created_at::date))</code> или переписывание в диапазон
+              <code class="inl">created_at &gt;= ... AND &lt; ...</code>.</p>
+              <div class="verdict">Резюме: не оборачивайте колонку — оборачивайте константу.</div>
+            </div>
+          </details>
+        </div>
+
+        <h3><span style="color:var(--muted);font-family:var(--mono);font-size:.8rem">01</span> Диапазон января</h3>
+        <p>Посмотрите план для заказов с 1 по 14 января 2024 года на <code class="inl">orders_big</code>. Какой скан выбран и почему?</p>
+        <div class="code">
+          <div class="bar"><span class="file">условие</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">-- ожидается: Index Scan using idx_orders_big_created</pre>
+        </div>
+        <div class="qa">
+          <details>
+            <summary>Показать решение и разбор</summary>
+            <div class="a">
+              <div class="code" style="margin-top:0">
+                <div class="bar"><span class="file">решение</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+                <pre data-lang="sql">EXPLAIN SELECT * FROM orders_big
+WHERE created_at &gt;= '2024-01-01' AND created_at &lt; '2024-01-15';</pre>
+                <div class="out">                                                                        QUERY PLAN                                                                        
+----------------------------------------------------------------------------------------------------------------------------------------------------------
+ Index Scan using idx_orders_big_created on orders_big  (cost=0.29..771.87 rows=20479 width=24)
+   Index Cond: ((created_at &gt;= '2024-01-01 00:00:00'::timestamp without time zone) AND (created_at &lt; '2024-01-15 00:00:00'::timestamp without time zone))
+(2 rows)</div>
+              </div>
+              <p><strong>Что важно.</strong> Две недели — около 20% строк, но индекс всё равно выбран:
+              стоимость <code class="inl">771.87</code> ниже, чем полный проход. Порог, после которого
+              планировщик уходит в Seq Scan, зависит от статистики и стоимости страниц.</p>
+            </div>
+          </details>
+        </div>
+
+        <h3><span style="color:var(--muted);font-family:var(--mono);font-size:.8rem">02</span> Последние 10 заказов пользователя</h3>
+        <p>Нужны 10 последних заказов пользователя 3. Какой индекс выберет база и почему не индекс по <code class="inl">user_id</code>?</p>
+        <div class="code">
+          <div class="bar"><span class="file">условие</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">-- ожидается: Index Scan Backward по created_at с Filter по user_id</pre>
+        </div>
+        <div class="qa">
+          <details>
+            <summary>Показать решение и разбор</summary>
+            <div class="a">
+              <div class="code" style="margin-top:0">
+                <div class="bar"><span class="file">решение</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+                <pre data-lang="sql">EXPLAIN SELECT * FROM orders_big
+WHERE user_id = 3
+ORDER BY created_at DESC
+LIMIT 10;</pre>
+                <div class="out">                                                   QUERY PLAN                                                   
+----------------------------------------------------------------------------------------------------------------
+ Limit  (cost=0.29..2.01 rows=10 width=24)
+   -&gt;  Index Scan Backward using idx_orders_big_created on orders_big  (cost=0.29..3494.29 rows=20310 width=24)
+         Filter: (user_id = 3)
+(3 rows)</div>
+              </div>
+              <p><strong>Что важно.</strong> Порядок <code class="inl">created_at DESC</code> и
+              <code class="inl">LIMIT 10</code> выгоднее обслужить обратным индексом по дате, а
+              <code class="inl">user_id</code> проверить фильтром. Индекс
+              <code class="inl">idx_orders_big_user</code> здесь не даёт порядок, поэтому
+              проигрывает.</p>
+            </div>
+          </details>
+        </div>
+      </section>
+
+      <!-- ══════════════════ 09. Мостик ══════════════════ -->
+      <section>
+        <h2><span class="num">09</span>Мостик: та же идея в pandas и Python</h2>
+
+        <h3>pandas: индекс — это тоже оглавление</h3>
+        <div class="code">
+          <div class="bar"><span class="file">мост в pandas</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">import pandas as pd
+
+users = pd.DataFrame({"id": [1, 2, 3], "name": ["Anna", "Ivan", "Olga"]})
+by_id = users.set_index("id")      # индекс: ключ → строка
+by_id.loc[3]                        # точечный поиск по ключу
+
+products.sort_values("price")       # порядок — как Index Scan Backward</pre>
+        </div>
+        <p>
+          Индекс DataFrame — тот же принцип «ключ → строка»: поиск по метке не требует перебора.
+          Для диапазонов pandas опирается на отсортированный индекс и <code class="inl">loc</code>,
+          а для точечного равенства достаточно словаря.
+        </p>
+
+        <h3>Python: dict — это индекс по равенству</h3>
+        <div class="code">
+          <div class="bar"><span class="file">мост в Python</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">by_id = {1: "Anna", 2: "Ivan", 3: "Olga"}
+by_id[3]                 # O(1) в среднем — как btree по ключу, но без диапазонов
+
+# sorted list + bisect — ближайший аналог btree для диапазонов
+import bisect
+ids = [1, 2, 3]
+bisect.bisect_left(ids, 3)</pre>
+        </div>
+        <p>
+          <code class="inl">dict</code> отвечает на вопрос «где значение с этим ключом» за O(1), но не
+          умеет «все между 2 и 5» и не хранит порядок. btree-индекс умеет и то и другое — поэтому
+          база выбирает его так часто.
+        </p>
+
+        <div class="bridges">
+          <a class="bridge" href="ch-27-date-time.html"><span class="to">Дополнение</span><span>Глава 27: дата и время</span><span class="what">→ момент, календарь, длительность</span></a>
+          <a class="bridge" href="appendix-datetime.html"><span class="to">Справочник</span><span>«Дата и время»: четыре технологии</span><span class="what">→ Python, NumPy, pandas, SQL</span></a>
+          <a class="bridge" href="ch-24-indexes-explain.html"><span class="to">Глава 24</span><span>Индексы и EXPLAIN: где тормозит запрос</span><span class="what">→ полный разбор с лабораторией</span></a>
+          <a class="bridge" href="ch-19-order-of-execution.html"><span class="to">Глава 19</span><span>Порядок выполнения SQL</span><span class="what">→ как планировщик читает запрос</span></a>
+          <a class="bridge" href="ch-25-sql-vs-pandas.html"><span class="to">Глава 25</span><span>SQL против pandas</span><span class="what">→ где индекс, а где groupby</span></a>
+          <a class="bridge" href="ref-sql-cte.html"><span class="to">Справочник SQL · 05</span><span>Подзапросы и CTE</span><span class="what">→ предыдущая страница: шаги запроса</span></a>
+        </div>
+      </section>
+
+      <div class="pager">
+        <a class="prev" href="ref-sql-cte.html"><span class="dir">← Назад</span><span class="ttl">05 · CTE</span></a>
+        <a class="next" href="appendix-sql.html"><span class="dir">Дальше →</span><span class="ttl">Справочник по SQL</span></a>
+      </div>
+
+    </div>
+  </main>
+</div>
+<script src="assets/toc.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>

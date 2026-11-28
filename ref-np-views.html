@@ -1,0 +1,659 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Справочник NumPy · View и copy: стекло и ксерокс — Ассоциативный гайд</title>
+<meta name="description" content="Справочник NumPy: view и copy на практике — срезы, reshape, ravel, T, маска и fancy indexing, base, shares_memory, writeable и numpy 2 copy=False — с реальным выводом.">
+<link rel="stylesheet" href="assets/style.css">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#fbf8f2" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#14131a" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="assets/icons/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="assets/icons/icon-180.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Гайд Py/SQL">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+</head>
+<body data-slug="ref-np-views">
+<div class="app">
+  <aside class="sidebar" id="sidebar"></aside>
+  <main>
+    <div class="wrap">
+
+      <header class="chapter-head">
+        <div class="eyebrow">
+          <span class="part">Справочник · NumPy</span>
+          <span class="dot"></span>
+          <span>страница 5 из 5</span>
+          <span class="dot"></span>
+          <span>готово</span>
+        </div>
+        <h1>View и copy: стекло и ксерокс
+          <span class="sub">Где массив смотрит в те же данные, а где держит независимую копию</span>
+        </h1>
+        <p class="lead">
+          Срез массива — не копия: это окно в тот же буфер. Здесь собрано, какие операции дают
+          view, какие — копию, как это проверить через <code class="inl">base</code> и
+          <code class="inl">np.shares_memory</code>, и почему в NumPy 2 запрос
+          <code class="inl">np.array(..., copy=False)</code> стал строгим.
+        </p>
+        <div class="meta">
+          <span class="chip">⏱ <b>12 минут</b></span>
+          <span class="chip">🎯 уровень <b>2</b></span>
+          <span class="chip">🧮 <b>numpy 2.3.5</b></span>
+          <span class="chip">📚 <b>глава 11</b></span>
+        </div>
+      </header>
+
+      <p class="small">
+        Справочник NumPy: <a href="appendix-numpy.html">вся карта</a> ·
+        <a href="ref-np-ndarray.html">01 · ndarray</a> ·
+        <a href="ref-np-indexing.html">02 · индексация</a> ·
+        <a href="ref-np-axis.html">03 · axis</a> ·
+        <a href="ref-np-broadcasting.html">04 · broadcasting</a> ·
+        <b>05 · view/copy</b>
+      </p>
+
+      <div class="tldr">
+        <div class="t">Самое главное</div>
+        <ul>
+          <li>Срез — <b>view</b>: новый заголовок на тот же буфер. Маска, список индексов,
+              <code class="inl">astype</code>, <code class="inl">flatten</code> и
+              <code class="inl">copy()</code> — <b>копии</b>.</li>
+          <li><code class="inl">T</code> — всегда view; <code class="inl">reshape</code> и
+              <code class="inl">ravel</code> — view, если раскладка памяти позволяет. Проверять —
+              <code class="inl">np.shares_memory</code>, а не по названию операции.</li>
+          <li>В NumPy 2 <code class="inl">np.array(..., copy=False)</code> больше не копирует молча:
+              если копия нужна, будет <code class="inl">ValueError</code>. Мягкий вариант —
+              <code class="inl">copy=None</code> или <code class="inl">np.asarray</code>.</li>
+        </ul>
+      </div>
+
+      <!-- ══════════════════ 01. Что это ══════════════════ -->
+      <section>
+        <h2><span class="num">01</span>Что это и как устроено</h2>
+        <p>
+          Массив NumPy — это буфер с данными плюс описание: форма, тип и шаги
+          (<code class="inl">strides</code>). <b>View</b> — новый объект-описание, который смотрит
+          в <em>тот же буфер</em>. <b>Copy</b> — новый буфер с копией данных.
+        </p>
+        <p>
+          Поэтому срез «бесплатный»: данные не копируются, меняются только смещение и шаги. И
+          поэтому правка через view видна в исходнике — это не магия, а один и тот же участок
+          памяти. Проверить родство можно через <code class="inl">base</code>,
+          <code class="inl">flags.owndata</code> и <code class="inl">np.shares_memory</code>.
+        </p>
+
+        <div class="anchor">
+          <div class="glyph">🪞</div>
+          <div>
+            <div class="t">Держите эту картинку в голове</div>
+            <p class="kick"><strong>View — стеклянная витрина.</strong> Через стекло видно тот же
+            товар: поправили товар — изменение увидят все, кто смотрит в витрину.</p>
+            <p><strong>Copy — ксерокс.</strong> На копии можно рисовать что угодно: оригинал в
+            витрине не изменится. Вопрос «view или copy?» — это вопрос «смотрю через стекло или
+            держу ксерокопию». Подробный разбор — в
+            <a href="ch-11-views-copies.html">главе 11</a>.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ══════════════════ 02. Когда важно ══════════════════ -->
+      <section>
+        <h2><span class="num">02</span>Когда это важно</h2>
+        <p>
+          Разница проявляется в трёх местах: память, безопасность данных и предсказуемость
+          результата.
+        </p>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Ситуация</th><th>Что важно</th><th>Что делать</th></tr></thead>
+            <tbody>
+              <tr><td>Режем большой массив на куски</td><td>view почти не занимает памяти</td><td>срез, а не копия</td></tr>
+              <tr><td>Передаём массив в функцию</td><td>view пропустит правку в исходник</td><td><code class="inl">.copy()</code> или явный контракт</td></tr>
+              <tr><td>Нужен независимый результат</td><td>view не годится</td><td><code class="inl">.copy()</code>, <code class="inl">flatten()</code></td></tr>
+              <tr><td>Выборка по маске или списку</td><td>это всегда копия</td><td>не рассчитывать на связь с исходником</td></tr>
+              <tr><td><code class="inl">reshape</code> и <code class="inl">T</code></td><td>reshape — обычно view; T — всегда</td><td>проверить <code class="inl">shares_memory</code></td></tr>
+              <tr><td>pandas 3 и Copy-on-Write</td><td>производные объекты не меняют таблицу</td><td>писать через <code class="inl">.loc</code></td></tr>
+              <tr><td>Нужно запретить запись</td><td>read-only view защищает данные</td><td><code class="inl">flags.writeable = False</code></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="small">
+          Теория памяти и CoW — в <a href="ch-11-views-copies.html">главе 11</a>; здесь — операции
+          и проверки.
+        </p>
+      </section>
+
+      <!-- ══════════════════ 03. Как получить ══════════════════ -->
+      <section>
+        <h2><span class="num">03</span>Как получить view/copy</h2>
+        <p>
+          View получают из существующего массива: срез, <code class="inl">reshape</code>,
+          <code class="inl">T</code> или <code class="inl">view()</code>. Копию — явно:
+          <code class="inl">.copy()</code> или <code class="inl">flatten()</code>.
+        </p>
+        <div class="code">
+          <div class="bar"><span class="file">ref_np_views_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">arr = np.arange(6)
+view = arr[1:3]
+print(view)
+print(view.base is arr, view.flags.owndata)
+view[:] = -1
+print(arr)</pre>
+          <div class="out">[1 2]
+True False
+[ 0 -1 -1  3  4  5]</div>
+        </div>
+        <p>
+          <code class="inl">view.base is arr</code> — это окно в <code class="inl">arr</code>;
+          <code class="inl">owndata=False</code> подтверждает, что буфер чужой. Правка
+          <code class="inl">view[:] = -1</code> изменила исходный массив.
+        </p>
+        <p>
+          Копия создаёт вторую память: правка в неё исходник не трогает, а
+          <code class="inl">np.shares_memory</code> возвращает <code class="inl">False</code>.
+        </p>
+        <div class="code">
+          <div class="bar"><span class="file">ref_np_views_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">arr = np.arange(6)
+copy = arr[1:3].copy()
+copy[:] = -1
+print(arr)
+print(np.shares_memory(arr, copy), copy.base is None)</pre>
+          <div class="out">[0 1 2 3 4 5]
+False True</div>
+        </div>
+      </section>
+
+      <!-- ══════════════════ 04. Все операции ══════════════════ -->
+      <section>
+        <h2><span class="num">04</span>Все операции</h2>
+        <p>
+          Две таблицы: что получает массив и чем это проверить. «Что меняется» — про данные и
+          память, а не про форму объекта.
+        </p>
+
+        <h3>Получение массива</h3>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Операция</th><th>view или copy</th><th>Что меняется</th><th>Примечание</th></tr></thead>
+            <tbody>
+              <tr><td class="mono">a[i:j]</td><td>view</td><td>смещение и форма</td><td>правка видна в <code class="inl">a</code></td></tr>
+              <tr><td class="mono">a[i:j:k]</td><td>view</td><td>добавляется шаг</td><td>шаг живёт в <code class="inl">strides</code></td></tr>
+              <tr><td class="mono">a.T</td><td>view</td><td>strides меняются местами</td><td>почти бесплатно даже для большой матрицы</td></tr>
+              <tr><td class="mono">a.reshape(...)</td><td>view или copy</td><td>форма; иногда новый буфер</td><td>если данные не подряд — копия</td></tr>
+              <tr><td class="mono">a.ravel()</td><td>view или copy</td><td>плоская форма</td><td>копия только когда иначе нельзя</td></tr>
+              <tr><td class="mono">a.flatten()</td><td>copy</td><td>новый плоский массив</td><td>всегда независим</td></tr>
+              <tr><td class="mono">a.copy()</td><td>copy</td><td>новый буфер</td><td>явная независимость</td></tr>
+              <tr><td class="mono">a.astype(t)</td><td>copy</td><td>новый буфер, dtype по запросу</td><td>по умолчанию копирует</td></tr>
+              <tr><td class="mono">a[[0, 2]]</td><td>copy</td><td>новая память</td><td>fancy indexing</td></tr>
+              <tr><td class="mono">a[mask]</td><td>copy</td><td>новая память</td><td>маску окном не описать</td></tr>
+              <tr><td class="mono">a.view()</td><td>view</td><td>новое описание</td><td>можно менять форму без копии</td></tr>
+              <tr><td class="mono">np.asarray(a)</td><td>без копии, если dtype совпал</td><td>ничего</td><td>может вернуть тот же объект</td></tr>
+              <tr><td class="mono">np.array(a, copy=False)</td><td>без копии или ошибка</td><td>ничего</td><td>numpy 2: <code class="inl">ValueError</code>, если копия нужна</td></tr>
+              <tr><td class="mono">np.array(a, copy=None)</td><td>copy при необходимости</td><td>возможно, новый буфер</td><td>мягкий вариант</td></tr>
+              <tr><td class="mono">np.broadcast_to(a, shape)</td><td>view только для чтения</td><td>форма и strides</td><td><code class="inl">writeable=False</code></td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>Проверки и память</h3>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Операция</th><th>view или copy</th><th>Что меняется</th><th>Примечание</th></tr></thead>
+            <tbody>
+              <tr><td class="mono">a.base</td><td>—</td><td>—</td><td>на кого смотрит окно; не гарантия view</td></tr>
+              <tr><td class="mono">a.flags.owndata</td><td>—</td><td>—</td><td>владеет ли массив буфером</td></tr>
+              <tr><td class="mono">a.flags.writeable</td><td>—</td><td>—</td><td>можно ли писать</td></tr>
+              <tr><td class="mono">a.strides</td><td>—</td><td>—</td><td>шаги в байтах; у view другие</td></tr>
+              <tr><td class="mono">a.nbytes</td><td>—</td><td>—</td><td>у view — только его элементы</td></tr>
+              <tr><td class="mono">np.shares_memory(a, b)</td><td>—</td><td>—</td><td>точная проверка общего буфера</td></tr>
+              <tr><td class="mono">np.may_share_memory(a, b)</td><td>—</td><td>—</td><td>быстро, но возможны ложные срабатывания</td></tr>
+              <tr><td class="mono">a.flags.c_contiguous</td><td>—</td><td>—</td><td>лежат ли данные подряд</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ══════════════════ 05. Разбор ══════════════════ -->
+      <section>
+        <h2><span class="num">05</span>Разбор по группам</h2>
+        <p>
+          Все примеры страницы — в файле
+          <a href="snippets/view.html?f=ref_np_views_lab.py"><code class="inl">ref_np_views_lab.py</code></a>:
+          запустите и меняйте строки (нужен numpy 2.3.5).
+        </p>
+
+        <h3>Срез, reshape, ravel, T и flatten</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_np_views_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">grid = np.array([[0, 1, 2, 3], [4, 5, 6, 7], [8, 9, 10, 11]])
+print(grid[1].base is grid, grid[:, 2].base is grid)
+print(grid.reshape(2, 6).base is grid, grid.T.base is grid)
+print(grid.reshape(2, 6).ravel().base is grid)
+flat = grid.T.flatten()
+print(flat.base is None, np.shares_memory(grid.T, flat))</pre>
+          <div class="out">True True
+True True
+True
+True False</div>
+        </div>
+        <p>
+          Строка и столбец матрицы — view: <code class="inl">base is grid</code>.
+          <code class="inl">reshape</code> и <code class="inl">T</code> тоже указывают на
+          <code class="inl">grid</code>, а <code class="inl">ravel</code> поверх них — на того же
+          владельца. <code class="inl">flatten</code> — исключение: у него
+          <code class="inl">base is None</code>, и память не общая.
+        </p>
+
+        <h3>Fancy и маска</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_np_views_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">arr = np.arange(6)
+fancy = arr[[0, 2]]
+masked = arr[arr % 2 == 0]
+print(fancy, fancy.base is None, fancy.flags.owndata)
+print(masked, masked.base is None)
+print(np.shares_memory(arr, fancy), np.shares_memory(arr, masked))</pre>
+          <div class="out">[0 2] True True
+[0 2 4] True
+False False</div>
+        </div>
+        <p>
+          И список индексов, и булева маска создают новый массив с собственным буфером:
+          <code class="inl">base is None</code>, <code class="inl">owndata=True</code>,
+          <code class="inl">shares_memory=False</code>. Это принципиально: выборку нельзя описать
+          окном, потому что элементы не лежат подряд.
+        </p>
+
+        <h3>astype и np.array(copy=...)</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_np_views_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">arr = np.arange(3)
+floats = arr.astype("float64")
+print(floats, floats.base is None, np.shares_memory(arr, floats))
+same = np.array(arr, copy=False)
+print(same is arr, np.shares_memory(arr, same))
+try:
+    np.array(arr, copy=False, dtype="float64")
+except ValueError as e:
+    print(type(e).__name__, str(e).splitlines()[0])
+print(np.array(arr, copy=None, dtype="float64"))</pre>
+          <div class="out">[0. 1. 2.] True False
+True True
+ValueError Unable to avoid copy while creating an array as requested.
+[0. 1. 2.]</div>
+        </div>
+        <p>
+          <code class="inl">astype</code> создаёт новый буфер, даже если тип не менялся.
+          <code class="inl">np.array(a, copy=False)</code> возвращает тот же объект, если копия не
+          нужна, и бросает <code class="inl">ValueError</code>, если без неё не обойтись.
+          <code class="inl">copy=None</code> разрешает копию — это поведение NumPy 1.x.
+        </p>
+
+        <h3>base, shares_memory и strides</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_np_views_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">grid = np.array([[0, 1, 2, 3], [4, 5, 6, 7], [8, 9, 10, 11]])
+col = grid[:, 2]
+print(grid.base is None, grid.flags.owndata)
+print(col.base is grid, col.strides, col.flags.c_contiguous)
+print(np.shares_memory(grid, col), np.may_share_memory(grid, col))
+print(grid.T.strides, grid.strides)</pre>
+          <div class="out">True True
+True (32,) False
+True True
+(8, 32) (32, 8)</div>
+        </div>
+        <p>
+          У владельца <code class="inl">grid.base is None</code> и
+          <code class="inl">owndata=True</code>. У столбца <code class="inl">base is grid</code>,
+          шаг <code class="inl">(32,)</code> — это длина строки (4 int64 по 8 байт), поэтому
+          данные не непрерывны. <code class="inl">T</code> меняет только порядок шагов.
+        </p>
+
+        <h3>writeable и read-only</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_np_views_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">arr = np.arange(4)
+print(arr.flags.writeable)
+ro = arr.copy()
+ro.flags.writeable = False
+print(ro[1:3].flags.writeable)
+try:
+    ro[0] = 9
+except ValueError as e:
+    print(type(e).__name__, e)
+print(ro.copy().flags.writeable)</pre>
+          <div class="out">True
+False
+ValueError assignment destination is read-only
+True</div>
+        </div>
+        <p>
+          Запрет записи наследуется: срез read-only массива тоже read-only, и присваивание
+          бросает <code class="inl">ValueError</code>. <code class="inl">.copy()</code> снова даёт
+          записываемый массив — это безопасный способ «разморозить» данные.
+        </p>
+
+        <h3>reshape после несмежного среза</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_np_views_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">grid = np.array([[0, 1, 2, 3], [4, 5, 6, 7], [8, 9, 10, 11]])
+t = grid.T
+flat = t.reshape(12)
+print(t.flags.c_contiguous, flat.flags.owndata)
+print(flat.base is None, np.shares_memory(t, flat))
+print(flat.base)</pre>
+          <div class="out">False False
+False False
+[[ 0  4  8]
+ [ 1  5  9]
+ [ 2  6 10]
+ [ 3  7 11]]</div>
+        </div>
+        <p>
+          Вот ловушка: <code class="inl">flat.base</code> не <code class="inl">None</code>, но
+          это не исходный массив, а свежая копия, на которую смотрит <code class="inl">flat</code>.
+          <code class="inl">shares_memory</code> с <code class="inl">t</code> — <code class="inl">False</code>.
+          Значит, <code class="inl">base</code> сам по себе не доказывает view: проверять нужно
+          общий буфер.
+        </p>
+      </section>
+
+      <!-- ══════════════════ 06. Сценарии ══════════════════ -->
+      <section>
+        <h2><span class="num">06</span>Три сценария из практики</h2>
+
+        <h3>Безопасная функция</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_np_views_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">def clean(data):
+    out = data.copy()
+    out[out &lt; 0] = 0
+    return out
+
+data = np.array([-2, 5, -1, 7])
+print(clean(data))
+print(data)</pre>
+          <div class="out">[0 5 0 7]
+[-2  5 -1  7]</div>
+        </div>
+        <p>
+          Функция, которая меняет аргумент через маску, портит данные вызывающего. Копия на входе —
+          явный контракт «я не трогаю чужой массив»; исходник остался прежним.
+        </p>
+
+        <h3>Память: view против копии</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_np_views_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">big = np.arange(1_000_000)
+part = big[:1000]
+part_copy = big[:1000].copy()
+print(big.nbytes, part.nbytes, part_copy.nbytes)
+print(np.shares_memory(big, part), np.shares_memory(big, part_copy))</pre>
+          <div class="out">8000000 8000 8000
+True False</div>
+        </div>
+        <p>
+          Миллион int64 — это 8 МБ. View на тысячу элементов отчитывается о 8 000 байт, но
+          дополнительной памяти не занимает: <code class="inl">shares_memory=True</code>. Копия
+          тоже 8 000 байт, зато независима.
+        </p>
+
+        <h3>Окно в матрице</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_np_views_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">grid = np.array([[0, 1, 2, 3], [4, 5, 6, 7], [8, 9, 10, 11]])
+row = grid[1]
+col = grid[:, 2]
+print(row, row.base is grid)
+print(col, col.base is grid)
+row[:] = 0
+col[:] = 9
+print(grid)</pre>
+          <div class="out">[4 5 6 7] True
+[ 2  6 10] True
+[[ 0  1  9  3]
+ [ 0  0  9  0]
+ [ 8  9  9 11]]</div>
+        </div>
+        <p>
+          Строка и столбец — окна в общий буфер. Правка через любое из них видна в
+          <code class="inl">grid</code>; столбец при этом несмежный, поэтому его шаг — 32 байта,
+          а не 8.
+        </p>
+      </section>
+
+      <!-- ══════════════════ 07. Ошибки ══════════════════ -->
+      <section>
+        <h2><span class="num">07</span>Пять ошибок, на которых спотыкаются</h2>
+        <div class="errors">
+          <div class="err">
+            <div class="h">Ждать копию от среза</div>
+            <p><code class="inl">part = arr[1:3]</code> — view. Правка <code class="inl">part[:] = 0</code>
+            меняет <code class="inl">arr</code>, хотя выглядит как работа с локальным куском.</p>
+            <div class="fix">Нужна независимость — <code class="inl">arr[1:3].copy()</code>.</div>
+          </div>
+
+          <div class="err">
+            <div class="h">Ждать view от маски или fancy</div>
+            <p><code class="inl">arr[[0, 2]]</code> и <code class="inl">arr[mask]</code> — всегда
+            копии: элементы не лежат подряд, окном их не описать. <code class="inl">base is None</code>,
+            <code class="inl">shares_memory=False</code>.</p>
+            <div class="fix">Не пытаться менять исходник через выборку — писать в него явно.</div>
+          </div>
+
+          <div class="err">
+            <div class="h">Незаметно менять исходник через view</div>
+            <p>Функция получила срез, поменяла его in-place — и исходный массив изменился.
+            Баг не виден в месте вызова: там никто не ждал побочного эффекта.</p>
+            <div class="fix">Копия на границе функции или read-only вход:
+            <code class="inl">flags.writeable = False</code>.</div>
+          </div>
+
+          <div class="err">
+            <div class="h">np.array(..., copy=False) в numpy 2</div>
+            <p>Раньше <code class="inl">copy=False</code> означал «скопируй, если надо». Теперь —
+            «не копируй никогда»: при смене dtype будет
+            <code class="inl">ValueError</code>. Молчаливого копирования больше нет.</p>
+            <div class="fix">Нужна копия при необходимости — <code class="inl">copy=None</code>
+            или <code class="inl">np.asarray</code>.</div>
+          </div>
+
+          <div class="err">
+            <div class="h">Считать reshape гарантией view</div>
+            <p>После несмежного среза <code class="inl">reshape</code> может сделать копию.
+            При этом <code class="inl">base</code> не <code class="inl">None</code> — он указывает
+            на свежую копию, а не на исходник.</p>
+            <div class="fix">Проверять <code class="inl">np.shares_memory(a, result)</code>, а не
+            только <code class="inl">base</code>.</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ══════════════════ 08. Мини-проверка ══════════════════ -->
+      <section>
+        <h2><span class="num">08</span>Мини-проверка</h2>
+        <p>Пять вопросов на понимание и две задачи. Сначала своя попытка — потом спойлер.</p>
+
+        <div class="qa">
+          <details>
+            <summary>Чем view отличается от copy?</summary>
+            <div class="a">
+              <p>View — новый объект-описание на тот же буфер; copy — новый буфер с данными.
+              Правка через view видна в исходнике, через copy — нет. Ограничение: view дешевле по
+              памяти, но именно поэтому опаснее.</p>
+              <div class="verdict">Резюме: стекло против ксерокса.</div>
+            </div>
+          </details>
+        </div>
+
+        <div class="qa">
+          <details>
+            <summary>Срез массива — это копия?</summary>
+            <div class="a">
+              <p>Нет, это view. В Python срез списка всегда копирует, а у ndarray срез — окно в
+              тот же буфер. Ограничение: изменить форму и шаг можно, но данные общие.</p>
+              <div class="verdict">Резюме: список копирует, массив смотрит.</div>
+            </div>
+          </details>
+        </div>
+
+        <div class="qa">
+          <details>
+            <summary>Какие операции дают копию?</summary>
+            <div class="a">
+              <p>Маска, fancy indexing, <code class="inl">astype</code>,
+              <code class="inl">flatten</code>, <code class="inl">copy()</code> и
+              <code class="inl">np.array(..., copy=True)</code>. Ограничение:
+              <code class="inl">reshape</code>/<code class="inl">ravel</code> — «обычно view»,
+              <code class="inl">T</code> — всегда view; проверяйте <code class="inl">shares_memory</code>.</p>
+              <div class="verdict">Резюме: всё, что нельзя описать окном, копируется.</div>
+            </div>
+          </details>
+        </div>
+
+        <div class="qa">
+          <details>
+            <summary>Что показывает base и почему его недостаточно?</summary>
+            <div class="a">
+              <p><code class="inl">base</code> ссылается на владельца буфера, но не доказывает
+              view: у reshape-копии он указывает на свежую копию, а общих данных с исходником нет.
+              Ограничение: надёжная проверка — <code class="inl">np.shares_memory(a, b)</code>.</p>
+              <div class="verdict">Резюме: base — подсказка, shares_memory — ответ.</div>
+            </div>
+          </details>
+        </div>
+
+        <div class="qa">
+          <details>
+            <summary>Почему np.array(a, copy=False) падает в NumPy 2?</summary>
+            <div class="a">
+              <p><code class="inl">copy=False</code> теперь значит «никогда не копировать»: если
+              без копии нельзя (например, меняется dtype), NumPy 2 бросает
+              <code class="inl">ValueError</code>. Ограничение: <code class="inl">copy=None</code>
+              разрешает копию, <code class="inl">np.asarray</code> — старый мягкий сценарий.</p>
+              <div class="verdict">Резюме: строгий флаг — строгое поведение.</div>
+            </div>
+          </details>
+        </div>
+
+        <h3><span style="color:var(--muted);font-family:var(--mono);font-size:.8rem">01</span> Отрицательные без порчи входа</h3>
+        <p>Верните массив, где отрицательные заменены на 0, не меняя исходный
+        <code class="inl">values</code>.</p>
+        <div class="qa">
+          <details>
+            <summary>Показать решение и разбор</summary>
+            <div class="a">
+              <div class="code" style="margin-top:0">
+                <div class="bar"><span class="file">ref_np_views_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+                <pre data-lang="python">def zero_negatives(data):
+    out = data.copy()
+    out[out &lt; 0] = 0
+    return out
+
+values = np.array([-2, 5, -1])
+print(zero_negatives(values))
+print(values)</pre>
+                <div class="out">[0 5 0]
+[-2  5 -1]</div>
+              </div>
+              <p><strong>Что важно.</strong> Маска меняет массив на месте, поэтому сначала копия.
+              Исходные данные остались <code class="inl">[-2, 5, -1]</code>.</p>
+            </div>
+          </details>
+        </div>
+
+        <h3><span style="color:var(--muted);font-family:var(--mono);font-size:.8rem">02</span> Окно или копия</h3>
+        <p>Для <code class="inl">a[2:5]</code>, <code class="inl">a[[1, 3]]</code>,
+        <code class="inl">a.T</code> и <code class="inl">a[a &gt; 0]</code> скажите, что это, и
+        проверьте через <code class="inl">np.shares_memory</code>.</p>
+        <div class="qa">
+          <details>
+            <summary>Показать решение и разбор</summary>
+            <div class="a">
+              <div class="code" style="margin-top:0">
+                <div class="bar"><span class="file">ref_np_views_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+                <pre data-lang="python">a = np.arange(6)
+print(np.shares_memory(a, a[2:5]), np.shares_memory(a, a[[1, 3]]))
+print(np.shares_memory(a, a.T), np.shares_memory(a, a[a &gt; 0]))</pre>
+                <div class="out">True False
+True False</div>
+              </div>
+              <p><strong>Что важно.</strong> Четыре результата — четыре ответа:
+              срез и <code class="inl">T</code> делят память, fancy и маска — нет.</p>
+            </div>
+          </details>
+        </div>
+      </section>
+
+      <!-- ══════════════════ 09. Мостик ══════════════════ -->
+      <section>
+        <h2><span class="num">09</span>Мостик: pandas, Python и SQL</h2>
+
+        <h3>pandas: Copy-on-Write</h3>
+        <div class="code">
+          <div class="bar"><span class="file">мост в pandas</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">import pandas as pd
+
+df = pd.DataFrame({"a": [1, 2, 3]})
+series = df["a"]
+series.iloc[0] = 99       # CoW: исходная таблица не меняется
+df.loc[0, "a"] = 99       # явная запись — меняет df</pre>
+        </div>
+        <p>
+          pandas 3 доводит идею view/copy до таблиц: производные объекты не могут тайно менять
+          исходник. Это та же модель памяти, но с копией при первой записи. Подробнее — в
+          <a href="ch-12-series-dataframe.html">главе 12</a>.
+        </p>
+
+        <h3>Python list: срез — всегда копия</h3>
+        <div class="code">
+          <div class="bar"><span class="file">мост в Python</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">lst = [0, 1, 2, 3]
+part = lst[1:3]           # в Python срез всегда копирует
+part[0] = 99
+print(lst)                # [0, 1, 2, 3] — исходник цел</pre>
+        </div>
+        <p>
+          Привычка «срез — это копия» верна для <code class="inl">list</code> и
+          <code class="inl">str</code>, но не для ndarray. Именно на этой границе и рождаются
+          баги переноса кода.
+        </p>
+
+        <h3>SQL: прямого аналога нет</h3>
+        <div class="code">
+          <div class="bar"><span class="file">мост в SQL</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">-- VIEW — окно для чтения, а не второй буфер данных
+CREATE VIEW active_users AS
+SELECT * FROM users WHERE deleted_at IS NULL;</pre>
+        </div>
+        <p>
+          SQL-представление тоже не хранит данные, но и писать «через окно» в базовую таблицу оно
+          не даёт. Ближайшая аналогия — read-only view, а не полноценный view с записью.
+        </p>
+
+        <div class="bridges">
+          <a class="bridge" href="ch-11-views-copies.html"><span class="to">Глава 11</span><span>View и copy: стекло и ксерокс</span><span class="what">→ модель памяти и CoW</span></a>
+          <a class="bridge" href="ch-12-series-dataframe.html"><span class="to">Глава 12</span><span>Series и DataFrame</span><span class="what">→ Copy-on-Write на таблицах</span></a>
+          <a class="bridge" href="ch-03-list-tuple.html"><span class="to">Глава 03</span><span>list и tuple</span><span class="what">→ срез списка — копия</span></a>
+          <a class="bridge" href="appendix-numpy.html"><span class="to">Справочник</span><span>Вся карта NumPy</span><span class="what">→ пять страниц справочника</span></a>
+        </div>
+      </section>
+
+      <div class="pager">
+        <a class="prev" href="ref-np-broadcasting.html"><span class="dir">← Назад</span><span class="ttl">04 · broadcasting</span></a>
+        <a class="next" href="appendix-numpy.html"><span class="dir">Дальше →</span><span class="ttl">Справочник NumPy</span></a>
+      </div>
+
+    </div>
+  </main>
+</div>
+<script src="assets/toc.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>

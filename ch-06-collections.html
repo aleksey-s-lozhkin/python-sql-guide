@@ -1,0 +1,613 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>06 · Counter, defaultdict, deque: три специнструмента — Ассоциативный гайд</title>
+<meta name="description" content="Counter, defaultdict и deque: частоты, группировки и очередь с быстрыми концами — с лабораторией и разбором ошибок.">
+<link rel="stylesheet" href="assets/style.css">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#fbf8f2" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#14131a" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="assets/icons/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="assets/icons/icon-180.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Гайд Py/SQL">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+</head>
+<body data-slug="ch-06-collections">
+<div class="app">
+  <aside class="sidebar" id="sidebar"></aside>
+  <main>
+    <div class="wrap">
+
+      <header class="chapter-head">
+        <div class="eyebrow">
+          <span class="part">Часть I · Фундамент Python</span>
+          <span class="dot"></span>
+          <span>Неделя 1 · день 5</span>
+          <span class="dot"></span>
+          <span>готово</span>
+        </div>
+        <h1>Counter, defaultdict, deque: три специнструмента
+          <span class="sub">Готовые операции там, где обычно пишут пять строк руками</span>
+        </h1>
+        <p class="lead">
+          Это не новые структуры данных, а три надстройки над <code class="inl">dict</code> и <code class="inl">list</code>:
+          счётчик частот, блокнот с автоматическими группами и очередь, у которой оба конца быстрые.
+          Их знание на собеседовании сразу отделяет «читал учебник» от «писал код».
+        </p>
+        <div class="meta">
+          <span class="chip">⏱ <b>40 минут</b></span>
+          <span class="chip">🎯 уровень <b>2 — применить</b></span>
+          <span class="chip">🐍 Python <b>3.12</b></span>
+          <span class="chip">📚 <b>collections</b></span>
+        </div>
+      </header>
+
+      <details class="glossary">
+        <summary>Словарь главы — если забыли термины</summary>
+        <dl>
+          <dt>Counter</dt><dd>Словарь частот: ключ — элемент, значение — сколько раз встретился.</dd>
+          <dt>most_common(n)</dt><dd>Возвращает n самых частых элементов в порядке убывания.</dd>
+          <dt>defaultdict</dt><dd>Словарь с фабрикой значений: отсутствующий ключ создаётся сам.</dd>
+          <dt>__missing__</dt><dd>Метод, который вызывается при чтении отсутствующего ключа.</dd>
+          <dt>deque</dt><dd>Двусторонняя очередь: добавление и удаление с обоих концов за O(1).</dd>
+          <dt>maxlen</dt><dd>Ограничение длины deque: старые элементы вытесняются сами.</dd>
+        </dl>
+      </details>
+
+
+      <section>
+        <h2><span class="num">01</span>Зачем это backend-разработчику</h2>
+        <p>
+          Эти три класса закрывают три самые частые операции над данными. Без них код работает, но получается
+          длиннее и медленнее — а на ревью начинаются вопросы «почему не Counter?».
+        </p>
+        <ul>
+          <li><strong>Counter</strong> — топ-N значений, частотный анализ, «самый частый город/товар/ошибка». Одна строка вместо словаря с <code class="inl">get</code>.</li>
+          <li><strong>defaultdict</strong> — группировка записей по ключу: заказы по пользователям, события по дням, товары по категориям.</li>
+          <li><strong>deque</strong> — очередь задач, буфер последних N событий, rate limiting, обход в ширину. Всё, где важны оба конца.</li>
+          <li><strong>Собеседование:</strong> «чем Counter лучше dict?», «что делает defaultdict при чтении?», «почему deque, а не list?» — проверяют, знаете ли вы стандартную библиотеку.</li>
+        </ul>
+        <div class="note">
+          <span class="t">Связь с главой 02</span>
+          <p><code class="inl">Counter</code> и <code class="inl">defaultdict</code> — подклассы <code class="inl">dict</code>.
+          Гардероб с номерками никуда не делся: просто у него появились готовые сценарии использования.</p>
+        </div>
+      </section>
+
+      <section>
+        <h2><span class="num">02</span>Ассоциация-якорь: ящик с тремя инструментами</h2>
+
+        <div class="anchor">
+          <div class="glyph">🧰</div>
+          <div>
+            <div class="t">Держите эту картинку в голове</div>
+            <p class="kick"><strong>Counter — счётчик с табло.</strong> Каждый раз, когда видите слово, щёлкаете
+            по нему — и на табло прибавляется единица. Потом можно спросить: «что чаще всего?».</p>
+            <p><strong>defaultdict — блокнот с предзаполненными страницами.</strong> Открываете страницу «Anna» —
+            а там уже пустой список, в который можно писать. Не нужно проверять, заведена ли страница.</p>
+            <p><strong>deque — вагон с двумя дверями.</strong> Войти и выйти можно с любого конца, и обе двери
+            работают одинаково быстро. У списка задняя дверь быстрая, а передняя — нет.</p>
+          </div>
+        </div>
+
+        <figure class="art">
+          <div class="frame">
+            <img src="assets/illustrations/06-toolbox.webp" width="1168" height="876" loading="lazy" decoding="async" alt="Открытый ящик с тремя отделениями: счётчик, блокнот с карманами и шкафчик с двумя дверями.">
+          </div>
+          <figcaption><b>Рис. 1.</b> Ящик с тремя инструментами: счётчик, блокнот с группами и очередь с двумя дверями — Counter, defaultdict и deque.</figcaption>
+        </figure>
+
+      </section>
+
+      <section>
+        <h2><span class="num">03</span>Ассоциативный ряд: восемь звеньев</h2>
+        <ol class="chain">
+          <li><b>Counter</b><span>счётчик частот, подкласс dict</span></li>
+          <li><b>most_common</b><span>топ-N за один вызов</span></li>
+          <li><b>Арифметика</b><span>+ − &amp; | как над мультимножествами</span></li>
+          <li><b>defaultdict(int)</b><span>счётчик без проверок</span></li>
+          <li><b>defaultdict(list)</b><span>группировка в список</span></li>
+          <li><b>__missing__</b><span>чтение создаёт запись</span></li>
+          <li><b>deque</b><span>оба конца O(1)</span></li>
+          <li><b>maxlen</b><span>скользящее окно без ручной чистки</span></li>
+        </ol>
+      </section>
+
+      <section>
+        <h2><span class="num">04</span>Схема: три инструмента и их форма данных</h2>
+
+        <figure>
+          <div class="frame">
+            <img src="assets/maps/collections-tools.svg" alt="Три панели: Counter с барами частот, defaultdict с группами по ключу, deque с быстрыми концами.">
+          </div>
+          <figcaption>
+            <b>Рис. 2.</b> Counter хранит «ключ → число», defaultdict — «ключ → список», deque — упорядоченную
+            последовательность с быстрыми операциями с двух сторон.
+          </figcaption>
+        </figure>
+      </section>
+
+      <section>
+        <h2><span class="num">05</span>Как это устроено на самом деле</h2>
+
+        <h3>Counter — словарь, который разрешает отсутствующие ключи</h3>
+        <p>
+          <code class="inl">Counter</code> наследуется от <code class="inl">dict</code> и переопределяет
+          <code class="inl">__missing__</code>: обращение к отсутствующему ключу возвращает <code class="inl">0</code>,
+          но <em>не создаёт</em> его. Поэтому <code class="inl">counts["missing"]</code> не падает — и поэтому же
+          <code class="inl">"missing" in counts</code> остаётся <code class="inl">False</code>.
+        </p>
+        <p>
+          Считать он умеет не только частоты: <code class="inl">+</code>, <code class="inl">-</code>,
+          <code class="inl">&amp;</code>, <code class="inl">|</code> работают как операции над мультимножествами (multiset — элементы с кратностями: каждый со своим счётчиком).
+          При вычитании нулевые и отрицательные счётчики исчезают — это удобно, но иногда удивляет.
+        </p>
+
+        <h3>defaultdict — фабрика значений</h3>
+        <p>
+          При обращении <code class="inl">d[key]</code> вызывается фабрика (например, <code class="inl">list</code>),
+          результат вставляется в словарь и возвращается. Именно поэтому группировка пишется одной строкой.
+          Важно: <code class="inl">d.get(key)</code> фабрику <em>не</em> вызывает и ничего не вставляет.
+        </p>
+
+        <h3>deque — двусвязный список блоков</h3>
+        <p>
+          Внутри не непрерывный массив, а связная структура блоков. Поэтому <code class="inl">appendleft</code> и
+          <code class="inl">popleft</code> — O(1), тогда как у списка вставка в начало — O(n). Обратная сторона:
+          доступ по индексу в середине — O(n), срезы не поддерживаются, а память на элемент больше.
+        </p>
+
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Задача</th><th>Без инструмента</th><th>С инструментом</th></tr></thead>
+            <tbody>
+              <tr><td>Частоты</td><td>dict + get или setdefault</td><td class="mono">Counter(iterable)</td></tr>
+              <tr><td>Топ-N</td><td>sorted(...)[:n]</td><td class="mono">most_common(n)</td></tr>
+              <tr><td>Группировка</td><td>if key not in d: d[key] = []</td><td class="mono">defaultdict(list)</td></tr>
+              <tr><td>Очередь</td><td>list.insert(0) / pop(0)</td><td class="mono">deque.appendleft / popleft</td></tr>
+              <tr><td>Последние N событий</td><td>ручное удаление старых</td><td class="mono">deque(maxlen=N)</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section>
+        <h2><span class="num">06</span>Лаборатория: запустить и увидеть</h2>
+        <p>
+          Фрагменты файла <a title="Открыть файл с номерами строк" href="snippets/view.html?f=06_collections_lab.py"><code class="inl">06_collections_lab.py</code></a>.
+          Время зависит от машины, поведение — нет.
+        </p>
+
+        <h3>Шаг 1. Counter: частоты и топ-N</h3>
+        <div class="code">
+          <div class="bar"><span class="file">06_collections_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">from collections import Counter
+
+words = ["sql", "python", "sql", "pandas", "python", "sql"]
+counts = Counter(words)
+
+print(dict(counts))
+print(counts.most_common(2))
+print(counts["missing"], "missing" in counts)</pre>
+          <div class="out">{'sql': 3, 'python': 2, 'pandas': 1}
+[('sql', 3), ('python', 2)]
+0 False</div>
+        </div>
+        <p>
+          <code class="inl">0</code> и <code class="inl">False</code> в одной строке — главная тонкость:
+          отсутствующий ключ читается как ноль, но не появляется в словаре.
+        </p>
+
+        <h3>Шаг 2. Арифметика Counter</h3>
+        <div class="code">
+          <div class="bar"><span class="file">06_collections_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">a = Counter({"python": 3, "sql": 1})
+b = Counter({"python": 1, "sql": 2})
+
+print(dict(a + b))   # {'python': 4, 'sql': 3}
+print(dict(a - b))   # {'python': 2} — нули и минусы исчезают
+print(dict(a &amp; b))   # минимум
+print(dict(a | b))   # максимум</pre>
+          <div class="out">{'python': 4, 'sql': 3}
+{'python': 2}
+{'python': 1, 'sql': 1}
+{'python': 3, 'sql': 2}</div>
+        </div>
+
+        <h3>Шаг 3. defaultdict: группировка и ловушка чтения</h3>
+        <div class="code">
+          <div class="bar"><span class="file">06_collections_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">from collections import defaultdict
+
+orders = [
+    {"user": "Anna", "amount": 1200},
+    {"user": "Ivan", "amount": 800},
+    {"user": "Anna", "amount": 500},
+]
+by_user = defaultdict(list)
+for order in orders:
+    by_user[order["user"]].append(order["amount"])
+print(dict(by_user))
+
+d = defaultdict(int)
+print(d.get("x"), "x" in d)   # None False — get не создаёт
+print(d["x"], "x" in d)       # 0 True  — чтение создало ключ</pre>
+          <div class="out">{'Anna': [1200, 500], 'Ivan': [800]}
+None False
+0 True</div>
+        </div>
+
+        <h3>Шаг 4. deque: оба конца и скользящее окно</h3>
+        <div class="code">
+          <div class="bar"><span class="file">06_collections_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">from collections import deque
+
+q = deque([1, 2, 3])
+q.appendleft(0)
+q.append(4)
+print(q)          # deque([0, 1, 2, 3, 4])
+print(q.popleft(), q.pop())
+
+window = deque(maxlen=3)
+for value in range(6):
+    window.append(value)
+    print(value, "→", list(window))</pre>
+          <div class="out">deque([0, 1, 2, 3, 4])
+0 4
+0 → [0]
+1 → [0, 1]
+2 → [0, 1, 2]
+3 → [1, 2, 3]
+4 → [2, 3, 4]
+5 → [3, 4, 5]</div>
+        </div>
+
+        <h3>Шаг 5. Почему deque, а не list</h3>
+        <div class="code">
+          <div class="bar"><span class="file">06_collections_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">import time
+from collections import deque
+
+n = 100_000
+lst, dq = [], deque()
+
+t0 = time.perf_counter()
+for i in range(n):
+    lst.insert(0, i)      # сдвиг всего массива, O(n)
+t1 = time.perf_counter()
+
+for i in range(n):
+    dq.appendleft(i)      # O(1)
+t2 = time.perf_counter()
+
+print(f"list.insert(0):   {(t1 - t0) * 1000:6.1f} ms")
+print(f"deque.appendleft: {(t2 - t1) * 1000:6.1f} ms")</pre>
+          <div class="out">list.insert(0):    655.0 ms
+deque.appendleft:    2.2 ms</div>
+        </div>
+        <p>
+          Разница в 300 раз — та же причина, что в главе 03: у списка элементы лежат подряд, и вставка в начало
+          двигает весь массив. У deque левый край — полноценная дверь.
+        </p>
+
+        <h3>Шаг 6. Counter быстрее ручного словаря</h3>
+        <div class="code">
+          <div class="bar"><span class="file">06_collections_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">import random
+import time
+from collections import Counter
+
+data = [random.randint(0, 20_000) for _ in range(300_000)]
+
+t0 = time.perf_counter()
+manual = {}
+for x in data:
+    manual[x] = manual.get(x, 0) + 1
+t1 = time.perf_counter()
+
+fast = Counter(data)
+t2 = time.perf_counter()
+
+print(f"dict.get: {(t1 - t0) * 1000:.1f} ms")
+print(f"Counter : {(t2 - t1) * 1000:.1f} ms")
+print("результаты совпали:", manual == dict(fast))</pre>
+          <div class="out">dict.get:   11.7 ms
+Counter :    5.0 ms
+результаты совпали: True</div>
+        </div>
+        <p>
+          Counter реализован на C и делает то же самое за половину времени. На 300 000 элементов экономия — миллисекунды; на больших
+          объёмах она становится заметной.
+        </p>
+      </section>
+
+      <section>
+        <h2><span class="num">07</span>Мост: где эти инструменты живут в pandas и SQL</h2>
+
+        <h3>pandas: value_counts и groupby</h3>
+        <div class="code">
+          <div class="bar"><span class="file">мост в pandas</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">import pandas as pd
+
+df = pd.DataFrame({"user": ["Anna", "Ivan", "Anna"], "amount": [1200, 800, 500]})
+
+df["user"].value_counts()        # Counter: ключ → частота
+df.groupby("user")["amount"].sum()   # defaultdict: ключ → группа
+df.groupby("user").size()        # количество по группам</pre>
+        </div>
+        <p>
+          <code class="inl">value_counts</code> возвращает Series с индексом-ключом и значениями-частотами,
+          отсортированную по убыванию — ровно <code class="inl">most_common()</code>, но таблично.
+        </p>
+
+        <h3>SQL: GROUP BY и LIMIT</h3>
+        <div class="code">
+          <div class="bar"><span class="file">мост в SQL</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">-- Counter: частоты
+SELECT city, COUNT(*) AS cnt
+FROM users GROUP BY city ORDER BY cnt DESC LIMIT 3;
+
+-- defaultdict(list): группы
+SELECT user_id, array_agg(amount) FROM orders GROUP BY user_id;
+
+-- deque: последние N событий (без разбивки по пользователям)
+SELECT * FROM events ORDER BY created_at DESC LIMIT 10;</pre>
+        </div>
+        <p>
+          <code class="inl">GROUP BY</code> — тот же аккумулятор по ключу, только внутри базы.
+          А скользящее окно на стороне приложения часто пишут через <code class="inl">deque(maxlen=N)</code>.
+        </p>
+
+        <h3>Реальный код: rate limiting на deque</h3>
+        <div class="code">
+          <div class="bar"><span class="file">мост в backend</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">from collections import deque
+from time import monotonic
+
+class RateLimiter:
+    def __init__(self, limit=5, window=60):
+        self.limit, self.window = limit, window
+        self.hits = deque()
+
+    def allow(self) -> bool:
+        now = monotonic()
+        while self.hits and now - self.hits[0] > self.window:
+            self.hits.popleft()
+        if len(self.hits) >= self.limit:
+            return False
+        self.hits.append(now)
+        return True</pre>
+        </div>
+        <p>
+          Это не учебный пример: так действительно делают ограничители запросов в небольших сервисах.
+          Ветка <code class="inl">while ... popleft()</code> и есть «дверь» deque.
+        </p>
+      </section>
+
+      <section>
+        <h2><span class="num">08</span>Шесть ошибок, на которых спотыкаются</h2>
+
+        <div class="errors">
+          <div class="err">
+            <div class="h">defaultdict создаёт ключи при чтении</div>
+            <p><code class="inl">if d[key]:</code> или отладочный <code class="inl">print(d[key])</code> добавляет ключ в словарь. После этого <code class="inl">key in d</code> истинно, а <code class="inl">len(d)</code> вырос.</p>
+            <div class="fix">Для «только посмотреть» — <code class="inl">d.get(key)</code>; для накопления — осознанно <code class="inl">d[key]</code>.</div>
+          </div>
+
+          <div class="err">
+            <div class="h">Counter - Counter теряет нули</div>
+            <p>Вычитание оставляет только положительные счётчики: пары с нулём и минусом исчезают. Код, ожидающий все ключи, ломается.</p>
+            <div class="fix">Нужны все ключи — обычный dict и явная арифметика.</div>
+          </div>
+
+          <div class="err">
+            <div class="h">deque нельзя срезать</div>
+            <p><code class="inl">dq[1:3]</code> → TypeError: deque не поддерживает срезы, только индексацию за O(n).</p>
+            <div class="fix">Нужны срезы — <code class="inl">list(dq)[1:3]</code> (копия) или <code class="inl">itertools.islice(dq, 1, 3)</code>.</div>
+          </div>
+
+          <div class="err">
+            <div class="h">maxlen молча выбрасывает данные</div>
+            <p><code class="inl">deque(iterable, maxlen=3)</code> без предупреждения оставит только последние три элемента. Данные теряются; это допустимо, только если окно — часть замысла.</p>
+            <div class="fix">Проверять, что длина не больше maxlen, когда это важно; для истории — список.</div>
+          </div>
+
+          <div class="err">
+            <div class="h">Counter вместо dict там, где нужны нули</div>
+            <p>Counter не хранит нули: после вычитания ключ исчезает. Поэтому <code class="inl">"" in counts</code> — проверка наличия ключа, а не «счётчик больше нуля».</p>
+            <div class="fix">Проверять значение: <code class="inl">counts.get(key, 0) &gt; 0</code>.</div>
+          </div>
+
+          <div class="err">
+            <div class="h">Фабрика возвращает один и тот же объект</div>
+            <p><code class="inl">defaultdict(lambda: [])</code> — нормально, а <code class="inl">defaultdict(lambda: shared)</code> подставит один список во все ключи.</p>
+            <div class="fix">Фабрика должна создавать новый объект на каждый вызов: <code class="inl">list</code>, <code class="inl">int</code>, <code class="inl">set</code>.</div>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h2><span class="num">09</span>Вопросы с собеседования</h2>
+        <div class="qa">
+          <details>
+            <summary>Чем Counter отличается от обычного dict?</summary>
+            <div class="a">
+              <p>Counter — подкласс dict, который считает частоты: отсутствующий ключ читается как 0 без KeyError, есть <code class="inl">most_common()</code>, <code class="inl">total()</code> и арифметика над мультимножествами. Внутри — та же хеш-таблица.</p>
+              <div class="verdict">Резюме: dict + счётная обвязка.</div>
+            </div>
+          </details>
+          <details>
+            <summary>Что делает defaultdict при обращении к отсутствующему ключу?</summary>
+            <div class="a">
+              <p>Вызывает фабрику, вставляет результат в словарь и возвращает его. Поэтому чтение меняет словарь. <code class="inl">get()</code> так не делает.</p>
+              <div class="verdict">Резюме: чтение = вставка значения по умолчанию.</div>
+            </div>
+          </details>
+          <details>
+            <summary>Чем deque отличается от list?</summary>
+            <div class="a">
+              <p>deque оптимизирован для операций с двух концов: <code class="inl">appendleft</code>/<code class="inl">popleft</code> — O(1), у списка вставка в начало — O(n). Зато у списка быстрый доступ по индексу и срезы, а у deque индексация — O(n).</p>
+              <div class="verdict">Резюме: очередь против массива.</div>
+            </div>
+          </details>
+          <details>
+            <summary>Зачем deque(maxlen=N)?</summary>
+            <div class="a">
+              <p>Автоматическое скользящее окно: при добавлении сверх N элемент с противоположного конца удаляется. Удобно для последних N событий, буферов логов, rate limiting.</p>
+              <div class="verdict">Резюме: окно фиксированного размера без ручной чистки.</div>
+            </div>
+          </details>
+          <details>
+            <summary>Как посчитать частоты без Counter?</summary>
+            <div class="a">
+              <p><code class="inl">d[x] = d.get(x, 0) + 1</code> или <code class="inl">defaultdict(int)</code>. Counter короче и быстрее — реализован на C.</p>
+              <div class="verdict">Резюме: тот же алгоритм, меньше кода и времени.</div>
+            </div>
+          </details>
+          <details>
+            <summary>Когда defaultdict хуже обычного dict?</summary>
+            <div class="a">
+              <p>Когда отсутствие ключа — значимая информация. defaultdict скрывает это, создавая ключ при чтении, и баг «пустые группы появились сами» становится незаметным.</p>
+              <div class="verdict">Резюме: удобство в обмен на неявные вставки.</div>
+            </div>
+          </details>
+          <details>
+            <summary>Почему Counter на 300 000 элементов быстрее ручного словаря?</summary>
+            <div class="a">
+              <p>Потому что цикл подсчёта написан на C внутри стандартной библиотеки, а не на уровне интерпретатора Python. Логика та же.</p>
+              <div class="verdict">Резюме: алгоритм одинаковый, константа разная.</div>
+            </div>
+          </details>
+          <details>
+            <summary>Где в pandas аналог Counter и defaultdict?</summary>
+            <div class="a">
+              <p><code class="inl">Series.value_counts()</code> — Counter, <code class="inl">groupby(...).agg(...)</code> — defaultdict с агрегацией. В SQL — <code class="inl">GROUP BY</code> + <code class="inl">COUNT</code>/<code class="inl">SUM</code> + <code class="inl">ORDER BY ... LIMIT</code>.</p>
+              <div class="verdict">Резюме: одна модель — три инструмента.</div>
+            </div>
+          </details>
+        </div>
+      </section>
+
+      <section>
+        <h2><span class="num">10</span>Три задачи: сначала своя попытка</h2>
+
+        <h3><span style="color:var(--muted);font-family:var(--mono);font-size:.8rem">01</span> Топ-3 слова</h3>
+        <p>Найдите три самых частых слова в тексте. Регистр не важен.</p>
+        <div class="qa">
+          <details>
+            <summary>Показать решение и разбор</summary>
+            <div class="a">
+              <div class="code" style="margin-top:0">
+                <div class="bar"><span class="file">решение</span><span class="lang">python</span><button class="copy">копировать</button></div>
+                <pre data-lang="python">from collections import Counter
+
+text = "sql python sql pandas python sql"
+counts = Counter(text.lower().split())
+print(counts.most_common(3))</pre>
+                <div class="out">[('sql', 3), ('python', 2), ('pandas', 1)]</div>
+              </div>
+              <p><strong>Что важно.</strong> <code class="inl">lower().split()</code> нормализует текст, <code class="inl">most_common(3)</code>
+              сортирует один раз. <code class="inl">sorted(counts.items(), key=lambda kv: kv[1], reverse=True)[:3]</code>
+              даёт то же, но вручную и медленнее.</p>
+            </div>
+          </details>
+        </div>
+
+        <h3><span style="color:var(--muted);font-family:var(--mono);font-size:.8rem">02</span> Заказы по пользователям</h3>
+        <p>Сгруппируйте суммы заказов по пользователю, не используя pandas.</p>
+        <div class="code">
+          <div class="bar"><span class="file">условие</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">orders = [
+    {"user": "Anna", "amount": 1200},
+    {"user": "Ivan", "amount": 800},
+    {"user": "Anna", "amount": 500},
+]</pre>
+        </div>
+        <div class="qa">
+          <details>
+            <summary>Показать решение и разбор</summary>
+            <div class="a">
+              <div class="code" style="margin-top:0">
+                <div class="bar"><span class="file">решение</span><span class="lang">python</span><button class="copy">копировать</button></div>
+                <pre data-lang="python">from collections import defaultdict
+
+totals = defaultdict(int)
+for order in orders:
+    totals[order["user"]] += order["amount"]
+
+print(dict(totals))            # {'Anna': 1700, 'Ivan': 800}
+</pre>
+              </div>
+              <p><strong>Что важно.</strong> Для сумм — <code class="inl">defaultdict(int)</code>, для количеств — <code class="inl">Counter</code>.
+              Если нужен топ по сумме, дальше <code class="inl">sorted(totals.items(), key=lambda kv: kv[1], reverse=True)</code>.</p>
+            </div>
+          </details>
+        </div>
+
+        <h3><span style="color:var(--muted);font-family:var(--mono);font-size:.8rem">03</span> Последние N событий</h3>
+        <p>
+          Храните последние 5 событий пользователя и верните их в порядке поступления. Новые события вытесняют старые.
+        </p>
+        <div class="qa">
+          <details>
+            <summary>Показать решение и разбор</summary>
+            <div class="a">
+              <div class="code" style="margin-top:0">
+                <div class="bar"><span class="file">решение</span><span class="lang">python</span><button class="copy">копировать</button></div>
+                <pre data-lang="python">from collections import deque
+
+last = deque(maxlen=5)
+for event in ["login", "view", "search", "click", "pay", "logout"]:
+    last.append(event)
+
+print(list(last))   # ['view', 'search', 'click', 'pay', 'logout']</pre>
+                <div class="out">['view', 'search', 'click', 'pay', 'logout']</div>
+              </div>
+              <p><strong>Что важно.</strong> <code class="inl">maxlen</code> сам удаляет старейший элемент —
+              не нужны ни <code class="inl">pop(0)</code>, ни проверка длины. Это и есть «дверь» deque.</p>
+            </div>
+          </details>
+        </div>
+      </section>
+
+      <section>
+        <h2><span class="num">11</span>Чек-лист освоения</h2>
+        <div class="check">
+          <label><input type="checkbox"><span class="box"></span><span class="txt">Считать частоты через Counter и объяснить, почему отсутствующий ключ даёт 0</span></label>
+          <label><input type="checkbox"><span class="box"></span><span class="txt">Сгруппировать записи через defaultdict(list) без проверок</span></label>
+          <label><input type="checkbox"><span class="box"></span><span class="txt">Сказать, чем чтение в defaultdict отличается от get</span></label>
+          <label><input type="checkbox"><span class="box"></span><span class="txt">Показать, почему deque быстрее list на вставке в начало</span></label>
+          <label><input type="checkbox"><span class="box"></span><span class="txt">Перевести Counter и defaultdict в value_counts и groupby</span></label>
+        </div>
+      </section>
+
+      <section>
+        <h2><span class="num">12</span>Куда ведут мостики</h2>
+        <div class="bridges">
+          <a class="bridge" href="ref-counter.html"><span class="to">Справочник</span><span>Counter: most_common, elements, арифметика</span><span class="what">→ полная таблица методов</span></a>
+          <a class="bridge" href="ref-defaultdict.html"><span class="to">Справочник</span><span>defaultdict: фабрика, группировка, вложенность</span><span class="what">→ полная таблица методов</span></a>
+          <a class="bridge" href="ref-deque.html"><span class="to">Справочник</span><span>deque: оба конца, maxlen, rotate</span><span class="what">→ полная таблица методов</span></a>
+          <a class="bridge" href="ch-01-python-collections.html"><span class="to">Глава 01</span><span>Карта коллекций</span><span class="what">→ когда какой инструмент выбирать</span></a>
+          <a class="bridge" href="ch-02-dict.html"><span class="to">Глава 02</span><span>dict: шкаф с номерками</span><span class="what">→ база, на которой всё держится</span></a>
+          <a class="bridge" href="ch-03-list-tuple.html"><span class="to">Глава 03</span><span>list и tuple</span><span class="what">→ почему list.insert(0) медленный</span></a>
+          <a class="bridge" href="ch-15-groupby.html"><span class="to">Глава 15</span><span>groupby в pandas</span><span class="what">→ defaultdict, но векторно</span></a>
+          <a class="bridge" href="ch-21-group-by-having.html"><span class="to">Глава 21</span><span>GROUP BY и HAVING</span><span class="what">→ тот же аккумулятор в базе</span></a>
+        </div>
+      </section>
+
+      <div class="pager">
+        <a class="prev" href="ch-05-comprehensions.html"><span class="dir">← Назад</span><span class="ttl">05 · comprehensions и генераторы</span></a>
+        <a class="next" href="checkpoint-1.html"><span class="dir">Проверка →</span><span class="ttl">Проверочная работа по части I</span></a>
+      </div>
+
+    </div>
+  </main>
+</div>
+<script src="assets/toc.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>

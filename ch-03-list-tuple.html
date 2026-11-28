@@ -1,0 +1,683 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>03 · list и tuple: поезд и опечатанный контейнер — Ассоциативный гайд</title>
+<meta name="description" content="Чем list отличается от tuple: динамический массив против фиксированного, копия против второго имени, хеширование и типичные ловушки Python.">
+<link rel="stylesheet" href="assets/style.css">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#fbf8f2" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#14131a" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="assets/icons/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="assets/icons/icon-180.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Гайд Py/SQL">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+</head>
+<body data-slug="ch-03-list-tuple">
+<div class="app">
+  <aside class="sidebar" id="sidebar"></aside>
+  <main>
+    <div class="wrap">
+
+      <header class="chapter-head">
+        <div class="eyebrow">
+          <span class="part">Часть I · Фундамент Python</span>
+          <span class="dot"></span>
+          <span>Неделя 1 · день 2</span>
+          <span class="dot"></span>
+          <span>готово</span>
+        </div>
+        <h1>list и tuple: поезд и опечатанный контейнер
+          <span class="sub">Почему из двух похожих коллекций одна меняется, а другая может быть ключом словаря</span>
+        </h1>
+        <p class="lead">
+          Список — это поезд: вагоны можно прицеплять, отцеплять и переставлять. Tuple — опечатанный контейнер:
+          состав зафиксирован при отправке. Из этой разницы вырастает всё остальное — изменяемость, хешируемость,
+          копирование, память и скорость.
+        </p>
+        <div class="meta">
+          <span class="chip">⏱ <b>40 минут</b></span>
+          <span class="chip">🎯 уровень <b>2 — применить</b></span>
+          <span class="chip">🐍 Python <b>3.12</b></span>
+          <span class="chip">📚 <b>Tutorial 5.1–5.3</b></span>
+        </div>
+      </header>
+
+      <details class="glossary">
+        <summary>Словарь главы — если забыли термины</summary>
+        <dl>
+          <dt>индекс</dt><dd>Номер элемента с нуля: <code>rows[0]</code>. Доступ по индексу — O(1).</dd>
+          <dt>срез</dt><dd>Часть последовательности: <code>rows[1:3]</code>. У list создаёт новый список.</dd>
+          <dt>алиасинг</dt><dd>Два имени одного объекта. Правка через одно видна через другое.</dd>
+          <dt>неглубокая копия</dt><dd>Копируется верхний уровень, вложенные объекты остаются общими.</dd>
+          <dt>неизменяемость</dt><dd>Объект нельзя поменять после создания: так устроен tuple.</dd>
+          <dt>hashable</dt><dd>Объект с хешем и сравнением — может быть ключом. Tuple hashable, если все элементы тоже.</dd>
+        </dl>
+      </details>
+
+
+      <!-- ══════════════════ 1. Зачем ══════════════════ -->
+      <section>
+        <h2><span class="num">01</span>Зачем это backend-разработчику</h2>
+        <p>
+          Список и кортеж — две самые частые структуры после словаря. И самая частая пара вопросов на собеседовании,
+          где ответ «в list квадратные скобки, в tuple круглые» считается провалом.
+        </p>
+        <ul>
+          <li><strong>Ответ базы данных</strong> — список строк; <strong>тело JSON-массива</strong> — список объектов. Без списка не обходится ни один endpoint.</li>
+          <li><strong>tuple — это неизменяемая запись</strong>: строка из БД, координата, возврат нескольких значений, составной ключ словаря. Всё, что нельзя менять после создания.</li>
+          <li><strong>Ошибки копирования</strong> — самая дорогая категория багов в Python: изменил «копию», а поменялся исходный список. Здесь же корень багов с аргументами по умолчанию.</li>
+          <li><strong>Собеседование</strong>: «чем list отличается от tuple», «почему tuple ключ, а list нет», «что такое амортизированная сложность» — проверяют модель памяти, а не синтаксис.</li>
+        </ul>
+        <div class="note">
+          <span class="t">Связь с главой 02</span>
+          <p>Гардероб из прошлой главы принимает только те пальто, которые нельзя перешить. Tuple — это как раз
+          запаянный пакет: его можно опечатать номерком и повесить на вешалку. Список — нет.</p>
+        </div>
+      </section>
+
+      <!-- ══════════════════ 2. Якорь ══════════════════ -->
+      <section>
+        <h2><span class="num">02</span>Ассоциация-якорь: поезд и опечатанный контейнер</h2>
+
+        <div class="anchor">
+          <div class="glyph">🚃</div>
+          <div>
+            <div class="t">Держите эту картинку в голове</div>
+            <p class="kick"><strong>list — это поезд.</strong> Вагоны стоят в порядке, у каждого есть номер — индекс.
+            Прицепить вагон в конец легко: остальные номера не меняются. А вот вставить вагон в середину —
+            придётся переставить весь состав.</p>
+            <p><strong>tuple — это опечатанный контейнер.</strong> Груз загрузили один раз и запечатали. Внутрь
+            больше не заглянуть и груз не заменить — зато контейнер можно проштамповать номерком (посчитать хеш)
+            и отдать сразу нескольким получателям, не делая копий.</p>
+          </div>
+        </div>
+
+        <figure class="art">
+          <div class="frame">
+            <img src="assets/illustrations/03-list-tuple.webp" width="1168" height="876" loading="lazy" decoding="async" alt="Поезд с вагонами на путях рядом с опечатанным металлическим контейнером.">
+          </div>
+          <figcaption><b>Рис. 1.</b> Поезд с вагонами — list: вагоны пронумерованы и их можно менять; опечатанный контейнер — tuple: состав зафиксирован, изменить нельзя.</figcaption>
+        </figure>
+
+
+        <p>
+          Метафора объясняет четыре вещи сразу. Во-первых, <strong>индекс</strong> — это номер вагона, поэтому
+          доступ по нему мгновенный. Во-вторых, <strong>вставка в начало</strong> двигает весь состав — отсюда O(n).
+          В-третьих, <strong>срез</strong> собирает новый состав из тех же вагонов, а не показывает окно в старый.
+          В-четвёртых, <strong>tuple нельзя изменить</strong> — поэтому его можно «опечатать» хешем и сделать ключом словаря.
+        </p>
+      </section>
+
+      <!-- ══════════════════ 3. Ряд ══════════════════ -->
+      <section>
+        <h2><span class="num">03</span>Ассоциативный ряд: восемь звеньев</h2>
+        <p>Прочитайте один раз и воспроизведите по памяти. Это скелет ответа на собеседовании.</p>
+
+        <ol class="chain">
+          <li><b>Индекс</b><span>номер вагона, с нуля</span></li>
+          <li><b>append</b><span>прицепить в конец — O(1) амортизированно</span></li>
+          <li><b>insert(0)</b><span>сдвиг всего состава — O(n)</span></li>
+          <li><b>Срез</b><span>новый состав из тех же вагонов (копия)</span></li>
+          <li><b>Алиасинг</b><span>два имени одного состава</span></li>
+          <li><b>Неизменяемость</b><span>tuple: нельзя заменить вагон</span></li>
+          <li><b>hash</b><span>печать на контейнере — если груз hashable</span></li>
+          <li><b>Распаковка</b><span>разгрузить состав по именам</span></li>
+        </ol>
+
+        <p class="small">
+          Обратите внимание: «срез» и «алиасинг» стоят рядом специально. Это две противоположные операции:
+          <code class="inl">c = a[:]</code> создаёт новую коллекцию, <code class="inl">b = a</code> — второе имя старой.
+          Большинство багов с «изменил копию, а поменялся исходник» живёт ровно между ними.
+        </p>
+      </section>
+
+      <!-- ══════════════════ 4. Схема ══════════════════ -->
+      <section>
+        <h2><span class="num">04</span>Схема: append против insert</h2>
+
+        <figure>
+          <div class="frame">
+            <img src="assets/maps/list-as-train.svg" alt="Поезд из вагонов: append добавляет вагон в конец и не меняет индексы; insert(0) сдвигает весь состав.">
+          </div>
+          <figcaption>
+            <b>Рис. 2.</b> append прицепляет вагон в конец — старые индексы не меняются. insert(0, 5) требует
+            сдвинуть каждый вагон, поэтому стоит O(n). На 100 000 элементов это в 330 раз медленнее append.
+          </figcaption>
+        </figure>
+
+        <p>
+          Именно поэтому в Python нет «вставки в начало за O(1)»: список хранит элементы подряд, и место для
+          нового первого элемента нужно освободить, сдвинув всё остальное. Если нужна очередь, где важны оба конца,
+          берут <code class="inl">deque</code> — о ней в главе 06.
+        </p>
+      </section>
+
+      <!-- ══════════════════ 5. Механика ══════════════════ -->
+      <section>
+        <h2><span class="num">05</span>Как это устроено на самом деле</h2>
+        <p>
+          Под капотом обе коллекции — непрерывный массив ссылок на объекты. Разница в том, разрешено ли менять его
+          длину и содержимое после создания.
+        </p>
+
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Свойство</th><th>list</th><th>tuple</th></tr></thead>
+            <tbody>
+              <tr><td>Длина</td><td>меняется: append, pop, insert</td><td>фиксирована при создании</td></tr>
+              <tr><td>Содержимое</td><td>можно заменить элемент</td><td>нельзя: <code class="inl">t[0] = …</code> → TypeError</td></tr>
+              <tr><td>Память</td><td>88 байт для трёх чисел (запас на рост)</td><td>64 байта: только данные</td></tr>
+              <tr><td>Создание</td><td>медленнее: нужно выделить запас</td><td>быстрее: размер известен</td></tr>
+              <tr><td>Хеш</td><td>нет → нельзя в ключи</td><td>есть, если все элементы hashable</td></tr>
+              <tr><td>Типичная роль</td><td>изменяемая последовательность</td><td>запись, ключ, возврат нескольких значений</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="small">
+          Цифры памяти — <code class="inl">sys.getsizeof([10, 20, 30])</code> и <code class="inl">sys.getsizeof((10, 20, 30))</code>
+          на CPython 3.12; они зависят от версии и платформы.
+        </p>
+
+        <h3>Почему append «амортизированно» O(1)</h3>
+        <p>
+          Список не выделяет память под каждый новый элемент. Он держит массив с запасом и, когда запас
+          заканчивается, выделяет новый блок примерно в 1.125 раза больше и копирует туда элементы. Копирование
+          дорогое, но случается всё реже — в среднем на одну вставку приходится константная работа. Это и есть
+          «амортизированно»: отдельная операция может быть дорогой, средняя по серии — дешёвая.
+        </p>
+
+        <h3>Копия неглубокая — и это важно</h3>
+        <p>
+          <code class="inl">a[:]</code>, <code class="inl">list(a)</code> и <code class="inl">a.copy()</code> копируют
+          только внешний массив ссылок. Вложенные списки остаются общими: изменили вложенный — изменился и «исходник».
+          Полная независимость — это <code class="inl">copy.deepcopy</code>, и она заметно дороже.
+        </p>
+      </section>
+
+      <!-- ══════════════════ 6. Лаборатория ══════════════════ -->
+      <section>
+        <h2><span class="num">06</span>Лаборатория: запустить и увидеть</h2>
+        <p>
+          Фрагменты файла <a title="Открыть файл с номерами строк" href="snippets/view.html?f=03_list_tuple_lab.py"><code class="inl">03_list_tuple_lab.py</code></a>.
+          Вывод настоящий, получен на Python 3.12; время и id у вас будут другими.
+        </p>
+
+        <h3>Шаг 1. Второе имя или копия</h3>
+        <div class="code">
+          <div class="bar"><span class="file">03_list_tuple_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">a = [1, 2, 3]
+b = a          # второе имя того же объекта
+c = a[:]       # новый список с теми же значениями
+b.append(4)
+
+print("a =", a, "| c =", c)
+print("a is b →", a is b, " a is c →", a is c)</pre>
+          <div class="out">a = [1, 2, 3, 4] | c = [1, 2, 3]
+a is b → True  a is c → False</div>
+        </div>
+        <p>
+          <code class="inl">b</code> и <code class="inl">a</code> — одно и то же: изменили через одно имя, видно
+          через другое. <code class="inl">c</code> — отдельный объект. Проверка <code class="inl">is</code> сравнивает
+          идентичность объектов, <code class="inl">==</code> — значения.
+        </p>
+
+        <h3>Шаг 2. Копия неглубокая: вложенные объекты общие</h3>
+        <div class="code">
+          <div class="bar"><span class="file">03_list_tuple_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">matrix = [[1, 2], [3, 4]]
+shallow = matrix[:]
+shallow[0].append(99)
+
+print("matrix =", matrix)
+print("matrix[0] is shallow[0] →", matrix[0] is shallow[0])</pre>
+          <div class="out">matrix = [[1, 2, 99], [3, 4]]
+matrix[0] is shallow[0] → True</div>
+        </div>
+        <p>
+          Срез скопировал список списков, но не сами вложенные списки. Это не ошибка Python, а определение
+          неглубокого копирования — и причина, по которой в pandas и NumPy так важно понимать, копия перед вами или окно.
+        </p>
+
+        <h3>Шаг 3. Три имени одного вагона</h3>
+        <div class="code">
+          <div class="bar"><span class="file">03_list_tuple_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">grid = [[0]] * 3          # три ссылки на ОДИН список
+grid[0].append(1)
+print(grid)
+
+fresh = [[0] for _ in range(3)]   # три независимых списка
+fresh[0].append(1)
+print(fresh)</pre>
+          <div class="out">[[0, 1], [0, 1], [0, 1]]
+[[0, 1], [0], [0]]</div>
+        </div>
+        <p>
+          Умножение списка повторяет <em>ссылки</em>, а не создаёт новые объекты. Для неизменяемых элементов
+          (<code class="inl">[0] * 3</code>) это безопасно, для изменяемых — классическая ловушка.
+        </p>
+
+        <h3>Шаг 4. Tuple: нельзя переставить груз, зато можно опечатать</h3>
+        <div class="code">
+          <div class="bar"><span class="file">03_list_tuple_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">point = (10, 20)
+point[0] = 99          # TypeError: tuple object does not support item assignment
+
+order = ("anna", "2024-05-01")
+print({order: 1200})    # tuple — ключ словаря
+
+{("anna", ["IT"]): 1200}  # TypeError: unhashable type: 'list'</pre>
+          <div class="out">TypeError: 'tuple' object does not support item assignment
+{('anna', '2024-05-01'): 1200}
+TypeError: unhashable type: 'list'</div>
+        </div>
+        <p>
+          Ключом может быть только hashable-объект. Tuple хешируется по элементам — значит, каждый элемент тоже
+          должен быть hashable. Отсюда же растёт идея составного ключа: <code class="inl">("anna", "2024-05-01")</code>
+          — один ключ из двух полей, без склеивания строк.
+        </p>
+
+        <h3>Шаг 5. append и insert(0): разница в порядке</h3>
+        <div class="code">
+          <div class="bar"><span class="file">03_list_tuple_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">import time
+
+n = 100_000
+
+t0 = time.perf_counter()
+tail = []
+for i in range(n):
+    tail.append(i)         # прицепить в конец
+t1 = time.perf_counter()
+
+head = []
+for i in range(n):
+    head.insert(0, i)      # вставить в начало: сдвиг всего состава
+t2 = time.perf_counter()
+
+print(f"append:    {(t1 - t0) * 1000:6.1f} ms")
+print(f"insert(0): {(t2 - t1) * 1000:6.1f} ms")</pre>
+          <div class="out">append:       1.8 ms
+insert(0):  673.8 ms</div>
+        </div>
+        <p>
+          Оба цикла делают одно и то же «по смыслу» — складывают числа в список. Разница в сотни раз возникает
+          только из-за места вставки. Если нужна очередь с быстрым добавлением в начало — <code class="inl">deque</code>.
+        </p>
+
+        <h3>Шаг 6. sort меняет на месте, sorted возвращает новый</h3>
+        <div class="code">
+          <div class="bar"><span class="file">03_list_tuple_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">nums = [3, 1, 2]
+result = nums.sort()      # сортирует nums, возвращает None
+print(result, nums)       # None [1, 2, 3]
+print(sorted(nums))       # [1, 2, 3] — новый список</pre>
+          <div class="out">None [1, 2, 3]
+[1, 2, 3]</div>
+        </div>
+        <p>
+          Сортировка стабильная: элементы с равным ключом сохраняют относительный порядок. В pandas это
+          <code class="inl">sort_values</code> с несколькими колонками. В SQL стабильность не гарантирована:
+          порядок равных строк не определён, поэтому второй ключ задают явно.
+        </p>
+
+        <h3>Шаг 7. += — это не всегда «прибавить»</h3>
+        <div class="code">
+          <div class="bar"><span class="file">03_list_tuple_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">def add_room_list(rooms, room):
+    rooms += [room]        # для list это мутация: меняет список вызывающего
+
+def add_room_tuple(rooms, room):
+    rooms += (room,)       # для tuple это новая привязка: вызывающий не видит
+
+my_list = ["kitchen"]
+add_room_list(my_list, "hall")
+print(my_list)             # ['kitchen', 'hall']
+
+my_tuple = ("kitchen",)
+add_room_tuple(my_tuple, "hall")
+print(my_tuple)            # ('kitchen',)</pre>
+          <div class="out">['kitchen', 'hall']
+('kitchen',)</div>
+        </div>
+        <p>
+          <code class="inl">+=</code> вызывает <code class="inl">__iadd__</code>: у списка он меняет объект на месте,
+          у кортежа — возвращает новый. Поэтому функция, которая «просто добавила элемент», может незаметно
+          изменить данные вызывающего.
+        </p>
+      </section>
+
+      <!-- ══════════════════ 7. Мост ══════════════════ -->
+      <section>
+        <h2><span class="num">07</span>Мост: где эта разница живёт в pandas, SQL и NumPy</h2>
+
+        <figure>
+          <div class="frame">
+            <img src="assets/maps/alias-vs-copy.svg" alt="Схема: b = a — второе имя, c = a[:] — копия, tuple можно делить без копии.">
+          </div>
+          <figcaption>
+            <b>Рис. 3.</b> Три отношения к данным: второе имя, копия и безопасный делёж. В pandas и NumPy вы будете
+            встречать все три — и ошибаться между ними так же легко.
+          </figcaption>
+        </figure>
+
+        <h3>pandas: позиция и порядок</h3>
+        <div class="code">
+          <div class="bar"><span class="file">мост в pandas</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">import pandas as pd
+
+df = pd.DataFrame({"user": ["Anna", "Ivan", "Petr"], "amount": [1200, 800, 2100]})
+df.iloc[0]                    # позиция — как индекс списка
+df.sort_values("amount")      # как sorted(), но с ключом-столбцом
+
+# tuple как составной ключ — это MultiIndex
+df.groupby(["user", "amount"]).size()</pre>
+        </div>
+        <p>
+          <code class="inl">sort_values</code> возвращает новую таблицу (если не указать <code class="inl">inplace=True</code>) —
+          как <code class="inl">sorted()</code>, а не как <code class="inl">list.sort()</code>. А кортеж из двух
+          столбцов в <code class="inl">groupby</code> — прямой родственник tuple-ключа из главы 02.
+        </p>
+
+        <h3>SQL: порядок и составной ключ</h3>
+        <div class="code">
+          <div class="bar"><span class="file">мост в SQL</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">ORDER BY amount DESC, user ASC   -- стабильный порядок: второй ключ решает ничьи
+
+PRIMARY KEY (order_id, product_id)   -- составной ключ = tuple из двух полей
+
+WHERE (city, age) &gt; ('Москва', 30)   -- сравнение кортежей целиком</pre>
+        </div>
+        <p>
+          В SQL строка таблицы тоже «неизменяемая запись» в том смысле, что её идентифицирует ключ, а не позиция.
+          Это ровно та же идея, что tuple: набор значений фиксированной структуры.
+        </p>
+
+        <h3>NumPy: срез — это окно, а не копия</h3>
+        <div class="code">
+          <div class="bar"><span class="file">мост в NumPy</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">import numpy as np
+
+lst = [1, 2, 3]
+lst_slice = lst[:]
+lst_slice[0] = 99          # lst не изменился: это копия
+
+arr = np.array([1, 2, 3])
+arr_slice = arr[:]
+arr_slice[0] = 99          # arr ИЗМЕНИЛСЯ: это view</pre>
+        </div>
+        <p>
+          Это главный контраст курса: в Python срез списка — копия, в NumPy — представление тех же данных.
+          Глава 11 разберёт это подробно; здесь достаточно запомнить, что привычка из списков в NumPy приводит к багам.
+        </p>
+      </section>
+
+      <!-- ══════════════════ 8. Ошибки ══════════════════ -->
+      <section>
+        <h2><span class="num">08</span>Шесть ошибок, на которых спотыкаются</h2>
+
+        <div class="errors">
+          <div class="err">
+            <div class="h">Изменяемый аргумент по умолчанию</div>
+            <p>Значение по умолчанию вычисляется один раз при определении функции. Если это список, он живёт между вызовами: <code class="inl">def append_bad(x, acc=[])</code> при вызовах по отдельности накопит <code class="inl">[1]</code>, потом <code class="inl">[1, 2]</code>; а в <code class="inl">print(append_bad(1), append_bad(2))</code> оба аргумента окажутся одним и тем же списком <code class="inl">[1, 2]</code>.</p>
+            <div class="fix">По умолчанию <code class="inl">None</code>, а внутри — <code class="inl">if acc is None: acc = []</code>.</div>
+          </div>
+
+          <div class="err">
+            <div class="h">[[0]] * 3</div>
+            <p>Умножение повторяет ссылку на один и тот же внутренний список. Правка любого элемента меняет все три.</p>
+            <div class="fix">Для изменяемых элементов: <code class="inl">[[0] for _ in range(3)]</code> или <code class="inl">copy.deepcopy</code>.</div>
+          </div>
+
+          <div class="err">
+            <div class="h">+= внутри функции</div>
+            <p><code class="inl">rooms += [room]</code> для списка меняет объект вызывающего. Функция выглядит как «вернуть новое», а ведёт себя как «изменить чужое».</p>
+            <div class="fix">Явно: либо <code class="inl">return rooms + [room]</code>, либо назвать функцию <code class="inl">add_room_inplace</code> и не удивлять читателя.</div>
+          </div>
+
+          <div class="err">
+            <div class="h">x = lst.sort()</div>
+            <p><code class="inl">sort()</code> возвращает <code class="inl">None</code>. После присваивания переменная теряет список.</p>
+            <div class="fix"><code class="inl">lst.sort()</code> без присваивания или <code class="inl">x = sorted(lst)</code>.</div>
+          </div>
+
+          <div class="err">
+            <div class="h">Ожидание view от среза списка</div>
+            <p>Правка среза не меняет исходный список — это копия. В NumPy всё наоборот: срез массива — окно. Привычка переносится и рождает баг.</p>
+            <div class="fix">Помнить правило: список — копия, массив — view; для копии массива нужен <code class="inl">.copy()</code>.</div>
+          </div>
+
+          <div class="err">
+            <div class="h">tuple «защищает» только ссылки</div>
+            <p><code class="inl">box = (1, [2, 3]); box[1].append(4)</code> работает: кортеж не даёт заменить ссылку, но вложенный список менять можно.</p>
+            <div class="fix">Для настоящей неизменяемости — кортеж из неизменяемых (строки, числа, <code class="inl">frozenset</code>) или <code class="inl">frozen=True</code> в dataclass.</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ══════════════════ 9. Вопросы ══════════════════ -->
+      <section>
+        <h2><span class="num">09</span>Вопросы с собеседования</h2>
+        <p>
+          Схема ответа та же: <strong>тезис → механика → ограничение</strong>. Собеседнику важно услышать,
+          что вы понимаете цену выбора, а не только синтаксис.
+        </p>
+
+        <div class="qa">
+          <details>
+            <summary>Чем list отличается от tuple?</summary>
+            <div class="a">
+              <p><strong>Тезис:</strong> list — изменяемая последовательность, tuple — неизменяемая.</p>
+              <p><strong>Механика:</strong> список хранит массив с запасом и умеет менять длину; кортеж выделяется ровно под свои элементы и после создания не меняется. Поэтому кортеж компактнее (64 байта против 88 для трёх чисел) и быстрее создаётся, а ещё он hashable — если все элементы hashable.</p>
+              <p><strong>Ограничение:</strong> неизменяемость неглубокая: список внутри кортежа менять можно. И «круглые скобки» — не критерий: <code class="inl">(1)</code> — это число, кортеж — это <code class="inl">(1,)</code>.</p>
+              <div class="verdict">Резюме: разница в изменяемости, а из неё следуют память, хеш и роль в программе.</div>
+            </div>
+          </details>
+
+          <details>
+            <summary>Почему tuple можно использовать как ключ dict, а list — нет?</summary>
+            <div class="a">
+              <p>Ключ должен быть hashable, то есть иметь стабильный хеш. У кортежа хеш вычисляется по элементам и не меняется, пока не меняются элементы. У списка хеша нет: его содержимое можно поменять после вставки, и «номерок» перестал бы соответствовать адресу.</p>
+              <p><strong>Ограничение:</strong> tuple с изменяемым элементом тоже нехешируем — <code class="inl">{("anna", ["IT"]): 1}</code> упадёт с TypeError.</p>
+              <div class="verdict">Резюме: hashable = неизменяемый по всему дереву.</div>
+            </div>
+          </details>
+
+          <details>
+            <summary>Что значит «амортизированно O(1)» для append?</summary>
+            <div class="a">
+              <p>Список хранит запас памяти. Пока он есть, добавление — одна запись в массив. Когда запас кончился, Python выделяет блок побольше и копирует элементы — это дорого, но случается редко, и в среднем на одну вставку приходится константная работа.</p>
+              <p><strong>Ограничение:</strong> отдельная вставка может быть медленной, а худший случай одного вызова — O(n).</p>
+              <div class="verdict">Резюме: средняя стоимость константна, отдельная — нет.</div>
+            </div>
+          </details>
+
+          <details>
+            <summary>Почему insert(0, x) стоит O(n)?</summary>
+            <div class="a">
+              <p>Элементы лежат подряд. Чтобы освободить место в начале, нужно сдвинуть каждый элемент вправо — это n операций. Вставка в конец или удаление с конца такого сдвига не требует.</p>
+              <div class="verdict">Резюме: цена зависит от места, а не от операции «вставить».</div>
+            </div>
+          </details>
+
+          <details>
+            <summary>Срез списка — копия или представление?</summary>
+            <div class="a">
+              <p>Копия (неглубокая): новый список, те же ссылки на элементы. Вложенные объекты остаются общими. В NumPy срез массива — view: изменение среза меняет исходный массив.</p>
+              <p><strong>Ограничение:</strong> для полной независимости нужен <code class="inl">copy.deepcopy</code> или <code class="inl">.copy()</code> у массива.</p>
+              <div class="verdict">Резюме: держите в голове конкретный тип, а не «нарезку вообще».</div>
+            </div>
+          </details>
+
+          <details>
+            <summary>Чем a += b отличается от a = a + b?</summary>
+            <div class="a">
+              <p>Для списка <code class="inl">+=</code> вызывает <code class="inl">__iadd__</code> и меняет объект на месте, а <code class="inl">a = a + b</code> создаёт новый список. Для кортежа разницы в результате нет: он неизменяем, поэтому <code class="inl">+=</code> всё равно создаёт новый объект и перепривязывает имя.</p>
+              <p><strong>Ограничение:</strong> внутри функции разница видна снаружи: мутация меняет список вызывающего, перепривязка — нет.</p>
+              <div class="verdict">Резюме: += — это «изменить или перепривязать», зависит от типа.</div>
+            </div>
+          </details>
+
+          <details>
+            <summary>Почему [[0]] * 3 — ловушка?</summary>
+            <div class="a">
+              <p>Умножение повторяет ссылки, а не объекты. Все три элемента указывают на один список, поэтому правка любого меняет все. Для неизменяемых элементов (<code class="inl">[0] * 3</code>) это безопасно.</p>
+              <p>Правильно: <code class="inl">[[0] for _ in range(3)]</code>.</p>
+              <div class="verdict">Резюме: повторение — это копирование ссылок.</div>
+            </div>
+          </details>
+
+          <details>
+            <summary>Когда tuple лучше list?</summary>
+            <div class="a">
+              <p>Когда структура фиксирована: возврат нескольких значений, координата, строка БД, ключ словаря, конфиг, который не должен меняться. Плюс память и скорость создания, если таких объектов много.</p>
+              <p><strong>Ограничение:</strong> если данные будут меняться — tuple заставит пересоздавать объект; тогда список или dataclass.</p>
+              <div class="verdict">Резюме: tuple — про фиксированную структуру, list — про изменяемое содержимое.</div>
+            </div>
+          </details>
+        </div>
+      </section>
+
+      <!-- ══════════════════ 10. Задачи ══════════════════ -->
+      <section>
+        <h2><span class="num">10</span>Три задачи: сначала своя попытка</h2>
+
+        <h3><span style="color:var(--muted);font-family:var(--mono);font-size:.8rem">01</span> Развернуть список</h3>
+        <p>
+          Разверните список <code class="inl">[1, 2, 3, 4, 5]</code> срезом и проверьте, что исходный список
+          остался прежним. Объясните, почему так.
+        </p>
+        <div class="qa">
+          <details>
+            <summary>Показать решение и разбор</summary>
+            <div class="a">
+              <div class="code" style="margin-top:0">
+                <div class="bar"><span class="file">решение</span><span class="lang">python</span><button class="copy">копировать</button></div>
+                <pre data-lang="python">nums = [1, 2, 3, 4, 5]
+reversed_nums = nums[::-1]
+
+print(reversed_nums)          # [5, 4, 3, 2, 1]
+print(nums)                   # [1, 2, 3, 4, 5]
+print(nums is reversed_nums)  # False</pre>
+                <div class="out">[5, 4, 3, 2, 1]
+[1, 2, 3, 4, 5]
+False</div>
+              </div>
+              <p><strong>Что здесь важно.</strong> Срез с шагом <code class="inl">-1</code> создаёт новый список с обратным
+              порядком. Альтернатива <code class="inl">nums.reverse()</code> перевернула бы исходный и вернула <code class="inl">None</code> —
+              та же ловушка, что с <code class="inl">sort()</code>.</p>
+            </div>
+          </details>
+        </div>
+
+        <h3><span style="color:var(--muted);font-family:var(--mono);font-size:.8rem">02</span> Транспонировать пары</h3>
+        <p>
+          Дан список пар. Получите два списка: первые элементы и вторые. Не используйте numpy и pandas.
+        </p>
+        <div class="code">
+          <div class="bar"><span class="file">условие</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">pairs = [(1, "a"), (2, "b"), (3, "c")]
+# нужно: ([1, 2, 3], ["a", "b", "c"])</pre>
+        </div>
+        <div class="qa">
+          <details>
+            <summary>Показать решение и разбор</summary>
+            <div class="a">
+              <div class="code" style="margin-top:0">
+                <div class="bar"><span class="file">решение</span><span class="lang">python</span><button class="copy">копировать</button></div>
+                <pre data-lang="python">numbers, letters = zip(*pairs)
+print(numbers)   # (1, 2, 3)
+print(letters)   # ('a', 'b', 'c')
+print(list(numbers), list(letters))</pre>
+                <div class="out">(1, 2, 3)
+('a', 'b', 'c')
+[1, 2, 3] ['a', 'b', 'c']</div>
+              </div>
+              <p><strong>Что здесь важно.</strong> <code class="inl">zip(*pairs)</code> распаковывает список кортежей в аргументы
+              и возвращает кортежи — поэтому результат сразу можно распаковать в две переменные. Это тот же
+              механизм, что <code class="inl">a, *rest = …</code>, только звёздочка стоит в вызове.</p>
+            </div>
+          </details>
+        </div>
+
+        <h3><span style="color:var(--muted);font-family:var(--mono);font-size:.8rem">03</span> Найти мутацию</h3>
+        <p>
+          Функция должна возвращать новый список тегов. Найдите, почему после её вызова меняется исходный список,
+          и исправьте.
+        </p>
+        <div class="code">
+          <div class="bar"><span class="file">с багом</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">def add_tags(tags, new_tag):
+    tags += [new_tag]
+    return tags
+
+original = ["python"]
+add_tags(original, "sql")
+print(original)   # ['python', 'sql'] — а не ожидалось</pre>
+        </div>
+        <div class="qa">
+          <details>
+            <summary>Показать решение и разбор</summary>
+            <div class="a">
+              <div class="code" style="margin-top:0">
+                <div class="bar"><span class="file">решение</span><span class="lang">python</span><button class="copy">копировать</button></div>
+                <pre data-lang="python">def add_tags(tags, new_tag):
+    return tags + [new_tag]      # новый список, исходный не тронут
+
+original = ["python"]
+updated = add_tags(original, "sql")
+print(original)   # ['python']
+print(updated)    # ['python', 'sql']</pre>
+                <div class="out">['python']
+['python', 'sql']</div>
+              </div>
+              <p><strong>Что здесь важно.</strong> <code class="inl">+=</code> для списка — мутация, а <code class="inl">+</code> —
+              создание нового списка. Если функция называется «add», это ещё не значит, что она меняет аргумент.
+              Явное имя <code class="inl">add_tags_inplace</code> снимает половину вопросов при ревью.</p>
+            </div>
+          </details>
+        </div>
+      </section>
+
+      <!-- ══════════════════ 11. Чек-лист ══════════════════ -->
+      <section>
+        <h2><span class="num">11</span>Чек-лист освоения</h2>
+        <p class="small">Отмечайте только то, что можете объяснить <em>без подсказок</em>. Прогресс сохраняется в браузере.</p>
+        <div class="check">
+          <label><input type="checkbox"><span class="box"></span><span class="txt">Объяснить разницу list и tuple через изменяемость, а не через скобки</span></label>
+          <label><input type="checkbox"><span class="box"></span><span class="txt">Показать, где рождается O(1) у append и O(n) у insert(0)</span></label>
+          <label><input type="checkbox"><span class="box"></span><span class="txt">Назвать три способа копирования и сказать, чем они различаются</span></label>
+          <label><input type="checkbox"><span class="box"></span><span class="txt">Объяснить, почему tuple с list внутри нельзя сделать ключом</span></label>
+          <label><input type="checkbox"><span class="box"></span><span class="txt">Найти мутацию аргумента в чужом коде за 30 секунд</span></label>
+        </div>
+      </section>
+
+      <!-- ══════════════════ 12. Дальше ══════════════════ -->
+      <section>
+        <h2><span class="num">12</span>Куда ведут мостики</h2>
+        <div class="bridges">
+          <a class="bridge" href="ref-list.html"><span class="to">Справочник</span><span>list: все методы, срезы и копии</span><span class="what">→ полная таблица с ценой</span></a>
+          <a class="bridge" href="ref-tuple.html"><span class="to">Справочник</span><span>tuple: hashable, распаковка и ключи</span><span class="what">→ полная таблица с ценой</span></a>
+          <a class="bridge" href="ch-02-dict.html"><span class="to">Глава 02</span><span>dict: шкаф с номерками</span><span class="what">→ почему ключ обязан быть неизменяемым</span></a>
+          <a class="bridge" href="ch-04-set.html"><span class="to">Глава 04</span><span>set: пропускной пункт без дублей</span><span class="what">→ та же хеш-таблица, но только ключи</span></a>
+          <a class="bridge" href="ch-05-comprehensions.html"><span class="to">Глава 05</span><span>Comprehensions и генераторы</span><span class="what">→ как собирать списки без append</span></a>
+          <a class="bridge" href="ch-11-views-copies.html"><span class="to">Глава 11</span><span>View и copy в NumPy</span><span class="what">→ срез, который не копирует</span></a>
+          <a class="bridge" href="ch-15-groupby.html"><span class="to">Глава 15</span><span>groupby: разложить — посчитать — собрать</span><span class="what">→ устойчивая сортировка и порядок групп</span></a>
+        </div>
+      </section>
+
+      <div class="pager">
+        <a class="prev" href="ch-02-dict.html"><span class="dir">← Назад</span><span class="ttl">02 · dict: шкаф с номерками</span></a>
+        <a class="next" href="ch-04-set.html"><span class="dir">Дальше →</span><span class="ttl">04 · set: пропускной пункт</span></a>
+      </div>
+
+    </div>
+  </main>
+</div>
+<script src="assets/toc.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>

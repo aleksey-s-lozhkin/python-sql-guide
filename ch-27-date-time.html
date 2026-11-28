@@ -1,0 +1,837 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>27 · Дата и время: момент, календарь и длительность — Ассоциативный гайд</title>
+<meta name="description" content="Спецглава 27: момент, календарная дата и длительность. UTC и зоны, naive/aware, epoch, DST, Python datetime, pandas Timestamp, PostgreSQL timestamp/timestamptz/interval.">
+<link rel="stylesheet" href="assets/style.css">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#fbf8f2" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#14131a" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="assets/icons/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="assets/icons/icon-180.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Гайд Py/SQL">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+</head>
+<body data-slug="ch-27-date-time">
+<div class="app">
+  <aside class="sidebar" id="sidebar"></aside>
+  <main>
+    <div class="wrap">
+
+      <header class="chapter-head">
+        <div class="eyebrow">
+          <span class="part">Дополнение · вне недель</span>
+          <span class="dot"></span>
+          <span>спецглава</span>
+          <span class="dot"></span>
+          <span>готово</span>
+        </div>
+        <h1>Дата и время: момент, календарь и длительность
+          <span class="sub">Три разные сущности, которые все называют «датой» — и почему их нельзя путать</span>
+        </h1>
+        <p class="lead">
+          «Дата» в коде — это минимум три разных объекта: точка на линии времени, ячейка календаря
+          и промежуток. Пока они смешаны, отчёты расходятся с реальностью, а тесты падают раз в сутки.
+          Эта глава разводит три сущности по местам — в Python, pandas и PostgreSQL.
+        </p>
+        <div class="meta">
+          <span class="chip">⏱ <b>40 минут</b></span>
+          <span class="chip">🎯 уровень <b>2–3</b></span>
+          <span class="chip">🐍 Python <b>3.12</b></span>
+          <span class="chip">🐘 PostgreSQL <b>14</b></span>
+        </div>
+      </header>
+
+      <details class="glossary">
+        <summary>Словарь главы — если забыли термины</summary>
+        <dl>
+          <dt>момент</dt><dd>Точка на линии времени; задаётся однозначно, если указана зона (обычно UTC).</dd>
+          <dt>календарная дата</dt><dd>Ячейка календаря: «15 марта 2024». Без зоны это не момент.</dd>
+          <dt>длительность</dt><dd>Сколько времени прошло: <code>timedelta</code>, <code>interval</code>.</dd>
+          <dt>naive / aware</dt><dd>Дата без зоны и дата со зоной; сравнивать их нельзя.</dd>
+          <dt>epoch</dt><dd>Секунды (или миллисекунды) с 1970-01-01T00:00:00Z.</dd>
+          <dt>timestamptz</dt><dd>Момент в PostgreSQL: хранится в UTC, показывается в зоне сессии.</dd>
+          <dt>DST</dt><dd>Переход на летнее время: день длиной 23 или 25 часов.</dd>
+          <dt>ISO 8601</dt><dd>Стандартная запись даты и времени: <code>2024-03-15T12:30:00+00:00</code>.</dd>
+        </dl>
+      </details>
+
+      <section>
+        <h2><span class="num">01</span>Зачем это backend-разработчику</h2>
+        <ul>
+          <li><strong>created_at есть почти в каждой таблице</strong> — и почти каждый отчёт начинается со слов «по месяцам», «по дням», «за последние 7 дней».</li>
+          <li><strong>TTL и интервалы:</strong> сколько живёт токен, сколько дней прошло с заказа, какое окно у отчёта. Это длительности, а не даты.</li>
+          <li><strong>Таймзоны:</strong> сервер живёт в UTC, пользователь — в Москве, API отдаёт offset. Ошибка на час видна не всегда, ошибка на сутки — в каждом отчёте.</li>
+          <li><strong>API-даты:</strong> ISO 8601 в JSON, epoch в мобильных клиентах, парсинг и валидация на границе системы.</li>
+          <li><strong>Собеседование:</strong> «чем naive отличается от aware», «что хранит timestamptz», «почему BETWEEN по датам врёт», «что не так с DST».</li>
+        </ul>
+        <div class="note">
+          <span class="t">Лаборатории главы</span>
+          <p>Python-часть — <a href="snippets/view.html?f=27_datetime_lab.py"><code class="inl">27_datetime_lab.py</code></a>
+          (Python 3.12, pandas 3.0.1), SQL-часть — <a href="snippets/view.html?f=27_datetime_lab.sql"><code class="inl">27_datetime_lab.sql</code></a>
+          на базе <code class="inl">learning_shop</code>. Все моменты фиксированные; в SQL сессия переведена в UTC.</p>
+        </div>
+      </section>
+
+      <section>
+        <h2><span class="num">02</span>Ассоциация-якорь: линия времени, отрывной календарь, песочные часы</h2>
+        <p>
+          Слово «дата» в разговоре означает три разные вещи. Разведите их один раз — и половина
+          загадочных багов станет очевидной.
+        </p>
+
+        <div class="anchor">
+          <div class="glyph">⏳</div>
+          <div>
+            <div class="t">Держите эту картинку в голове</div>
+            <p class="kick"><strong>Момент — линия времени.</strong> Точка на прямой: «в этот миг».
+            Её можно подписать по-разному (UTC, Москва, Токио), но сама точка не двигается.
+            Именно момент хранят в <code class="inl">created_at</code> и <code class="inl">timestamptz</code>.</p>
+            <p><strong>Календарная дата — отрывной календарь.</strong> Ячейка «15 марта»: локальная сетка
+            дней и месяцев. «Начало месяца» и «понедельник» — свойства календаря, а не момента.
+            Одна и та же дата в разных зонах — разные интервалы времени.</p>
+            <p><strong>Длительность — песочные часы.</strong> Сколько времени прошло или осталось:
+            <code class="inl">timedelta</code>, <code class="inl">interval</code>. Песочные часы
+            не привязаны к точке — но «один месяц» зависит от того, от какой даты считать.</p>
+          </div>
+        </div>
+
+        <figure class="art">
+          <div class="frame">
+            <img src="assets/illustrations/27-time.webp" width="1168" height="876" loading="lazy" decoding="async" alt="Лента времени на стене, отрывной календарь и песочные часы на столе.">
+          </div>
+          <figcaption><b>Рис. 1.</b> Линия времени, отрывной календарь и песочные часы: момент, дата, длительность.</figcaption>
+        </figure>
+
+
+        <p>
+          Три сущности объясняют почти все ошибки: момент сравнили с календарной датой, длительность
+          перепутали с датой, а локальную подпись приняли за сам момент. Дальше — как каждая из них
+          живёт в Python, pandas и SQL.
+        </p>
+      </section>
+
+      <section>
+        <h2><span class="num">03</span>Ассоциативный ряд: восемь звеньев</h2>
+        <ol class="chain">
+          <li><b>UTC</b><span>общая точка отсчёта</span></li>
+          <li><b>смещение</b><span>+03:00, +09:00</span></li>
+          <li><b>aware / naive</b><span>есть ли зона у даты</span></li>
+          <li><b>типы</b><span>date, time, datetime, timestamp, timestamptz, interval</span></li>
+          <li><b>ISO / parse</b><span>строка ↔ тип</span></li>
+          <li><b>trunc</b><span>начало дня, месяца, года</span></li>
+          <li><b>арифметика</b><span>дата ± длительность</span></li>
+          <li><b>хранение и индекс</b><span>как искать по датам быстро</span></li>
+        </ol>
+      </section>
+
+      <section>
+        <h2><span class="num">04</span>Схема: три сущности и преобразования</h2>
+        <p>
+          Почти вся работа с датами — это переходы между строками таблицы. Запомните направления:
+          где именно теряется информация, а где появляется зависимость от зоны.
+        </p>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Переход</th><th>Python / pandas</th><th>SQL</th><th>Что происходит</th></tr></thead>
+            <tbody>
+              <tr><td>момент → локальная подпись</td><td class="mono">astimezone, tz_convert</td><td class="mono">AT TIME ZONE</td><td>тот же миг, другая запись</td></tr>
+              <tr><td>локальная подпись → момент</td><td class="mono">replace(tzinfo=), tz_localize</td><td class="mono">timestamp AT TIME ZONE</td><td>naive надо объявить зоной</td></tr>
+              <tr><td>момент → календарный день</td><td class="mono">.date(), .dt.date</td><td class="mono">::date</td><td>время отбрасывается</td></tr>
+              <tr><td>день → начало периода</td><td class="mono">replace(day=1), floor</td><td class="mono">date_trunc('month', …)</td><td>«полночь» зависит от зоны</td></tr>
+              <tr><td>дата ± длительность</td><td class="mono">+ timedelta</td><td class="mono">+ INTERVAL</td><td>месяцы календарные, часы абсолютные</td></tr>
+              <tr><td>дата − дата</td><td class="mono">timedelta</td><td class="mono">interval</td><td>получается длительность</td></tr>
+              <tr><td>момент → epoch</td><td class="mono">.timestamp()</td><td class="mono">EXTRACT(EPOCH FROM …)</td><td>секунды UTC: следите за единицами</td></tr>
+              <tr><td>epoch → момент</td><td class="mono">fromtimestamp</td><td class="mono">to_timestamp</td><td>нужна единица s / ms / µs</td></tr>
+              <tr><td>строка ISO → тип</td><td class="mono">fromisoformat, to_datetime</td><td class="mono">CAST / ::timestamptz</td><td>формат и зона обязательны</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="small">
+          Конец периода удобно задавать не «последней секундой», а началом следующего:
+          <code class="inl">[2024-03-01, 2024-04-01)</code> — полуоткрытый интервал без дыр и пересечений.
+        </p>
+      </section>
+
+      <section>
+        <h2><span class="num">05</span>Как это устроено на самом деле</h2>
+
+        <h3>Epoch: общая точка отсчёта</h3>
+        <p>
+          Момент можно закодировать одним числом — секундами с <code class="inl">1970-01-01T00:00:00Z</code>.
+          Это и есть <b>epoch</b>. Секунды — 10 цифр, миллисекунды — 13, микросекунды — 16; перепутать
+          единицы значит промахнуться на 1000 или на 1 000 000 раз. В Python <code class="inl">.timestamp()</code>
+          возвращает секунды (float), в SQL <code class="inl">EXTRACT(EPOCH …)</code> — секунды с долями,
+          в JSON мобильные клиенты часто присылают миллисекунды.
+        </p>
+        <p>
+          Точность — отдельная ловушка. Python <code class="inl">datetime</code> хранит микросекунды,
+          pandas 3.0 по умолчанию использует <code class="inl">datetime64[us]</code>, PostgreSQL
+          <code class="inl">timestamp</code> — микросекунды. Float-сравнение моментов после конвертаций
+          может «не сойтись» на последнем знаке: сравнивайте целые единицы, а не <code class="inl">float</code>.
+        </p>
+
+        <h3>DST: день не всегда 24 часа</h3>
+        <p>
+          При переходе на летнее время локальные часы прыгают: в Европе последнее воскресенье марта
+          с 02:00 на 03:00. В этот момент локальное время <code class="inl">02:30</code> не существует,
+          а осенью <code class="inl">02:30</code> встречается дважды. <code class="inl">zoneinfo</code>
+          хранит правила, а флаг <code class="inl">fold</code> различает две копии неоднозначного времени.
+          Вывод простой: <b>храните моменты в UTC</b>, а в локальную зону переводите на границе —
+          при показе и при разборе ввода.
+        </p>
+
+        <h3>Python: datetime, date, timedelta, zoneinfo</h3>
+        <p>
+          <code class="inl">date</code> — только календарный день, <code class="inl">time</code> — только
+          время суток, <code class="inl">datetime</code> — дата и время, <code class="inl">timedelta</code>
+          — длительность. Если у <code class="inl">datetime</code> нет <code class="inl">tzinfo</code>,
+          это <b>naive</b>: «12:30 где-то». Сравнение naive и aware бросает
+          <code class="inl">TypeError</code>; арифметика с <code class="inl">timedelta</code> у aware-дат
+          идёт по настенным часам, поэтому через DST лучше прибавлять к UTC-моменту.
+        </p>
+
+        <h3>pandas: Timestamp, datetime64 и .dt</h3>
+        <p>
+          <code class="inl">pd.Timestamp</code> — наследник <code class="inl">datetime</code> с удобным
+          разбором и зонами, а колонка дат имеет тип <code class="inl">datetime64[us]</code>.
+          Аксессор <code class="inl">.dt</code> даёт части даты, <code class="inl">.dt.to_period("M")</code> —
+          месяц как группу. Два разных метода: <code class="inl">tz_localize</code> объявляет зону
+          у naive-времени, <code class="inl">tz_convert</code> переводит aware-момент в другую зону.
+        </p>
+
+        <h3>PostgreSQL: timestamp, timestamptz, interval</h3>
+        <p>
+          <code class="inl">timestamp</code> — «настенные часы» без зоны: <code class="inl">2024-03-15 12:30</code>
+          само по себе ничего не говорит о моменте. <code class="inl">timestamptz</code> — момент:
+          при вставке он приводится к UTC, а при выводе показывается в зоне сессии
+          (<code class="inl">SET TIME ZONE</code>). <b>Зона в timestamptz не хранится</b> — хранится
+          момент. <code class="inl">interval</code> — длительность из месяцев, дней и микросекунд:
+          <code class="inl">INTERVAL '1 month'</code> календарный и зависит от даты.
+        </p>
+
+        <h3>ISO 8601 и индекс</h3>
+        <p>
+          Стандартная запись — <code class="inl">2024-03-15T12:30:00+00:00</code>; допустимы
+          <code class="inl">Z</code> вместо <code class="inl">+00:00</code> и дата без времени.
+          API должен отдавать дату со смещением, а не «сырую» строку без зоны.
+          И про поиск: <code class="inl">WHERE created_at::date = '2024-01-05'</code> применяет функцию
+          к колонке — обычный индекс по <code class="inl">created_at</code> перестаёт работать.
+          Диапазон <code class="inl">created_at &gt;= … AND created_at &lt; …</code> индекс сохраняет
+          (подробно — <a href="ch-24-indexes-explain.html">глава 24</a>).
+        </p>
+      </section>
+
+      <section>
+        <h2><span class="num">06</span>Лаборатория: запустить и увидеть</h2>
+        <p>
+          Python-фрагменты — из файла
+          <a href="snippets/view.html?f=27_datetime_lab.py"><code class="inl">27_datetime_lab.py</code></a>
+          (Python 3.12, pandas 3.0.1), SQL-фрагменты — из
+          <a href="snippets/view.html?f=27_datetime_lab.sql"><code class="inl">27_datetime_lab.sql</code></a>
+          на <code class="inl">learning_shop</code>. Вывод настоящий; в SQL сессия переведена в UTC.
+        </p>
+
+        <h3>Шаг 1. Три сущности</h3>
+        <div class="code">
+          <div class="bar"><span class="file">27_datetime_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">moment = datetime(2024, 3, 15, 12, 30, tzinfo=timezone.utc)
+day = date(2024, 3, 15)
+duration = timedelta(hours=2, minutes=15)
+print(moment)
+print(day)
+print(duration)</pre>
+          <div class="out">2024-03-15 12:30:00+00:00
+2024-03-15
+2:15:00</div>
+        </div>
+        <p>
+          Момент печатается со смещением <code class="inl">+00:00</code>, дата — без времени,
+          длительность — как <code class="inl">2:15:00</code>. Три разных типа, три разных смысла.
+        </p>
+
+        <h3>Шаг 2. aware, naive и зоны</h3>
+        <div class="code">
+          <div class="bar"><span class="file">27_datetime_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">naive = datetime(2024, 3, 15, 12, 30)
+aware = naive.replace(tzinfo=timezone.utc)
+moscow = aware.astimezone(ZoneInfo("Europe/Moscow"))
+tokyo = aware.astimezone(ZoneInfo("Asia/Tokyo"))
+print(naive)
+print(aware)
+print(moscow)
+print(tokyo)
+print(naive.tzinfo)
+print(aware.tzinfo)</pre>
+          <div class="out">2024-03-15 12:30:00
+2024-03-15 12:30:00+00:00
+2024-03-15 15:30:00+03:00
+2024-03-15 21:30:00+09:00
+None
+UTC</div>
+        </div>
+        <p>
+          Один и тот же момент — три записи. <code class="inl">naive</code> без зоны: у него
+          <code class="inl">tzinfo is None</code>, и он не говорит, где это происходит.
+          <code class="inl">aware</code> со зоной — уже момент.
+        </p>
+
+        <h3>Шаг 3. Epoch: секунды и миллисекунды</h3>
+        <div class="code">
+          <div class="bar"><span class="file">27_datetime_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">epoch = aware.timestamp()
+print(int(epoch))
+print(datetime.fromtimestamp(epoch, tz=timezone.utc))
+print(datetime.fromtimestamp(epoch, tz=timezone.utc).isoformat())
+
+ms = 1710505800123
+print(datetime.fromtimestamp(ms / 1000, tz=timezone.utc))
+print(pd.Timestamp(ms, unit="ms", tz="UTC"))</pre>
+          <div class="out">1710505800
+2024-03-15 12:30:00+00:00
+2024-03-15T12:30:00+00:00
+2024-03-15 12:30:00.123000+00:00
+2024-03-15 12:30:00.123000+00:00</div>
+        </div>
+        <p>
+          Одно и то же число в секундах и в миллисекундах отличается в 1000 раз. В лаборатории
+          миллисекунды делятся на 1000 — иначе получится дата из другого тысячелетия.
+          <code class="inl">unit="ms"</code> в pandas говорит единицу явно.
+        </p>
+
+        <h3>Шаг 4. Арифметика и ISO 8601</h3>
+        <div class="code">
+          <div class="bar"><span class="file">27_datetime_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">start = datetime(2024, 3, 15, 10, 0, tzinfo=timezone.utc)
+end = datetime(2024, 3, 15, 12, 30, tzinfo=timezone.utc)
+delta = end - start
+print(delta)
+print(delta.total_seconds())
+print(start + timedelta(days=1))
+print((start + timedelta(days=30)).date())
+
+text = "2024-03-15T12:30:00+00:00"
+parsed = datetime.fromisoformat(text)
+print(parsed)
+print(parsed.isoformat())
+print(parsed.strftime("%d.%m.%Y %H:%M"))</pre>
+          <div class="out">2:30:00
+9000.0
+2024-03-16 10:00:00+00:00
+2024-04-14
+2024-03-15 12:30:00+00:00
+2024-03-15T12:30:00+00:00
+15.03.2024 12:30</div>
+        </div>
+        <p>
+          Разность двух моментов — длительность: <code class="inl">2:30:00</code> и 9000 секунд.
+          Прибавление дней сохраняет время суток, а ISO-строка разбирается
+          <code class="inl">fromisoformat</code> и печатается обратно тем же стандартом.
+          Запомните: <code class="inl">timedelta(days=30)</code> — это ровно 30 суток, а не «месяц»
+          (месяц календарный и зависит от даты).
+        </p>
+
+        <h3>Шаг 5. DST: несуществующее и неоднозначное время</h3>
+        <div class="code">
+          <div class="bar"><span class="file">27_datetime_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">berlin = ZoneInfo("Europe/Berlin")
+
+# 1. Арифметика по «настенным часам»: +1 час даёт несуществующее время
+before = datetime(2024, 3, 31, 1, 30, tzinfo=berlin)
+wall_plus = before + timedelta(hours=1)
+print(before)
+print(wall_plus)
+print(wall_plus.utcoffset())
+
+# 2. Правильно: прибавляем час к моменту (UTC) и возвращаемся в зону
+after = (before.astimezone(timezone.utc) + timedelta(hours=1)).astimezone(berlin)
+print(after)
+print(after.utcoffset())
+
+# 3. Осенний переход: 02:30 встречается дважды
+fold0 = datetime(2024, 10, 27, 2, 30, tzinfo=berlin, fold=0)
+fold1 = datetime(2024, 10, 27, 2, 30, tzinfo=berlin, fold=1)
+print(fold0.utcoffset(), fold1.utcoffset())</pre>
+          <div class="out">2024-03-31 01:30:00+01:00
+2024-03-31 02:30:00+01:00
+1:00:00
+2024-03-31 03:30:00+02:00
+2:00:00
+2:00:00 1:00:00</div>
+        </div>
+        <p>
+          Прибавление часа к настенным часам дало <code class="inl">02:30+01:00</code> — времени,
+          которого в этот день не было. Правильный путь — прибавить час к UTC-моменту: получаем
+          <code class="inl">03:30+02:00</code>. Осенью <code class="inl">fold</code> различает
+          две версии одного и того же настенного времени.
+        </p>
+
+        <h3>Шаг 6. pandas: to_datetime, .dt и to_period</h3>
+        <div class="code">
+          <div class="bar"><span class="file">27_datetime_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">orders["created_at"] = pd.to_datetime(orders["created_at"])
+print(orders["created_at"].dtype)
+print(orders["created_at"].dt.month.tolist())
+print(orders["created_at"].dt.dayofweek.tolist())
+
+monthly = orders.groupby(orders["created_at"].dt.to_period("M"))["amount"].sum()
+print(monthly)</pre>
+          <div class="out">datetime64[us]
+[1, 2, 2, 3, 3]
+[4, 1, 3, 4, 2]
+created_at
+2024-01    1200
+2024-02    2300
+2024-03     800
+Freq: M, Name: amount, dtype: int64</div>
+        </div>
+        <p>
+          Тип — <code class="inl">datetime64[us]</code>, после него работают <code class="inl">.dt</code>
+          и разности. <code class="inl">to_period("M")</code> превращает дату в месяц-группу:
+          группировка по месяцам становится одной строкой.
+        </p>
+
+        <h3>Шаг 7. SQL: типы даты и времени</h3>
+        <div class="code">
+          <div class="bar"><span class="file">27_datetime_lab.sql</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">SELECT DATE '2024-03-15' AS d,
+       TIMESTAMP '2024-03-15 12:30:00' AS ts,
+       INTERVAL '2 hours 15 minutes' AS dur;</pre>
+          <div class="out">     d      |         ts          |   dur
+------------+---------------------+----------
+ 2024-03-15 | 2024-03-15 12:30:00 | 02:15:00
+(1 row)</div>
+        </div>
+        <p>
+          <code class="inl">date</code>, <code class="inl">timestamp</code> и
+          <code class="inl">interval</code> — три разных типа. В одной таблице они не взаимозаменяемы.
+        </p>
+
+        <h3>Шаг 8. SQL: timestamp против timestamptz</h3>
+        <div class="code">
+          <div class="bar"><span class="file">27_datetime_lab.sql</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">SHOW TIME ZONE;
+
+SELECT TIMESTAMP '2024-03-15 12:30:00' AS wall_clock,
+       TIMESTAMPTZ '2024-03-15 12:30:00+03' AS same_instant;</pre>
+          <div class="out"> TimeZone
+----------
+ UTC
+(1 row)
+
+     wall_clock      |      same_instant
+---------------------+------------------------
+ 2024-03-15 12:30:00 | 2024-03-15 09:30:00+00
+(1 row)</div>
+        </div>
+        <p>
+          Сессия в UTC. <code class="inl">timestamp</code> сохранил настенные 12:30 без зоны,
+          а <code class="inl">timestamptz</code> с offset <code class="inl">+03</code> показал
+          <code class="inl">09:30+00</code> — тот же момент, приведённый к зоне сессии.
+        </p>
+
+        <h3>Шаг 9. SQL: epoch</h3>
+        <div class="code">
+          <div class="bar"><span class="file">27_datetime_lab.sql</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">SELECT EXTRACT(EPOCH FROM TIMESTAMP '2024-03-15 12:30:00') AS epoch_ts,
+       EXTRACT(EPOCH FROM TIMESTAMPTZ '2024-03-15 12:30:00+00') AS epoch_tstz;</pre>
+          <div class="out">     epoch_ts      |    epoch_tstz
+-------------------+-------------------
+ 1710505800.000000 | 1710505800.000000
+(1 row)</div>
+        </div>
+        <p>
+          В сессии UTC обе записи дают одно число — секунды с epoch. Если сессию оставить
+          в московской зоне, <code class="inl">timestamp</code> посчитается иначе: для него epoch
+          зависит от <code class="inl">TimeZone</code> сессии.
+        </p>
+
+        <h3>Шаг 10. SQL: BETWEEN по датам и полуоткрытый интервал</h3>
+        <div class="code">
+          <div class="bar"><span class="file">27_datetime_lab.sql</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">SELECT COUNT(*) AS between_rows
+FROM orders
+WHERE created_at BETWEEN TIMESTAMP '2024-01-05' AND TIMESTAMP '2024-01-05';
+
+SELECT COUNT(*) AS range_rows
+FROM orders
+WHERE created_at &gt;= TIMESTAMP '2024-01-05'
+  AND created_at &lt;  TIMESTAMP '2024-01-06';</pre>
+          <div class="out"> between_rows
+--------------
+            0
+(1 row)
+
+ range_rows
+------------
+          1
+(1 row)</div>
+        </div>
+        <p>
+          <code class="inl">BETWEEN '2024-01-05' AND '2024-01-05'</code> — это ровно полночь,
+          поэтому заказ в 10:00 не попал. Полуоткрытый интервал <code class="inl">[05-е, 06-е)</code>
+          находит его и не захватывает следующий день.
+        </p>
+      </section>
+
+      <section>
+        <h2><span class="num">07</span>Мост: одна задача — три записи</h2>
+        <p>
+          Задача одна: месячная выручка по <code class="inl">created_at</code> на данных
+          <code class="inl">learning_shop</code> (10 заказов; список задан в лаборатории,
+          выручка = <code class="inl">quantity × price</code>). Сначала — чистый Python,
+          потом pandas, потом SQL. Числа должны совпасть: 78150, 25750, 98500.
+        </p>
+
+        <h3>Python: словарь и strftime</h3>
+        <div class="code">
+          <div class="bar"><span class="file">27_datetime_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">by_month = {}
+for user, day_text, revenue in rows:
+    month = datetime.fromisoformat(day_text).strftime("%Y-%m")
+    by_month[month] = by_month.get(month, 0) + revenue
+
+for month in sorted(by_month):
+    print(month, by_month[month])</pre>
+          <div class="out">2024-01 78150
+2024-02 25750
+2024-03 98500</div>
+        </div>
+        <p>
+          Здесь момент не нужен вовсе: дата пришла календарной строкой, и ключ группы —
+          тоже строка «год-месяц». Ошибка новичка — группировать по номеру месяца: январь 2024
+          и январь 2025 склеятся.
+        </p>
+
+        <h3>pandas: .dt.to_period("M")</h3>
+        <div class="code">
+          <div class="bar"><span class="file">27_datetime_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">df = pd.DataFrame(rows, columns=["user", "created_at", "revenue"])
+df["created_at"] = pd.to_datetime(df["created_at"])
+monthly = df.groupby(df["created_at"].dt.to_period("M"))["revenue"].sum()
+print(monthly)
+print(monthly.sum())</pre>
+          <div class="out">created_at
+2024-01    78150
+2024-02    25750
+2024-03    98500
+Freq: M, Name: revenue, dtype: int64
+202400</div>
+        </div>
+        <p>
+          Тот же результат, но группировка идёт по периоду, а не по строке. Сумма всех месяцев
+          равна 202400 — это контрольная сумма: если после переноса она не сходится, где-то
+          потерялся заказ.
+        </p>
+
+        <h3>SQL: DATE_TRUNC и GROUP BY</h3>
+        <div class="code">
+          <div class="bar"><span class="file">27_datetime_lab.sql</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">SELECT DATE_TRUNC('month', o.created_at)::date AS month,
+       SUM(o.quantity * p.price) AS revenue
+FROM orders o
+JOIN products p ON p.id = o.product_id
+GROUP BY 1
+ORDER BY 1;</pre>
+          <div class="out">   month    | revenue
+------------+----------
+ 2024-01-01 | 78150.00
+ 2024-02-01 | 25750.00
+ 2024-03-01 | 98500.00
+(3 rows)</div>
+        </div>
+        <p>
+          <code class="inl">date_trunc</code> отрезает всё мельче месяца, <code class="inl">::date</code>
+          убирает время из вывода, <code class="inl">GROUP BY 1</code> группирует по первому выражению.
+          Выручка считается внутри базы — наружу уходят три строки, а не десять заказов.
+        </p>
+
+        <h3>Плюс TZ-конверсия: один момент — три записи</h3>
+        <p>
+          Тот же момент <code class="inl">2024-03-15T12:30:00Z</code> в трёх инструментах.
+          Python и pandas печатают смещение, PostgreSQL возвращает настенные часы в запрошенной зоне.
+        </p>
+        <div class="code">
+          <div class="bar"><span class="file">27_datetime_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">moment = datetime(2024, 3, 15, 12, 30, tzinfo=timezone.utc)
+print(moment.astimezone(ZoneInfo("Europe/Moscow")))
+print(moment.astimezone(ZoneInfo("Asia/Tokyo")))</pre>
+          <div class="out">2024-03-15 15:30:00+03:00
+2024-03-15 21:30:00+09:00</div>
+        </div>
+        <div class="code">
+          <div class="bar"><span class="file">27_datetime_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">ts = pd.Timestamp("2024-03-15 12:30", tz="UTC")
+print(ts.tz_convert("Europe/Moscow"))
+print(ts.tz_convert("Asia/Tokyo"))</pre>
+          <div class="out">2024-03-15 15:30:00+03:00
+2024-03-15 21:30:00+09:00</div>
+        </div>
+        <div class="code">
+          <div class="bar"><span class="file">27_datetime_lab.sql</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">SELECT TIMESTAMPTZ '2024-03-15 12:30:00+00' AT TIME ZONE 'Europe/Moscow' AS moscow,
+       TIMESTAMPTZ '2024-03-15 12:30:00+00' AT TIME ZONE 'Asia/Tokyo' AS tokyo;</pre>
+          <div class="out">       moscow        |        tokyo
+---------------------+---------------------
+ 2024-03-15 15:30:00 | 2024-03-15 21:30:00
+(1 row)</div>
+        </div>
+        <p>
+          Смещения разные, момент один. Обратите внимание на SQL: <code class="inl">AT TIME ZONE</code>
+          вернул <code class="inl">timestamp</code> без зоны — «настенные часы в этой зоне».
+          Если нужен именно момент, результату нужно снова сказать, что это за зона.
+        </p>
+        <div class="note">
+          <span class="t">Правило переноса</span>
+          <p>Момент храните и передавайте в UTC со смещением. В календарную дату переводите только
+          на границе — при показе пользователю и при разборе его ввода. Тогда DST и смена зоны
+          не ломают данные, а меняют только подпись.</p>
+        </div>
+      </section>
+
+      <section>
+        <h2><span class="num">08</span>Шесть ошибок, на которых спотыкаются</h2>
+        <div class="errors">
+          <div class="err">
+            <div class="h">Строки и naive-даты вместо типов</div>
+            <p>Дата-строка сортируется лексикографически, а naive-datetime не говорит, в какой зоне. Сравнение naive с aware вообще бросает <code class="inl">TypeError</code>, а «тихо неверный» результат хуже ошибки.</p>
+            <div class="fix">На границе системы — <code class="inl">datetime.fromisoformat</code> / <code class="inl">pd.to_datetime</code>; сразу объявляйте зону и дальше работайте с моментом.</div>
+          </div>
+          <div class="err">
+            <div class="h">now() и today() в тестах</div>
+            <p>Тест зависит от текущего момента, часового пояса машины и перехода на летнее время. В понедельник зелёный, в полночь нового года — красный.</p>
+            <div class="fix">Фиксированные даты и «замороженные» часы; текущее время — только на границе, где его подставляют явно.</div>
+          </div>
+          <div class="err">
+            <div class="h">BETWEEN по датам</div>
+            <p><code class="inl">BETWEEN '2024-01-05' AND '2024-01-05'</code> — это ровно полночь: заказы за день исчезают. Верхняя граница «включительно» отрезает всё после 00:00.</p>
+            <div class="fix">Полуоткрытый интервал <code class="inl">&gt;= start AND &lt; next_day</code>; не оборачивайте колонку в <code class="inl">::date</code> — это ещё и отключает индекс.</div>
+          </div>
+          <div class="err">
+            <div class="h">DST: несуществующее и неоднозначное время</div>
+            <p>Весной 02:30 может не существовать, осенью — случиться дважды. Арифметика «по настенным часам» даёт время, которого не было, или неверный момент.</p>
+            <div class="fix">Храните UTC; арифметику делайте над моментом, а не над локальной записью; для неоднозначного времени используйте <code class="inl">fold</code>.</div>
+          </div>
+          <div class="err">
+            <div class="h">timestamp без зоны для моментов</div>
+            <p><code class="inl">timestamp</code> в PostgreSQL — настенные часы. Два сервера в разных зонах запишут в него разные моменты, и никто этого не заметит.</p>
+            <div class="fix">Для моментов — <code class="inl">timestamptz</code>; <code class="inl">timestamp</code> оставляйте для «календарных» значений без зоны.</div>
+          </div>
+          <div class="err">
+            <div class="h">Путаница секунд и миллисекунд epoch</div>
+            <p>10 цифр против 13 — ошибка в 1000 раз: дата уезжает в 1970-й или в далёкое будущее, а в тестах выглядит как «странная дата».</p>
+            <div class="fix">Явно указывайте единицу: <code class="inl">pd.Timestamp(x, unit="ms")</code>, <code class="inl">to_timestamp(x / 1000)</code>; в API фиксируйте формат в контракте.</div>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h2><span class="num">09</span>Вопросы с собеседования</h2>
+        <div class="qa">
+          <details>
+            <summary>Чем момент отличается от календарной даты?</summary>
+            <div class="a">
+              <p><strong>Тезис:</strong> момент — точка на линии времени, дата — ячейка календаря.</p>
+              <p><strong>Механика:</strong> момент однозначен, если известна зона; «15 марта» без зоны
+              соответствует разным интервалам времени в Москве и Токио.</p>
+              <p><strong>Ограничение:</strong> календарные операции — «начало месяца», «понедельник» —
+              зависят от зоны, поэтому переводите в календарь на границе, а не храните календарём моменты.</p>
+              <div class="verdict">Резюме: момент — точка, дата — сетка; не смешивайте.</div>
+            </div>
+          </details>
+          <details>
+            <summary>Что такое naive и aware datetime?</summary>
+            <div class="a">
+              <p>Naive — без <code class="inl">tzinfo</code> («12:30 где-то»), aware — со зоной
+              («12:30 UTC»). Python запрещает сравнивать их напрямую и бросает <code class="inl">TypeError</code>.</p>
+              <div class="verdict">Резюме: зона — часть значения, а не деталь вывода.</div>
+            </div>
+          </details>
+          <details>
+            <summary>Почему now() и today() в тестах — плохая идея?</summary>
+            <div class="a">
+              <p>Результат зависит от момента запуска, зоны машины и DST. Такой тест недетерминирован;
+              лечится фиксированной датой или замороженными часами.</p>
+              <div class="verdict">Резюме: время — зависимость, его подставляют.</div>
+            </div>
+          </details>
+          <details>
+            <summary>Что хранит timestamptz — зону или момент?</summary>
+            <div class="a">
+              <p>Момент: значение приводится к UTC. Зона не хранится — она используется при вводе
+              и выводе, её задаёт сессия (<code class="inl">TimeZone</code>).</p>
+              <div class="verdict">Резюме: timestamptz — это мгновение, а не «часы со зоной».</div>
+            </div>
+          </details>
+          <details>
+            <summary>Чем epoch в секундах отличается от epoch в миллисекундах?</summary>
+            <div class="a">
+              <p>Масштабом: 10 цифр против 13. Миллисекунды делят на 1000 перед переводом в секунды
+              и умножают на 1000 при сериализации.</p>
+              <div class="verdict">Резюме: epoch без единицы — неоднозначен.</div>
+            </div>
+          </details>
+          <details>
+            <summary>Почему BETWEEN по датам опасен?</summary>
+            <div class="a">
+              <p>Верхняя граница включается и обычно указывает на полночь: весь последний день
+              выпадает. Надёжнее полуоткрытый интервал <code class="inl">[start, next)</code>.</p>
+              <div class="verdict">Резюме: границы — полуоткрытые, конец — начало следующего.</div>
+            </div>
+          </details>
+          <details>
+            <summary>Что не так с DST?</summary>
+            <div class="a">
+              <p>День может длиться 23 или 25 часов, локальное время — не существовать или повторяться
+              дважды. Поэтому момент хранят в UTC, а зону применяют на границе; неоднозначность
+              различают флагом <code class="inl">fold</code>.</p>
+              <div class="verdict">Резюме: DST ломает настенные часы, но не моменты.</div>
+            </div>
+          </details>
+          <details>
+            <summary>Почему created_at::date может убить индекс?</summary>
+            <div class="a">
+              <p>Индекс построен по колонке, а условие сравнивает результат функции. Планировщик
+              не может применить btree к <code class="inl">created_at::date</code> и читает таблицу
+              целиком; диапазон дат сохраняет индекс.</p>
+              <div class="verdict">Резюме: не оборачивайте индексируемую колонку в функцию.</div>
+            </div>
+          </details>
+        </div>
+      </section>
+
+      <section>
+        <h2><span class="num">10</span>Три задачи: сначала своя попытка</h2>
+
+        <h3><span style="color:var(--muted);font-family:var(--mono);font-size:.8rem">01</span> Epoch в миллисекундах</h3>
+        <p>API вернул <code class="inl">created_at: 1710505800123</code>. Получите aware-datetime в UTC,
+        ISO-строку и то же число обратно в миллисекундах.</p>
+        <div class="qa">
+          <details>
+            <summary>Показать решение</summary>
+            <div class="a">
+              <div class="code" style="margin-top:0">
+                <div class="bar"><span class="file">27_datetime_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+                <pre data-lang="python">ms = 1710505800123
+moment = datetime.fromtimestamp(ms / 1000, tz=timezone.utc)
+print(moment)
+print(moment.isoformat())
+print(int(moment.timestamp() * 1000))</pre>
+                <div class="out">2024-03-15 12:30:00.123000+00:00
+2024-03-15T12:30:00.123000+00:00
+1710505800123</div>
+              </div>
+              <p><strong>Что важно.</strong> Миллисекунды делятся на 1000 до
+              <code class="inl">fromtimestamp</code>; обратно — умножение на 1000. Зона UTC указывается
+              явно, иначе результат зависит от машины.</p>
+            </div>
+          </details>
+        </div>
+
+        <h3><span style="color:var(--muted);font-family:var(--mono);font-size:.8rem">02</span> Границы месяца</h3>
+        <p>Дан момент. Получите начало текущего и начало следующего месяца в UTC и проверьте,
+        что момент попадает в полуоткрытый интервал.</p>
+        <div class="qa">
+          <details>
+            <summary>Показать решение</summary>
+            <div class="a">
+              <div class="code" style="margin-top:0">
+                <div class="bar"><span class="file">27_datetime_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+                <pre data-lang="python">moment = datetime(2024, 3, 15, 12, 30, tzinfo=timezone.utc)
+start = moment.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+if start.month == 12:
+    next_month = start.replace(year=start.year + 1, month=1)
+else:
+    next_month = start.replace(month=start.month + 1)
+print(start.isoformat())
+print(next_month.isoformat())
+print(start &lt;= moment &lt; next_month)</pre>
+                <div class="out">2024-03-01T00:00:00+00:00
+2024-04-01T00:00:00+00:00
+True</div>
+              </div>
+              <p><strong>Что важно.</strong> «Конец месяца» — это начало следующего, а не последняя
+              секунда. Для декабря нужен отдельный переход через год. В SQL то же делает
+              <code class="inl">date_trunc('month', …)</code> плюс <code class="inl">INTERVAL '1 month'</code>.</p>
+            </div>
+          </details>
+        </div>
+
+        <h3><span style="color:var(--muted);font-family:var(--mono);font-size:.8rem">03</span> Топ дней по выручке</h3>
+        <p>Верните три дня с наибольшей выручкой. А заодно объясните, почему
+        <code class="inl">created_at::date</code> в <code class="inl">GROUP BY</code> нормален,
+        а в <code class="inl">WHERE</code> — нет.</p>
+        <div class="qa">
+          <details>
+            <summary>Показать решение</summary>
+            <div class="a">
+              <div class="code" style="margin-top:0">
+                <div class="bar"><span class="file">27_datetime_lab.sql</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+                <pre data-lang="sql">SELECT o.created_at::date AS day,
+       SUM(o.quantity * p.price) AS revenue
+FROM orders o
+JOIN products p ON p.id = o.product_id
+GROUP BY 1
+ORDER BY revenue DESC, day
+LIMIT 3;</pre>
+                <div class="out">    day     | revenue
+------------+----------
+ 2024-01-05 | 75000.00
+ 2024-03-15 | 75000.00
+ 2024-02-10 | 22000.00
+(3 rows)</div>
+              </div>
+              <p><strong>Что важно.</strong> В <code class="inl">GROUP BY</code> функция допустима:
+              мы честно группируем по дню. В <code class="inl">WHERE</code> она стоит на колонке,
+              и обычный индекс по <code class="inl">created_at</code> перестаёт применяться —
+              там нужен диапазон дат. Тай-брейкер <code class="inl">day</code> делает порядок
+              воспроизводимым при равной выручке.</p>
+            </div>
+          </details>
+        </div>
+      </section>
+
+      <section>
+        <h2><span class="num">11</span>Чек-лист освоения</h2>
+        <div class="check">
+          <label><input type="checkbox"><span class="box"></span><span class="txt">Объяснить разницу момента, календарной даты и длительности</span></label>
+          <label><input type="checkbox"><span class="box"></span><span class="txt">Перевести момент между UTC и локальной зоной, не меняя instant</span></label>
+          <label><input type="checkbox"><span class="box"></span><span class="txt">Отличить naive от aware и не сравнивать их</span></label>
+          <label><input type="checkbox"><span class="box"></span><span class="txt">Перевести epoch в секундах и миллисекундах в datetime и обратно</span></label>
+          <label><input type="checkbox"><span class="box"></span><span class="txt">Написать месячную выручку в Python, pandas и SQL</span></label>
+          <label><input type="checkbox"><span class="box"></span><span class="txt">Переписать фильтр месяца в полуоткрытый диапазон дат</span></label>
+        </div>
+      </section>
+
+      <section>
+        <h2><span class="num">12</span>Куда ведут мостики</h2>
+        <div class="bridges">
+          <a class="bridge" href="ch-18-dates-reshape.html"><span class="to">Глава 18</span><span>Даты, строки и форма таблицы</span><span class="what">→ .dt, to_period, to_datetime</span></a>
+          <a class="bridge" href="ch-21-group-by-having.html"><span class="to">Глава 21</span><span>GROUP BY и HAVING</span><span class="what">→ date_trunc в группах</span></a>
+          <a class="bridge" href="ch-22-subqueries-cte.html"><span class="to">Глава 22</span><span>Подзапросы и CTE</span><span class="what">→ окна и шаги по датам</span></a>
+          <a class="bridge" href="ch-23-window-functions.html"><span class="to">Глава 23</span><span>Оконные функции</span><span class="what">→ рамки по времени</span></a>
+          <a class="bridge" href="ch-24-indexes-explain.html"><span class="to">Глава 24</span><span>Индексы и EXPLAIN</span><span class="what">→ created_at::date и диапазон</span></a>
+          <a class="bridge" href="appendix-datetime.html"><span class="to">Справочник</span><span>Дата и время: вся карта</span><span class="what">→ python, numpy, pandas, SQL</span></a>
+          <a class="bridge" href="ref-dt-python.html"><span class="to">Справочник</span><span>date/time/datetime в Python</span><span class="what">→ методы, зоны, арифметика</span></a>
+          <a class="bridge" href="ref-dt-numpy.html"><span class="to">Справочник</span><span>NumPy: datetime64</span><span class="what">→ единицы и арифметика массивов</span></a>
+          <a class="bridge" href="ref-dt-pandas.html"><span class="to">Справочник</span><span>pandas: Timestamp и .dt</span><span class="what">→ зоны, периоды, частоты</span></a>
+          <a class="bridge" href="ref-dt-sql.html"><span class="to">Справочник</span><span>SQL: timestamp, timestamptz, interval</span><span class="what">→ AT TIME ZONE, date_trunc</span></a>
+        </div>
+      </section>
+
+      <div class="pager">
+        <a class="prev" href="ch-26-project.html"><span class="dir">← Назад</span><span class="ttl">26 · проект</span></a>
+        <a class="next" href="appendix-datetime.html"><span class="dir">Дальше →</span><span class="ttl">Справочник: дата и время</span></a>
+      </div>
+
+    </div>
+  </main>
+</div>
+<script src="assets/toc.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,509 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Проверочная работа: часть IV (SQL) — Ассоциативный гайд</title>
+<meta name="description" content="Контрольная по SQL: 8 вопросов, 4 задачи и 2 мостика. NULL, GROUP BY, окна, индексы. 20 баллов.">
+<link rel="stylesheet" href="assets/style.css">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#fbf8f2" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#14131a" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="assets/icons/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="assets/icons/icon-180.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Гайд Py/SQL">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+</head>
+<body data-slug="checkpoint-4">
+<div class="app">
+  <aside class="sidebar" id="sidebar"></aside>
+  <main>
+    <div class="wrap">
+
+      <header class="chapter-head">
+        <div class="eyebrow">
+          <span class="part">Проверочная работа</span>
+          <span class="dot"></span>
+          <span>Часть IV · главы 19–24</span>
+          <span class="dot"></span>
+          <span>60 минут</span>
+        </div>
+        <h1>Проверочная работа: SQL
+          <span class="sub">20 баллов: порядок выполнения, NULL, группы, окна и индексы</span>
+        </h1>
+        <p class="lead">
+          Последняя контрольная книги. Проверяет, держите ли вы в голове SQL целиком: этапы запроса,
+          трёхзначную логику, группировки, окна и чтение плана — на учебной базе, с которой работали.
+        </p>
+        <div class="meta">
+          <span class="chip">✍️ <b>14 заданий</b></span>
+          <span class="chip">🎯 <b>20 баллов</b></span>
+          <span class="chip">⏱ <b>60 минут</b></span>
+          <span class="chip">🖨 <b>печатается как бланк</b></span>
+        </div>
+      </header>
+
+      <section>
+        <h2><span class="num">01</span>Как устроена работа</h2>
+        <ul>
+          <li><strong>Часть A — 8 вопросов по 1 баллу.</strong> Мгновенный разбор после выбора.</li>
+          <li><strong>Часть B — 4 задачи по 2 балла.</strong> Запросы к <code class="inl">learning_shop</code>.</li>
+          <li><strong>Часть C — 2 мостика по 2 балла.</strong> pandas-эквиваленты и чтение EXPLAIN.</li>
+          <li>Рубрика: 2 — решил и объяснил, 1 — решил, но не объяснил, 0 — не решил.</li>
+        </ul>
+
+        <div class="diag-panel">
+          <div class="col"><span class="cap">таймер</span><span class="diag-timer" id="timer">60:00</span></div>
+          <button id="start">Старт</button>
+          <div class="col" style="margin-left:auto"><span class="cap">баллы</span><span class="scoreline"><span class="n" id="total">0</span><span class="of">из 20</span></span></div>
+        </div>
+        <p class="small print-hint">Для бумажного варианта нажмите «Печатать»: решения, рубрики и разборы скрываются.
+          <button class="ghost" onclick="window.print()" style="font-family:var(--sans);font-size:12px;padding:4px 10px;border:1px solid var(--line);border-radius:7px;background:var(--card);cursor:pointer;margin-left:6px">Печать</button>
+        </p>
+      </section>
+
+      <section>
+        <h2><span class="num">02</span>Часть A. Теория</h2>
+
+        <div class="q-item" data-q="a1" data-answer="c">
+          <div class="q-h"><span class="qn">A1</span><span>Что логически выполняется первым?</span><span class="pt">1 балл</span></div>
+          <div class="options">
+            <label><input type="radio" name="a1" value="a"><span>SELECT</span></label>
+            <label><input type="radio" name="a1" value="b"><span>WHERE</span></label>
+            <label><input type="radio" name="a1" value="c"><span>FROM</span></label>
+            <label><input type="radio" name="a1" value="d"><span>ORDER BY</span></label>
+          </div>
+          <div class="verdict" hidden></div>
+          <div class="explain" hidden>FROM → WHERE → GROUP BY → HAVING → SELECT → ORDER BY → LIMIT. Глава 19.</div>
+        </div>
+
+        <div class="q-item" data-q="a2" data-answer="b">
+          <div class="q-h"><span class="qn">A2</span><span>Можно ли использовать алиас SELECT в WHERE?</span><span class="pt">1 балл</span></div>
+          <div class="options">
+            <label><input type="radio" name="a2" value="a"><span>Да, всегда</span></label>
+            <label><input type="radio" name="a2" value="b"><span>Нет, SELECT выполняется позже</span></label>
+            <label><input type="radio" name="a2" value="c"><span>Да, если включить настройку</span></label>
+            <label><input type="radio" name="a2" value="d"><span>Только в HAVING</span></label>
+          </div>
+          <div class="verdict" hidden></div>
+          <div class="explain" hidden>Алиас появляется на этапе SELECT, а WHERE идёт раньше. Глава 19.</div>
+        </div>
+
+        <div class="q-item" data-q="a3" data-answer="c">
+          <div class="q-h"><span class="qn">A3</span><span>Чем WHERE отличается от HAVING?</span><span class="pt">1 балл</span></div>
+          <div class="options">
+            <label><input type="radio" name="a3" value="a"><span>WHERE фильтрует группы</span></label>
+            <label><input type="radio" name="a3" value="b"><span>HAVING фильтрует строки</span></label>
+            <label><input type="radio" name="a3" value="c"><span>WHERE — строки до группировки, HAVING — группы после</span></label>
+            <label><input type="radio" name="a3" value="d"><span>Разницы нет</span></label>
+          </div>
+          <div class="verdict" hidden></div>
+          <div class="explain" hidden>Глава 21: условия на агрегаты — только в HAVING.</div>
+        </div>
+
+        <div class="q-item" data-q="a4" data-answer="c">
+          <div class="q-h"><span class="qn">A4</span><span>Чему равно выражение NULL = NULL?</span><span class="pt">1 балл</span></div>
+          <div class="options">
+            <label><input type="radio" name="a4" value="a"><span>TRUE</span></label>
+            <label><input type="radio" name="a4" value="b"><span>FALSE</span></label>
+            <label><input type="radio" name="a4" value="c"><span>UNKNOWN</span></label>
+            <label><input type="radio" name="a4" value="d"><span>Ошибка синтаксиса</span></label>
+          </div>
+          <div class="verdict" hidden></div>
+          <div class="explain" hidden>Сравнение с неизвестным даёт UNKNOWN, поэтому нужен IS NULL. Глава 20.</div>
+        </div>
+
+        <div class="q-item" data-q="a5" data-answer="b">
+          <div class="q-h"><span class="qn">A5</span><span>Что вернёт NOT IN (подзапрос, где есть NULL)?</span><span class="pt">1 балл</span></div>
+          <div class="options">
+            <label><input type="radio" name="a5" value="a"><span>Все строки, кроме совпавших</span></label>
+            <label><input type="radio" name="a5" value="b"><span>Пустой результат</span></label>
+            <label><input type="radio" name="a5" value="c"><span>Ошибку</span></label>
+            <label><input type="radio" name="a5" value="d"><span>Только строки с NULL</span></label>
+          </div>
+          <div class="verdict" hidden></div>
+          <div class="explain" hidden>Каждое сравнение с NULL даёт UNKNOWN, TRUE не набирается. Глава 20.</div>
+        </div>
+
+        <div class="q-item" data-q="a6" data-answer="b">
+          <div class="q-h"><span class="qn">A6</span><span>Что делает PostgreSQL с NULL в ключе GROUP BY?</span><span class="pt">1 балл</span></div>
+          <div class="options">
+            <label><input type="radio" name="a6" value="a"><span>Выбрасывает строки</span></label>
+            <label><input type="radio" name="a6" value="b"><span>Создаёт отдельную группу</span></label>
+            <label><input type="radio" name="a6" value="c"><span>Ошибка</span></label>
+            <label><input type="radio" name="a6" value="d"><span>Заменяет на 0</span></label>
+          </div>
+          <div class="verdict" hidden></div>
+          <div class="explain" hidden>В PostgreSQL NULL — отдельная группа; в pandas по умолчанию dropna=True. Глава 21.</div>
+        </div>
+
+        <div class="q-item" data-q="a7" data-answer="c">
+          <div class="q-h"><span class="qn">A7</span><span>Чем окно отличается от GROUP BY?</span><span class="pt">1 балл</span></div>
+          <div class="options">
+            <label><input type="radio" name="a7" value="a"><span>Окно схлопывает строки</span></label>
+            <label><input type="radio" name="a7" value="b"><span>GROUP BY сохраняет все строки</span></label>
+            <label><input type="radio" name="a7" value="c"><span>Окно сохраняет строки и дописывает агрегат</span></label>
+            <label><input type="radio" name="a7" value="d"><span>Они делают одно и то же</span></label>
+          </div>
+          <div class="verdict" hidden></div>
+          <div class="explain" hidden>GROUP BY — одна строка на группу, окно — агрегат рядом с каждой строкой. Глава 23.</div>
+        </div>
+
+        <div class="q-item" data-q="a8" data-answer="b">
+          <div class="q-h"><span class="qn">A8</span><span>Что будет с индексом при WHERE EXTRACT(MONTH FROM created_at) = 3?</span><span class="pt">1 балл</span></div>
+          <div class="options">
+            <label><input type="radio" name="a8" value="a"><span>Индекс ускорит запрос</span></label>
+            <label><input type="radio" name="a8" value="b"><span>Индекс не используется</span></label>
+            <label><input type="radio" name="a8" value="c"><span>Ошибка</span></label>
+            <label><input type="radio" name="a8" value="d"><span>Индекс создастся автоматически</span></label>
+          </div>
+          <div class="verdict" hidden></div>
+          <div class="explain" hidden>Сравнивается результат функции, а не колонка: Seq Scan. Глава 24.</div>
+        </div>
+      </section>
+
+      <section>
+        <h2><span class="num">03</span>Часть B. Задачи на SQL</h2>
+        <p class="small">База: <code class="inl">learning_shop</code>. 2 балла за задачу: 1 — запрос верный, 1 — объяснили.</p>
+
+        <div class="task">
+          <h3>B1. Выручка по категориям <span class="point">2 балла</span></h3>
+          <p>Посчитайте выручку и число заказов по каждой категории товаров, отсортируйте по выручке.</p>
+          <div class="code">
+            <div class="bar"><span class="file">B1</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+            <pre data-lang="sql">-- orders id, product_id, quantity
+-- products id, category, price</pre>
+          </div>
+          <div class="qa">
+            <details>
+              <summary>Показать решение</summary>
+              <div class="a">
+                <div class="code" style="margin-top:0">
+                  <div class="bar"><span class="file">решение</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+                  <pre data-lang="sql">SELECT p.category, COUNT(*) AS orders,
+       SUM(o.quantity * p.price) AS revenue
+FROM orders o
+JOIN products p ON p.id = o.product_id
+GROUP BY p.category
+ORDER BY revenue DESC;</pre>
+                  <div class="out">  category   | orders |  revenue
+-------------+--------+-----------
+ electronics |      5 | 195500.00
+ food        |      3 |   4200.00
+ books       |      2 |   2700.00</div>
+                </div>
+                <p><strong>Критерии.</strong> JOIN по product_id, GROUP BY по категории, агрегат по quantity*price.</p>
+              </div>
+            </details>
+          </div>
+          <div class="rubric" data-task="b1">
+            <span class="h">Оценка:</span>
+            <label><input type="radio" name="b1" value="0"> 0 — не решил</label>
+            <label><input type="radio" name="b1" value="1"> 1 — решил, объяснить не смог</label>
+            <label><input type="radio" name="b1" value="2"> 2 — решил и объяснил</label>
+          </div>
+        </div>
+
+        <div class="task">
+          <h3>B2. Активные пользователи <span class="point">2 балла</span></h3>
+          <p>Выведите пользователей с числом заказов больше одного и их суммарной выручкой.</p>
+          <div class="qa">
+            <details>
+              <summary>Показать решение</summary>
+              <div class="a">
+                <div class="code" style="margin-top:0">
+                  <div class="bar"><span class="file">решение</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+                  <pre data-lang="sql">SELECT u.name, COUNT(*) AS orders,
+       SUM(o.quantity * p.price) AS revenue
+FROM orders o
+JOIN users u ON u.id = o.user_id
+JOIN products p ON p.id = o.product_id
+GROUP BY u.name
+HAVING COUNT(*) &gt; 1
+ORDER BY revenue DESC;</pre>
+                  <div class="out"> name | orders | revenue
+------+--------+----------
+ Anna |      3 | 76950.00
+ Olga |      2 | 76500.00
+ Ivan |      2 | 23800.00</div>
+                </div>
+                <p><strong>Критерии.</strong> HAVING, а не WHERE; правильные соединения.</p>
+              </div>
+            </details>
+          </div>
+          <div class="rubric" data-task="b2">
+            <span class="h">Оценка:</span>
+            <label><input type="radio" name="b2" value="0"> 0 — не решил</label>
+            <label><input type="radio" name="b2" value="1"> 1 — решил, объяснить не смог</label>
+            <label><input type="radio" name="b2" value="2"> 2 — решил и объяснил</label>
+          </div>
+        </div>
+
+        <div class="task">
+          <h3>B3. Самый дорогой заказ на пользователя <span class="point">2 балла</span></h3>
+          <p>Оставьте по одному заказу с максимальной выручкой на каждого пользователя.</p>
+          <div class="qa">
+            <details>
+              <summary>Показать решение</summary>
+              <div class="a">
+                <div class="code" style="margin-top:0">
+                  <div class="bar"><span class="file">решение</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+                  <pre data-lang="sql">WITH ranked AS (
+    SELECT u.name, o.id, (o.quantity * p.price) AS revenue,
+           ROW_NUMBER() OVER (PARTITION BY o.user_id
+                              ORDER BY o.quantity * p.price DESC) AS rn
+    FROM orders o
+    JOIN users u ON u.id = o.user_id
+    JOIN products p ON p.id = o.product_id
+)
+SELECT name, id, revenue FROM ranked WHERE rn = 1;</pre>
+                </div>
+                <p><strong>Критерии.</strong> Окно в CTE, фильтр по rn снаружи.</p>
+              </div>
+            </details>
+          </div>
+          <div class="rubric" data-task="b3">
+            <span class="h">Оценка:</span>
+            <label><input type="radio" name="b3" value="0"> 0 — не решил</label>
+            <label><input type="radio" name="b3" value="1"> 1 — решил, объяснить не смог</label>
+            <label><input type="radio" name="b3" value="2"> 2 — решил и объяснил</label>
+          </div>
+        </div>
+
+        <div class="task">
+          <h3>B4. Гостевые заказы <span class="point">2 балла</span></h3>
+          <p>Найдите заказы без пользователя и их долю в общей выручке.</p>
+          <div class="qa">
+            <details>
+              <summary>Показать решение</summary>
+              <div class="a">
+                <div class="code" style="margin-top:0">
+                  <div class="bar"><span class="file">решение</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+                  <pre data-lang="sql">SELECT COUNT(*) AS guest_orders,
+       SUM(o.quantity * p.price) AS guest_revenue
+FROM orders o
+JOIN products p ON p.id = o.product_id
+WHERE NOT EXISTS (SELECT 1 FROM users u WHERE u.id = o.user_id);</pre>
+                  <div class="out"> guest_orders | guest_revenue
+--------------+---------------
+            1 |        900.00</div>
+                </div>
+                <p><strong>Критерии.</strong> NOT EXISTS (или LEFT JOIN + IS NULL), а не NOT IN без оговорок.</p>
+              </div>
+            </details>
+          </div>
+          <div class="rubric" data-task="b4">
+            <span class="h">Оценка:</span>
+            <label><input type="radio" name="b4" value="0"> 0 — не решил</label>
+            <label><input type="radio" name="b4" value="1"> 1 — решил, объяснить не смог</label>
+            <label><input type="radio" name="b4" value="2"> 2 — решил и объяснил</label>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h2><span class="num">04</span>Часть C. Мостики</h2>
+
+        <div class="task">
+          <h3>C1. SQL → pandas <span class="point">2 балла</span></h3>
+          <p>Перепишите запрос из B2 (активные пользователи) в pandas. Какие методы соответствуют WHERE, JOIN, GROUP BY и HAVING?</p>
+          <div class="qa">
+            <details>
+              <summary>Показать решение</summary>
+              <div class="a">
+                <div class="code" style="margin-top:0">
+                  <div class="bar"><span class="file">pandas</span><span class="lang">python</span><button class="copy">копировать</button></div>
+                  <pre data-lang="python">merged = orders.merge(products, left_on="product_id", right_on="id")
+merged = merged.merge(users, on="user_id")        # JOIN
+merged["revenue"] = merged["quantity"] * merged["price"]
+summary = merged.groupby("name").agg(
+    orders=("id", "count"),
+    revenue=("revenue", "sum"),
+)
+result = summary[summary["orders"] &gt; 1]           # HAVING</pre>
+                </div>
+                <p><strong>Критерии.</strong> merge вместо JOIN, groupby+agg вместо GROUP BY, маска вместо HAVING.</p>
+              </div>
+            </details>
+          </div>
+          <div class="rubric" data-task="c1">
+            <span class="h">Оценка:</span>
+            <label><input type="radio" name="c1" value="0"> 0 — не решил</label>
+            <label><input type="radio" name="c1" value="1"> 1 — написал, но связь не объяснил</label>
+            <label><input type="radio" name="c1" value="2"> 2 — написал и объяснил связь</label>
+          </div>
+        </div>
+
+        <div class="task">
+          <h3>C2. Прочитать EXPLAIN <span class="point">2 балла</span></h3>
+          <p>В плане: <code class="inl">Seq Scan ... Rows Removed by Filter: 86399</code>. Что это значит? Что делать?</p>
+          <div class="qa">
+            <details>
+              <summary>Показать ответ</summary>
+              <div class="a">
+                <p>Запрос прочитал всю таблицу, а фильтр отбросил почти всё — полезной работы мало, времени
+                потрачено много. Скорее всего, фильтр не может использовать индекс: функция на колонке,
+                несовпадение типов или отсутствие индекса. Действия: переписать условие в диапазон,
+                создать индекс (возможно, функциональный) или проверить статистику.</p>
+                <p><strong>Критерии.</strong> Объяснение «rows removed» и хотя бы одно конкретное исправление.</p>
+              </div>
+            </details>
+          </div>
+          <div class="rubric" data-task="c2">
+            <span class="h">Оценка:</span>
+            <label><input type="radio" name="c2" value="0"> 0 — не решил</label>
+            <label><input type="radio" name="c2" value="1"> 1 — написал, но связь не объяснил</label>
+            <label><input type="radio" name="c2" value="2"> 2 — написал и объяснил связь</label>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h2><span class="num">05</span>Результат</h2>
+        <div class="result">
+          <div class="scoreline"><span class="n" id="total2">0</span><span class="of">из 20 баллов</span></div>
+          <div class="band" id="band"><b>Пока пусто</b><p>Отвечайте на вопросы и ставьте оценки за задачи — результат посчитается сам.</p></div>
+          <p class="small" style="margin-top:14px">
+            Часть A: <span id="partA">0</span>/8 · Часть B: <span id="partB">0</span>/8 · Часть C: <span id="partC">0</span>/4
+          </p>
+          <button id="reset" class="ghost" style="font-family:var(--sans);font-size:12.5px;padding:7px 14px;border:1px solid var(--line);border-radius:8px;background:var(--card);cursor:pointer;margin-top:8px">Сбросить ответы</button>
+        </div>
+        <div class="note">
+          <span class="t">Что делать с результатом</span>
+          <p>17–20 — вы готовы к собственному проекту на реальных данных. 12–16 — перечитайте главы,
+          где потеряли баллы. Меньше 12 — вернитесь к 19–24 и прогоните лаборатории на своей базе.</p>
+        </div>
+      </section>
+
+      <div class="pager">
+        <a class="prev" href="ch-26-project.html"><span class="dir">← Назад</span><span class="ttl">26 · проект</span></a>
+        <a class="next" href="index.html?stay=1"><span class="dir">Финал →</span><span class="ttl">Оглавление книги</span></a>
+      </div>
+
+    </div>
+  </main>
+</div>
+<script src="assets/toc.js"></script>
+<script src="assets/app.js"></script>
+<script>
+(function () {
+  const STORE = "assoc-checkpoint-4";
+  let state = { quiz: {}, self: {} };
+  try {
+    const s = JSON.parse(localStorage.getItem(STORE) || "null");
+    if (s) state = { quiz: s.quiz || {}, self: s.self || {} };
+  } catch {}
+
+  const qItems = [...document.querySelectorAll(".q-item")];
+  const selfInputs = [...document.querySelectorAll(".rubric input")];
+  const totalEl = document.getElementById("total");
+  const total2El = document.getElementById("total2");
+  const bandEl = document.getElementById("band");
+  const partA = document.getElementById("partA");
+  const partB = document.getElementById("partB");
+  const partC = document.getElementById("partC");
+
+  function evalQuiz(q) {
+    const sel = q.querySelector("input:checked");
+    q.querySelectorAll(".options label").forEach((l) => l.classList.remove("ok", "bad"));
+    const exp = q.querySelector(".explain");
+    const ver = q.querySelector(".verdict");
+    if (!sel) { exp.hidden = true; ver.hidden = true; return 0; }
+    const good = sel.value === q.dataset.answer;
+    sel.closest("label").classList.add(good ? "ok" : "bad");
+    if (!good) {
+      const right = q.querySelector('input[value="' + q.dataset.answer + '"]');
+      if (right) right.closest("label").classList.add("ok");
+    }
+    ver.hidden = false;
+    ver.className = "verdict " + (good ? "ok" : "bad");
+    ver.textContent = good ? "Верно (+1)" : "Неверно";
+    exp.hidden = false;
+    return good ? 1 : 0;
+  }
+
+  function update() {
+    let a = 0;
+    qItems.forEach((q) => { a += evalQuiz(q); });
+    let b = 0, c = 0;
+    selfInputs.forEach((i) => {
+      if (!i.checked) return;
+      const v = Number(i.value);
+      if (i.name.startsWith("b")) b += v; else c += v;
+    });
+    const total = a + b + c;
+    totalEl.textContent = String(total);
+    total2El.textContent = String(total);
+    partA.textContent = String(a);
+    partB.textContent = String(b);
+    partC.textContent = String(c);
+
+    let title, desc;
+    if (total >= 17) {
+      title = "SQL на месте";
+      desc = "Можно брать собственную задачу и строить отчёт на реальных данных.";
+    } else if (total >= 12) {
+      title = "Почти: закройте 1–2 темы";
+      desc = "Чаще всего проседают окна и EXPLAIN — перечитайте главы 23–24 и перепройдите работу.";
+    } else if (total === 0) {
+      title = "Пока пусто";
+      desc = "Отвечайте на вопросы и ставьте оценки за задачи — результат посчитается сам.";
+    } else {
+      title = "Стоит повторить SQL";
+      desc = "Вернитесь к главам 19–24 и прогоните лаборатории на своей базе: SQL осваивается руками.";
+    }
+    bandEl.innerHTML = "<b>" + title + "</b><p>" + desc + "</p>";
+    try { localStorage.setItem(STORE, JSON.stringify(state)); } catch {}
+  }
+
+  qItems.forEach((q) => {
+    const saved = state.quiz[q.dataset.q];
+    if (saved) {
+      const r = q.querySelector('input[value="' + saved + '"]');
+      if (r) r.checked = true;
+    }
+    q.querySelectorAll("input").forEach((inp) =>
+      inp.addEventListener("change", () => { state.quiz[q.dataset.q] = inp.value; update(); })
+    );
+  });
+
+  selfInputs.forEach((i) => {
+    if (state.self[i.name] === i.value) i.checked = true;
+    i.addEventListener("change", () => { state.self[i.name] = i.value; update(); });
+  });
+
+  document.getElementById("reset").addEventListener("click", () => {
+    qItems.forEach((q) => q.querySelectorAll("input").forEach((i) => (i.checked = false)));
+    selfInputs.forEach((i) => (i.checked = false));
+    state = { quiz: {}, self: {} };
+    localStorage.removeItem(STORE);
+    update();
+  });
+
+  const timer = document.getElementById("timer");
+  let left = 60 * 60, id = null, running = false;
+  const fmt = (s) => String(Math.floor(s / 60)).padStart(2, "0") + ":" + String(s % 60).padStart(2, "0");
+  timer.textContent = fmt(left);
+  document.getElementById("start").addEventListener("click", (e) => {
+    if (running) return;
+    running = true;
+    e.target.disabled = true;
+    e.target.textContent = "идёт";
+    id = setInterval(() => {
+      left -= 1;
+      timer.textContent = fmt(Math.max(0, left));
+      if (left <= 0) {
+        clearInterval(id);
+        timer.classList.add("out");
+        e.target.textContent = "время вышло";
+      }
+    }, 1000);
+  });
+
+  update();
+})();
+</script>
+</body>
+</html>

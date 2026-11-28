@@ -1,0 +1,650 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Справочник pandas · фильтрация — Ассоциативный гайд</title>
+<meta name="description" content="Справочник по фильтрации в pandas 3.0.1: булевы маски, &amp; | ~, isin, between, str.contains, isna, query и топ-N — с реальным выводом и пятью ошибками.">
+<link rel="stylesheet" href="assets/style.css">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#fbf8f2" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#14131a" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="assets/icons/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="assets/icons/icon-180.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Гайд Py/SQL">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+</head>
+<body data-slug="ref-pd-filter">
+<div class="app">
+  <aside class="sidebar" id="sidebar"></aside>
+  <main>
+    <div class="wrap">
+
+      <header class="chapter-head">
+        <div class="eyebrow">
+          <span class="part">Справочник · pandas</span>
+          <span class="dot"></span>
+          <span>страница 3 из 7</span>
+          <span class="dot"></span>
+          <span>готово</span>
+        </div>
+        <h1>Фильтрация: маска как сито
+          <span class="sub">Маски, условия и NaN: как отобрать строки и не потерять пропуски</span>
+        </h1>
+        <p class="lead">
+          Фильтрация — это <code class="inl">WHERE</code> в мире pandas. Маска — такой же объект, как
+          колонка: Series из True и False длиной с таблицу. Здесь собрано всё, что нужно для отбора:
+          <code class="inl">&amp;</code>, <code class="inl">|</code>, <code class="inl">~</code>,
+          <code class="inl">isin</code>, <code class="inl">between</code>, <code class="inl">query</code>
+          и отдельный разговор про пропуски.
+        </p>
+        <div class="meta">
+          <span class="chip">⏱ <b>12 минут</b></span>
+          <span class="chip">🎯 уровень <b>2</b></span>
+          <span class="chip">🐼 <b>pandas 3.0.1</b></span>
+          <span class="chip">📚 <b>глава 14</b></span>
+        </div>
+      </header>
+
+      <p class="small">
+        Справочник pandas: <a href="appendix-pandas.html">вся карта</a> ·
+        <a href="ref-pd-series.html">01 · Series и DataFrame</a> ·
+        <a href="ref-pd-loc.html">02 · loc/iloc</a> ·
+        <b>03 · фильтрация</b> ·
+        <a href="ref-pd-groupby.html">04 · groupby</a> ·
+        <a href="ref-pd-merge.html">05 · merge</a> ·
+        <a href="ref-pd-missing.html">06 · пропуски</a> ·
+        <a href="ref-pd-reshape.html">07 · reshape</a>
+      </p>
+
+      <div class="tldr">
+        <div class="t">Самое главное</div>
+        <ul>
+          <li>Маска — это Series из <code class="inl">bool</code> той же длины, что таблица.
+              <code class="inl">df[mask]</code> оставляет строки с True и возвращает <b>новую</b> таблицу,
+              а не вид на старую.</li>
+          <li>Условия соединяются поэлементно: <code class="inl">&amp;</code>, <code class="inl">|</code>,
+              <code class="inl">~</code>, и каждое сравнение — в скобках. <code class="inl">and</code>/<code class="inl">or</code>
+              на Series падают: <code class="inl">ValueError: The truth value of a Series is ambiguous</code>.</li>
+          <li>NaN не проходит ни одно сравнение: строка с пропуском не попадёт ни в
+              <code class="inl">&gt; 600</code>, ни в <code class="inl">&lt;= 600</code>. Для пропусков —
+              <code class="inl">isna()</code>/<code class="inl">notna()</code>, для подстроки —
+              <code class="inl">str.contains(..., na=False)</code>.</li>
+        </ul>
+      </div>
+
+      <!-- ══════════════════ 01. Что это ══════════════════ -->
+      <section>
+        <h2><span class="num">01</span>Что это и как устроено</h2>
+        <p>
+          Сравнение колонки с числом применяется к каждому элементу и даёт Series из
+          <code class="inl">bool</code> с тем же индексом. Индексация <code class="inl">df[mask]</code>
+          оставляет строки, где значение истинно, — и только их. Маска не «живёт внутри» таблицы:
+          это отдельный объект, который можно сохранить, сложить с другой маской и посчитать.
+        </p>
+        <p>
+          Результат фильтра — новая таблица. В pandas 3 действует Copy-on-Write, поэтому правка
+          отфильтрованной копии не меняет исходную; а логика над масками — поэлементная, как в NumPy:
+          <code class="inl">&amp;</code>, <code class="inl">|</code>, <code class="inl">~</code>.
+        </p>
+
+        <div class="anchor">
+          <div class="glyph">🫗</div>
+          <div>
+            <div class="t">Держите эту картинку в голове</div>
+            <p class="kick"><strong>Маска — это сито с дырками.</strong> Таблица просыпается через него:
+            строки, где условие истинно, проходят; остальные остаются сверху и отбрасываются.</p>
+            <p><strong>Сито имеет ровно ту же форму, что таблица.</strong> Не «фильтр где-то внутри», а
+            отдельный объект длиной с таблицу — поэтому его можно посчитать: <code class="inl">mask.sum()</code>
+            покажет, сколько строк прошло. Подробный разбор — в
+            <a href="ch-14-filtering.html">главе 14</a>.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ══════════════════ 02. Когда брать ══════════════════ -->
+      <section>
+        <h2><span class="num">02</span>Когда брать, а когда нет</h2>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Задача</th><th>Инструмент</th><th>Чего не делать</th></tr></thead>
+            <tbody>
+              <tr><td>Суммы выше порога</td><td class="mono">df[mask]</td><td>не писать цикл с if</td></tr>
+              <tr><td>Город из списка</td><td class="mono">isin([...])</td><td>не сравнивать в for</td></tr>
+              <tr><td>Диапазон включительно</td><td class="mono">between(a, b)</td><td>не забывать про края</td></tr>
+              <tr><td>Подстрока в тексте</td><td class="mono">str.contains(...)</td><td>не <code class="inl">in</code> по колонке</td></tr>
+              <tr><td>Пропуски</td><td class="mono">isna / notna</td><td>не <code class="inl">== np.nan</code></td></tr>
+              <tr><td>Сложное условие</td><td class="mono">маска или query</td><td>не <code class="inl">and</code>/<code class="inl">or</code></td></tr>
+              <tr><td>Колонки по имени</td><td class="mono">filter(like=..., axis=1)</td><td>не путать со строками</td></tr>
+              <tr><td>Топ-N</td><td class="mono">nlargest / sort_values().head</td><td>не сортировать лишнее</td></tr>
+              <tr><td>Убрать дубли</td><td class="mono">drop_duplicates(subset=…)</td><td>не удалять вручную</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="small">
+          Если данные уже в базе — фильтруйте в SQL: меньше строк придёт в память. Это правило вернётся
+          в <a href="ch-25-sql-vs-pandas.html">главе 25</a>.
+        </p>
+      </section>
+
+      <!-- ══════════════════ 03. Как создать ══════════════════ -->
+      <section>
+        <h2><span class="num">03</span>Как создать и подготовить</h2>
+        <p>
+          Маску создаёт сравнение или метод, который возвращает bool. В таблице специально есть пропуск
+          в <code class="inl">amount</code>: на нём видны все ловушки с NaN.
+        </p>
+        <div class="code">
+          <div class="bar"><span class="file">ref_pd_filter_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">mask = df["amount"] &gt; 1000
+print(mask)
+print(type(mask).__name__, mask.dtype, len(mask))
+print(df[mask].to_string())</pre>
+          <div class="out">0     True
+1    False
+2    False
+3    False
+Name: amount, dtype: bool
+Series bool 4
+   user  amount    city         email
+0  anna  1200.0  Москва  anna@mail.ru</div>
+        </div>
+        <p>
+          <code class="inl">mask</code> — Series, а не «фильтр внутри»: она хранит True/False для каждой
+          строки. Поэтому её можно посчитать: <code class="inl">mask.sum()</code> — сколько строк прошло,
+          <code class="inl">mask.mean()</code> — их доля.
+        </p>
+        <div class="note">
+          <span class="t">NaN не проходит ни одно сравнение</span>
+          <p>Строка с пропуском не попадёт ни в <code class="inl">amount &gt; 600</code>, ни в
+          <code class="inl">amount &lt;= 600</code>: сравнение с NaN даёт False. Это не баг, а семантика
+          пропуска — для него есть <code class="inl">isna()</code>.</p>
+        </div>
+      </section>
+
+      <!-- ══════════════════ 04. Все операции ══════════════════ -->
+      <section>
+        <h2><span class="num">04</span>Все операции и методы</h2>
+        <p>
+          Три таблицы: базовые маски, комбинирование условий и инструменты поверх масок.
+        </p>
+
+        <h3>Базовые маски</h3>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Запись</th><th>Что делает</th><th>Результат</th></tr></thead>
+            <tbody>
+              <tr><td class="mono">df["amount"] &gt; 1000</td><td>сравнение поэлементно</td><td>Series bool</td></tr>
+              <tr><td class="mono">df[mask]</td><td>строки, где True; все колонки</td><td>DataFrame</td></tr>
+              <tr><td class="mono">df.loc[mask, "user"]</td><td>одна колонка у прошедших строк</td><td>Series</td></tr>
+              <tr><td class="mono">df.loc[mask, ["user", "city"]]</td><td>несколько колонок</td><td>DataFrame</td></tr>
+              <tr><td class="mono">mask.sum(), mask.mean()</td><td>сколько прошло / их доля</td><td>скаляры</td></tr>
+              <tr><td class="mono">df["amount"].isna()</td><td>маска пропусков</td><td>Series bool</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>Комбинирование и методы</h3>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Запись</th><th>Смысл</th></tr></thead>
+            <tbody>
+              <tr><td class="mono">(a &gt; 1) &amp; (b &lt; 2)</td><td>И — оба условия; скобки обязательны</td></tr>
+              <tr><td class="mono">(a == x) | (b == y)</td><td>ИЛИ — хотя бы одно</td></tr>
+              <tr><td class="mono">~mask</td><td>НЕ — инверсия маски</td></tr>
+              <tr><td class="mono">df["city"].isin([...])</td><td>вхождение в список — SQL <code class="inl">IN</code></td></tr>
+              <tr><td class="mono">~df["city"].isin([...])</td><td>не входит — аналог <code class="inl">NOT IN</code></td></tr>
+              <tr><td class="mono">df["amount"].between(a, b)</td><td>диапазон, обе границы включены</td></tr>
+              <tr><td class="mono">df["city"].str.contains("Мос", na=False)</td><td>подстрока; по умолчанию regex</td></tr>
+              <tr><td class="mono">df.query("amount &gt; 1000 and city == 'Москва'")</td><td>условие строкой, ближе к SQL</td></tr>
+              <tr><td class="mono">df.filter(like="am", axis=1)</td><td>отбор <b>колонок</b> по имени</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>Топ-N и дубли</h3>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Запись</th><th>Что делает</th></tr></thead>
+            <tbody>
+              <tr><td class="mono">df.nlargest(n, "amount")</td><td>n строк с наибольшими значениями, NaN игнорируются</td></tr>
+              <tr><td class="mono">df.sort_values("amount").head(n)</td><td>полная сортировка и срез — когда нужен порядок</td></tr>
+              <tr><td class="mono">df.drop_duplicates(subset="city")</td><td>первая строка на каждое значение колонки</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ══════════════════ 05. Разбор ══════════════════ -->
+      <section>
+        <h2><span class="num">05</span>Разбор по группам</h2>
+        <p>
+          Все примеры страницы собраны в файле
+          <a href="snippets/view.html?f=ref_pd_filter_lab.py"><code class="inl">ref_pd_filter_lab.py</code></a> —
+          его можно запустить и менять строки. Вывод ниже снят с реального прогона на pandas 3.0.1.
+        </p>
+
+        <h3>Маска и выбор колонок</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_pd_filter_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">print(df.loc[df["amount"] &gt; 1000, ["user", "city"]].to_string())
+print(df[df["amount"] &gt; 1000]["user"].tolist())</pre>
+          <div class="out">   user    city
+0  anna  Москва
+['anna']</div>
+        </div>
+        <p>
+          <code class="inl">df[mask]</code> отдаёт все колонки, <code class="inl">df.loc[mask, [...]]</code> —
+          только перечисленные. Второй вариант и читается лучше, и не тащит лишние данные через всю цепочку.
+        </p>
+
+        <h3>Логика: &amp;, |, ~ и скобки</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_pd_filter_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">both = (df["amount"] &gt; 600) &amp; (df["city"] == "Москва")
+print(both.tolist())
+print(df[both].to_string())
+
+print(df[(df["city"] == "Казань") | (df["amount"] &gt; 1000)]["user"].tolist())
+print(df[~df["city"].isin(["Москва"])]["user"].tolist())</pre>
+          <div class="out">[True, False, False, False]
+   user  amount    city         email
+0  anna  1200.0  Москва  anna@mail.ru
+['anna', 'ivan']
+['ivan', 'petr']</div>
+        </div>
+        <p>
+          Каждое сравнение — в своих скобках: у <code class="inl">&amp;</code> приоритет выше, чем у
+          <code class="inl">&gt;</code>. <code class="inl">~</code> инвертирует готовую маску, поэтому
+          применяется к <code class="inl">isin(...)</code>, а не к колонке.
+        </p>
+
+        <h3>isin и between</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_pd_filter_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">print(df[df["city"].isin(["Казань", "Тверь"])]["user"].tolist())
+print(df["amount"].between(800, 1200).tolist())
+print(df[df["amount"].between(800, 1200)]["user"].tolist())</pre>
+          <div class="out">['ivan', 'petr']
+[True, True, False, False]
+['anna', 'ivan']</div>
+        </div>
+        <p>
+          <code class="inl">isin</code> — точное сравнение с любым значением из списка (SQL
+          <code class="inl">IN</code>), <code class="inl">between</code> — диапазон, и обе границы
+          включены: 800 и 1200 проходят. Пропуск в <code class="inl">between</code> даёт False, а не NaN.
+        </p>
+
+        <h3>Текст: contains и na</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_pd_filter_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">print(df["city"].str.contains("Мос").tolist())
+print(df[df["city"].str.contains("Мос", na=False)]["user"].tolist())
+print(df[df["user"].str.contains("an")]["user"].tolist())</pre>
+          <div class="out">[True, False, True, False]
+['anna', 'olga']
+['anna', 'ivan']</div>
+        </div>
+        <p>
+          <code class="inl">contains</code> по умолчанию работает как regex: точка — любой символ,
+          для буквальной подстроки нужен <code class="inl">regex=False</code>. В pandas 3 колонка строк
+          имеет dtype <code class="inl">str</code>, и пропуск уже даёт False; <code class="inl">na=False</code>
+          делают намерение явным и спасают object-колонки, где маска содержит None.
+        </p>
+
+        <h3>Пропуски: isna и notna</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_pd_filter_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">print(df[df["amount"].isna()].to_string())
+print(df["amount"].notna().tolist())
+print(df["amount"].isna().sum())</pre>
+          <div class="out">   user  amount   city         email
+3  petr     NaN  Тверь  petr@corp.ru
+[True, True, True, False]
+1</div>
+        </div>
+        <p>
+          <code class="inl">isna()</code> и <code class="inl">notna()</code> — единственный корректный
+          способ искать пропуски. Сравнение <code class="inl">== np.nan</code> всегда False, даже для
+          строки, где NaN действительно лежит.
+        </p>
+
+        <h3>query и filter по колонкам</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_pd_filter_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">print(df.query("amount &gt; 600 and city == 'Москва'").to_string())
+limit = 600
+print(df.query("amount &gt; @limit")["user"].tolist())
+print(df.filter(like="am", axis=1).columns.tolist())</pre>
+          <div class="out">   user  amount    city         email
+0  anna  1200.0  Москва  anna@mail.ru
+['anna', 'ivan']
+['amount']</div>
+        </div>
+        <p>
+          <code class="inl">query</code> читается ближе к SQL, но строки внутри — не Python-код: переменные
+          передаются через <code class="inl">@</code>, а сложные выражения надёжнее писать маской.
+          <code class="inl">filter(axis=1)</code> отбирает <b>колонки</b> по имени — это не фильтр строк.
+        </p>
+
+        <h3>Топ-N и дубли</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_pd_filter_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">print(df.nlargest(2, "amount")[["user", "amount"]].to_string())
+print(df.sort_values("amount", ascending=False).head(2)["user"].tolist())
+print(df.drop_duplicates(subset="city")["user"].tolist())</pre>
+          <div class="out">   user  amount
+0  anna  1200.0
+1  ivan   800.0
+['anna', 'ivan']
+['anna', 'ivan', 'petr']</div>
+        </div>
+        <p>
+          <code class="inl">nlargest</code> — дешёвый топ-N без полной сортировки, NaN он игнорирует.
+          <code class="inl">sort_values(...).head(n)</code> нужен, когда важен сам порядок.
+          <code class="inl">drop_duplicates(subset=...)</code> оставляет первое вхождение каждого значения
+          и не трогает остальные строки.
+        </p>
+
+        <h3>NaN и арифметика маски</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_pd_filter_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">print((df["amount"] == np.nan).tolist())
+print((df["amount"] &gt; 600).tolist())
+print((df["amount"] &lt;= 600).tolist())
+
+mask = df["amount"] &gt; 600
+print(mask.sum(), mask.mean())
+print(f"{mask.mean():.2f}")</pre>
+          <div class="out">[False, False, False, False]
+[True, True, False, False]
+[False, False, True, False]
+2 0.5
+0.50</div>
+        </div>
+        <p>
+          Пропуск не «больше» и не «меньше» — он просто не проходит условие. Поэтому строка с NaN исчезает
+          из результата и прямого, и обратного фильтра. А сама маска — числа 0 и 1: <code class="inl">sum</code>
+          считает прошедшие строки, <code class="inl">mean</code> — их долю.
+        </p>
+      </section>
+
+      <!-- ══════════════════ 06. Сценарии ══════════════════ -->
+      <section>
+        <h2><span class="num">06</span>Три сценария из практики</h2>
+
+        <h3>Дорогие заказы</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_pd_filter_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">expensive = df[df["amount"] &gt; 600]
+print(expensive[["user", "amount"]].to_string())
+print(expensive["amount"].sum())</pre>
+          <div class="out">   user  amount
+0  anna  1200.0
+1  ivan   800.0
+2000.0</div>
+        </div>
+        <p>
+          Сначала маска, потом выбор колонок — сумму можно считать по отфильтрованной таблице.
+          <code class="inl">sum</code> пропускает NaN, поэтому строка petr не превращает итог в NaN.
+        </p>
+
+        <h3>Города из списка</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_pd_filter_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">cities = ["Москва", "Тверь"]
+print(df[df["city"].isin(cities)].to_string())</pre>
+          <div class="out">   user  amount    city         email
+0  anna  1200.0  Москва  anna@mail.ru
+2  olga   500.0  Москва  olga@mail.ru
+3  petr     NaN   Тверь  petr@corp.ru</div>
+        </div>
+        <p>
+          Список городов приходит из конфига или API — <code class="inl">isin</code> принимает его как есть.
+          Цепочка сравнений через <code class="inl">|</code> работала бы так же, но на десятке значений
+          становится нечитаемой; <code class="inl">isin</code> — это SQL <code class="inl">IN</code>.
+        </p>
+
+        <h3>Email содержит домен</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_pd_filter_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">print(df[df["email"].str.contains("mail.ru", regex=False)]["user"].tolist())
+print(df[df["email"].str.endswith("@mail.ru")]["user"].tolist())</pre>
+          <div class="out">['anna', 'olga']
+['anna', 'olga']</div>
+        </div>
+        <p>
+          <code class="inl">regex=False</code> обязателен, если в шаблоне есть точка: иначе она означает
+          «любой символ» и найдёт лишнее. <code class="inl">endswith</code> строже — проверяет конец
+          строки, — но точка в домене всё равно требует <code class="inl">regex=False</code>.
+        </p>
+      </section>
+
+      <!-- ══════════════════ 07. Ошибки ══════════════════ -->
+      <section>
+        <h2><span class="num">07</span>Пять ошибок, на которых спотыкаются</h2>
+        <div class="errors">
+          <div class="err">
+            <div class="h">and и or вместо &amp; и |</div>
+            <p><code class="inl">(df["amount"] &gt; 600) and (df["city"] == "Москва")</code> бросает
+            <code class="inl">ValueError: The truth value of a Series is ambiguous</code>:
+            <code class="inl">and</code> требует одного True/False, а в Series их тысячи.
+            <code class="inl">or</code> ведёт себя так же.</p>
+            <div class="fix">Поэлементные <code class="inl">&amp;</code>, <code class="inl">|</code>,
+            <code class="inl">~</code> — те же операторы, что в NumPy.</div>
+          </div>
+
+          <div class="err">
+            <div class="h">Забытые скобки</div>
+            <p><code class="inl">df["amount"] &gt; 600 &amp; (df["city"] == "Москва")</code> не падает:
+            у <code class="inl">&amp;</code> приоритет выше, поэтому сначала считается
+            <code class="inl">600 &amp; mask</code> (получается 0), и выражение превращается в
+            <code class="inl">amount &gt; 0</code>. Вернутся три строки вместо одной — и без ошибки.</p>
+            <div class="fix">Каждое сравнение — в скобках: <code class="inl">(a &gt; 1) &amp; (b == "x")</code>.</div>
+          </div>
+
+          <div class="err">
+            <div class="h">Цепочка присваиваний</div>
+            <p><code class="inl">df[df["amount"] &gt; 1000]["amount"] = 0</code> не меняет таблицу:
+            промежуточный объект — копия. В pandas 3 (Copy-on-Write) это гарантированно, а pandas
+            пишет <code class="inl">ChainedAssignmentError</code>.</p>
+            <div class="fix">Один вызов: <code class="inl">df.loc[df["amount"] &gt; 1000, "amount"] = 0</code>.</div>
+          </div>
+
+          <div class="err">
+            <div class="h">Сравнение с NaN</div>
+            <p><code class="inl">df["amount"] == np.nan</code> всегда False, даже для строки, где NaN
+            действительно лежит. И <code class="inl">&gt; 600</code>, и <code class="inl">&lt;= 600</code>
+            дают для неё False — строка исчезает из любого фильтра.</p>
+            <div class="fix">Для пропусков — <code class="inl">isna()</code> / <code class="inl">notna()</code>,
+            а не сравнение.</div>
+          </div>
+
+          <div class="err">
+            <div class="h">in по колонке вместо isin</div>
+            <p><code class="inl">"anna" in df["user"]</code> возвращает False: <code class="inl">in</code>
+            по Series проверяет <b>индекс</b>, а не значения. Проверка по
+            <code class="inl">df["user"].values</code> работает, но это O(n) на каждую строку цикла —
+            на большой таблице получается O(n²).</p>
+            <div class="fix"><code class="inl">df["user"].isin(["anna"])</code> — векторно и правильно;
+            отрицание — <code class="inl">~</code>.</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ══════════════════ 08. Мини-проверка ══════════════════ -->
+      <section>
+        <h2><span class="num">08</span>Мини-проверка</h2>
+        <p>Пять вопросов на понимание и две задачи. Сначала своя попытка — потом спойлер.</p>
+
+        <div class="qa">
+          <details>
+            <summary>Что такое маска и почему это не «фильтр внутри»?</summary>
+            <div class="a">
+              <p>Маска — Series из True/False длиной с таблицу и с тем же индексом.
+              <code class="inl">df[mask]</code> оставляет строки с True; маску можно посчитать.</p>
+              <div class="verdict">Резюме: сито длиной с таблицу.</div>
+            </div>
+          </details>
+        </div>
+
+        <div class="qa">
+          <details>
+            <summary>Почему and не работает, а &amp; работает?</summary>
+            <div class="a">
+              <p><code class="inl">and</code> сводит выражение к одному True/False, а в Series значений
+              много — отсюда <code class="inl">ValueError</code>. <code class="inl">&amp;</code> —
+              поэлементная операция, как в NumPy, и возвращает новую маску.</p>
+              <div class="verdict">Резюме: логика над массивами — поэлементная.</div>
+            </div>
+          </details>
+        </div>
+
+        <div class="qa">
+          <details>
+            <summary>Чем df[mask] отличается от df.loc[mask, "col"]?</summary>
+            <div class="a">
+              <p>Первое возвращает все колонки, второе — только указанные. Строки фильтруются одинаково:
+              маска остаётся первым аргументом, колонки — вторым.</p>
+              <div class="verdict">Резюме: строки — маска, колонки — второй аргумент.</div>
+            </div>
+          </details>
+        </div>
+
+        <div class="qa">
+          <details>
+            <summary>Почему строки с NaN исчезают при фильтрации?</summary>
+            <div class="a">
+              <p>Сравнение с NaN всегда False, поэтому строка не проходит ни прямое, ни обратное условие.
+              Это семантика пропуска, а не баг: для отбора пропусков есть <code class="inl">isna()</code>.</p>
+              <div class="verdict">Резюме: NaN не «больше» и не «меньше».</div>
+            </div>
+          </details>
+        </div>
+
+        <div class="qa">
+          <details>
+            <summary>Чем isin отличается от contains?</summary>
+            <div class="a">
+              <p><code class="inl">isin</code> проверяет точное равенство любому значению из списка,
+              <code class="inl">contains</code> ищет подстроку (по умолчанию регуляркой) внутри значения.
+              <code class="inl">isin</code> — для категорий, <code class="inl">contains</code> — для текста.</p>
+              <div class="verdict">Резюме: список целиком против куска строки.</div>
+            </div>
+          </details>
+        </div>
+
+        <h3><span style="color:var(--muted);font-family:var(--mono);font-size:.8rem">01</span> Москва дороже 600</h3>
+        <p>Оставьте заказы из Москвы дороже 600 и выведите только <code class="inl">user</code> и <code class="inl">amount</code>.</p>
+        <div class="code">
+          <div class="bar"><span class="file">условие</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">df = pd.DataFrame(
+    {"user": ["anna", "ivan", "olga", "petr"],
+     "amount": [1200.0, 800.0, 500.0, np.nan],
+     "city": ["Москва", "Казань", "Москва", "Тверь"]},
+)
+# ожидается: одна строка — anna</pre>
+        </div>
+        <div class="qa">
+          <details>
+            <summary>Показать решение и разбор</summary>
+            <div class="a">
+              <div class="code" style="margin-top:0">
+                <div class="bar"><span class="file">решение</span><span class="lang">python</span><button class="copy">копировать</button></div>
+                <pre data-lang="python">mask = (df["amount"] &gt; 600) &amp; (df["city"] == "Москва")
+print(df.loc[mask, ["user", "amount"]].to_string())</pre>
+                <div class="out">   user  amount
+0  anna  1200.0</div>
+              </div>
+              <p><strong>Что важно.</strong> Два сравнения в скобках, между ними <code class="inl">&amp;</code>,
+              а не <code class="inl">and</code>; маска идёт первым аргументом loc, колонки — вторым.</p>
+            </div>
+          </details>
+        </div>
+
+        <h3><span style="color:var(--muted);font-family:var(--mono);font-size:.8rem">02</span> Найти и посчитать пропуски</h3>
+        <p>Для той же таблицы найдите пользователя с пропущенной суммой и посчитайте долю таких строк.</p>
+        <div class="code">
+          <div class="bar"><span class="file">условие</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python"># та же таблица df
+# ожидается: ['petr'] и 0.25</pre>
+        </div>
+        <div class="qa">
+          <details>
+            <summary>Показать решение и разбор</summary>
+            <div class="a">
+              <div class="code" style="margin-top:0">
+                <div class="bar"><span class="file">решение</span><span class="lang">python</span><button class="copy">копировать</button></div>
+                <pre data-lang="python">print(df[df["amount"].isna()]["user"].tolist())
+print(df["amount"].isna().mean())</pre>
+                <div class="out">['petr']
+0.25</div>
+              </div>
+              <p><strong>Что важно.</strong> <code class="inl">isna()</code> — такая же маска, как сравнение,
+              поэтому её можно и подставить в <code class="inl">df[...]</code>, и усреднить: доля True
+              и есть доля пропусков.</p>
+            </div>
+          </details>
+        </div>
+      </section>
+
+      <!-- ══════════════════ 09. Мостик ══════════════════ -->
+      <section>
+        <h2><span class="num">09</span>Мостик: та же идея в SQL и NumPy</h2>
+
+        <h3>SQL: WHERE и его родственники</h3>
+        <div class="code">
+          <div class="bar"><span class="file">мост в SQL</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">SELECT * FROM orders WHERE amount &gt; 600;              -- df[mask]
+SELECT * FROM orders WHERE city IN ('Москва', 'Тверь'); -- isin
+SELECT * FROM orders WHERE amount BETWEEN 600 AND 1200; -- between
+SELECT * FROM orders WHERE email LIKE '%mail.ru';       -- str.contains
+SELECT * FROM orders WHERE amount IS NULL;              -- isna</pre>
+        </div>
+        <p>
+          Каждой конструкции pandas соответствует SQL-оператор. Разница — в пропусках:
+          <code class="inl">~isin([...])</code> сохраняет строки с NaN, а SQL <code class="inl">NOT IN</code>
+          с NULL в подзапросе может вернуть пустой результат (главы
+          <a href="ch-20-select-where-null.html">20</a> и <a href="ch-22-subqueries-cte.html">22</a>).
+        </p>
+
+        <h3>NumPy: трафарет поверх сетки</h3>
+        <div class="code">
+          <div class="bar"><span class="file">мост в NumPy</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">import numpy as np
+
+a = np.array([1200.0, 800.0, 500.0, np.nan])
+a &gt; 600            # [True, True, False, False] — та же маска
+a[a &gt; 600]         # отбор значений — как df[mask]
+np.isnan(a)        # маска пропусков — как isna()</pre>
+        </div>
+        <p>
+          Маска NumPy — «трафарет поверх сетки»: вы накрываете им массив и видите только True.
+          Series bool в pandas устроена так же, поэтому <code class="inl">a[a &gt; 600]</code> и
+          <code class="inl">df[mask]</code> — одна операция отбора. Разбор трафарета — в
+          <a href="ch-08-indexing.html">главе 08</a>.
+        </p>
+
+        <div class="bridges">
+          <a class="bridge" href="ch-14-filtering.html"><span class="to">Глава 14</span><span>Фильтрация: булева маска как сито</span><span class="what">→ устройство масок и query</span></a>
+          <a class="bridge" href="ch-13-loc-iloc.html"><span class="to">Глава 13</span><span>loc и iloc</span><span class="what">→ маска как первый аргумент loc</span></a>
+          <a class="bridge" href="ch-08-indexing.html"><span class="to">Глава 08</span><span>Индексация NumPy: трафарет</span><span class="what">→ та же маска в ndarray</span></a>
+          <a class="bridge" href="ch-17-missing.html"><span class="to">Глава 17</span><span>Пропуски: NaN и NA</span><span class="what">→ что делать, когда фильтр потерял строки</span></a>
+          <a class="bridge" href="ref-pd-loc.html"><span class="to">Справочник</span><span>02 · loc и iloc</span><span class="what">→ выбор по метке и позиции</span></a>
+        </div>
+      </section>
+
+      <div class="pager">
+        <a class="prev" href="ref-pd-loc.html"><span class="dir">← Назад</span><span class="ttl">loc и iloc: имя против номера</span></a>
+        <a class="next" href="ref-pd-groupby.html"><span class="dir">Дальше →</span><span class="ttl">groupby: разложить — посчитать — собрать</span></a>
+      </div>
+
+    </div>
+  </main>
+</div>
+<script src="assets/toc.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>

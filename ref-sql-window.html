@@ -1,0 +1,698 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Справочник · Оконные функции: колонка рядом — Ассоциативный гайд</title>
+<meta name="description" content="Справочник по оконным функциям SQL: OVER, PARTITION BY, ORDER BY, ROW_NUMBER, RANK, LAG, рамки ROWS BETWEEN — запросы и реальный вывод PostgreSQL 14.">
+<link rel="stylesheet" href="assets/style.css">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#fbf8f2" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#14131a" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="assets/icons/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="assets/icons/icon-180.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Гайд Py/SQL">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+</head>
+<body data-slug="ref-sql-window">
+<div class="app">
+  <aside class="sidebar" id="sidebar"></aside>
+  <main>
+    <div class="wrap">
+      <header class="chapter-head">
+        <div class="eyebrow">
+          <span class="part">Справочник · SQL</span>
+          <span class="dot"></span>
+          <span>страница 4 из 6</span>
+          <span class="dot"></span>
+          <span>готово</span>
+        </div>
+        <h1>Оконные функции: колонка рядом
+          <span class="sub">Агрегат, который не схлопывает строки: OVER, PARTITION BY и рамки</span>
+        </h1>
+        <p class="lead">
+          <code class="inl">GROUP BY</code> сворачивает строки в одну на группу, а окно оставляет
+          их на месте и дописывает агрегат рядом с каждой. Здесь — <code class="inl">OVER</code>,
+          <code class="inl">PARTITION BY</code>, <code class="inl">ROW_NUMBER</code>,
+          <code class="inl">LAG</code> и рамки — с реальным выводом PostgreSQL.
+        </p>
+        <div class="meta">
+          <span class="chip">⏱ <b>12 минут</b></span>
+          <span class="chip">🎯 уровень <b>2</b></span>
+          <span class="chip">🐘 PostgreSQL <b>14</b></span>
+          <span class="chip">📚 <b>глава 23</b></span>
+        </div>
+      </header>
+      <p class="small">
+        Справочник SQL: <a href="appendix-sql.html">вся карта</a> ·
+        <a href="ref-sql-select.html">01 · SELECT и NULL</a> ·
+        <a href="ref-sql-join.html">02 · JOIN</a> ·
+        <a href="ref-sql-group.html">03 · GROUP BY</a> · <b>04 · окна</b> ·
+        <a href="ref-sql-cte.html">05 · CTE</a> ·
+        <a href="ref-sql-index.html">06 · индексы</a>
+      </p>
+      <div class="tldr">
+        <div class="t">Самое главное</div>
+        <ul>
+          <li>Окно <b>дописывает</b> агрегат к каждой строке, а не сворачивает их: число строк
+              в результате не меняется.</li>
+          <li><code class="inl">PARTITION BY</code> задаёт раздел, <code class="inl">ORDER BY</code> —
+              порядок и рамку. При ORDER BY сумма по умолчанию накапливается от начала раздела
+              до текущей строки.</li>
+          <li>Окно вычисляется <b>после</b> WHERE/GROUP BY/HAVING, поэтому фильтровать по нему
+              нельзя — нужен подзапрос или CTE.</li>
+        </ul>
+      </div>
+      <!-- ══════════════════ 01. Что это ══════════════════ -->
+      <section>
+        <h2><span class="num">01</span>Что это и как устроено</h2>
+        <p>
+          Оконная функция — это агрегат, который считается по «окну» строк и возвращается
+          <b>вместе с каждой строкой</b>. Функции те же — <code class="inl">SUM</code>,
+          <code class="inl">AVG</code>, <code class="inl">COUNT</code>; группа схлопывается, окно — нет.
+        </p>
+        <p>
+          Внутри <code class="inl">OVER (...)</code> три настройки: <code class="inl">PARTITION BY</code>
+          — на какие разделы делить строки, <code class="inl">ORDER BY</code> — в каком порядке
+          идти внутри раздела, рамка — какие именно строки участвуют. Окна считаются на этапе
+          <code class="inl">SELECT</code>, после <code class="inl">GROUP BY</code> и
+          <code class="inl">HAVING</code>.
+        </p>
+        <div class="anchor">
+          <div class="glyph">🪟</div>
+          <div>
+            <div class="t">Держите эту картинку в голове</div>
+            <p class="kick"><strong>Стеклянная колонка рядом.</strong> Строки остаются на месте,
+            но рядом с каждой появляется значение, посчитанное по её окну: по пользователю,
+            по всему результату, по накопленному куску. PARTITION BY задаёт «чьи строки»,
+            ORDER BY — «в каком порядке».</p>
+            <p>Окно поверх строк, а не вместо них. Подробный разбор — в
+            <a href="ch-23-window-functions.html">главе 23</a>.</p>
+          </div>
+        </div>
+      </section>
+      <!-- ══════════════════ 02. Когда применять ══════════════════ -->
+      <section>
+        <h2><span class="num">02</span>Когда применять, а когда нет</h2>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Задача</th><th>Окно?</th><th>Что взять вместо</th></tr></thead>
+            <tbody>
+              <tr><td>Итог по группе рядом с каждой строкой</td><td><b>да</b></td><td>—</td></tr>
+              <tr><td>Накопительная сумма, скользящее среднее</td><td><b>да</b></td><td>—</td></tr>
+              <tr><td>Рейтинг и топ-N внутри группы</td><td><b>да</b></td><td><code class="inl">ROW_NUMBER</code> + CTE</td></tr>
+              <tr><td>Сравнить строку с предыдущей/следующей</td><td><b>да</b></td><td><code class="inl">LAG</code>/<code class="inl">LEAD</code></td></tr>
+              <tr><td>Доля строки или группы в общей сумме</td><td><b>да</b></td><td>—</td></tr>
+              <tr><td>Одна строка на группу</td><td>нет</td><td><code class="inl">GROUP BY</code></td></tr>
+              <tr><td>Фильтр по значению окна</td><td>нет</td><td>CTE/подзапрос, затем <code class="inl">WHERE</code></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="small">Главный вопрос: одна строка на группу или строка на каждую запись? Первое — GROUP BY, второе — окно.</p>
+      </section>
+      <!-- ══════════════════ 03. Синтаксис ══════════════════ -->
+      <section>
+        <h2><span class="num">03</span>Синтаксис-шаблон</h2>
+        <div class="code">
+          <div class="bar"><span class="file">ref_sql_window_lab.sql</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">SELECT o.id, o.quantity * p.price AS revenue,
+       SUM(o.quantity * p.price) OVER (
+           PARTITION BY o.user_id
+           ORDER BY o.created_at
+       ) AS running
+FROM orders o
+JOIN products p ON p.id = o.product_id
+WHERE o.user_id = 1
+ORDER BY o.id;</pre>
+          <div class="out"> id | revenue  | running
+----+----------+----------
+  1 | 75000.00 | 75000.00
+  3 |  1350.00 | 76350.00
+  7 |   600.00 | 76950.00
+(3 rows)</div>
+        </div>
+        <p>
+          Читается так: для заказов Anna (user_id = 1) в порядке даты — выручка и накопительная
+          сумма. Три строки остались тремя: окно добавило <code class="inl">running</code>, а не
+          свернуло заказы.
+        </p>
+        <p class="small">
+          Порядок частей: <code class="inl">FROM → WHERE → GROUP BY → HAVING → окна → SELECT →
+          ORDER BY → LIMIT</code>. Вывод — точный stdout <code class="inl">psql</code> с
+          <code class="inl">(3 rows)</code>.
+        </p>
+      </section>
+      <!-- ══════════════════ 04. Все конструкции ══════════════════ -->
+      <section>
+        <h2><span class="num">04</span>Все конструкции</h2>
+        <p>
+          Две таблицы: функции и рамки. «Результат» — что попадает в строку результата.
+        </p>
+        <h3>Функции</h3>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Функция</th><th>Что делает</th><th>Результат</th><th>Примечание</th></tr></thead>
+            <tbody>
+              <tr><td class="mono">ROW_NUMBER()</td><td>уникальный номер по порядку</td><td>1, 2, 3, 4</td><td>равным значениям — разные номера</td></tr>
+              <tr><td class="mono">RANK()</td><td>место с пропусками</td><td>1, 1, 3</td><td>как в спорте</td></tr>
+              <tr><td class="mono">DENSE_RANK()</td><td>место без пропусков</td><td>1, 1, 2</td><td>плотная нумерация</td></tr>
+              <tr><td class="mono">NTILE(n)</td><td>номер ведра 1..n</td><td>1..n</td><td>делит примерно поровну</td></tr>
+              <tr><td class="mono">LAG / LEAD</td><td>предыдущая / следующая строка</td><td>значение или NULL</td><td>offset и default — параметры</td></tr>
+              <tr><td class="mono">FIRST_VALUE / LAST_VALUE</td><td>значение на краю рамки</td><td>значение</td><td>зависит от рамки</td></tr>
+              <tr><td class="mono">SUM / AVG / COUNT / MIN / MAX OVER</td><td>агрегат по окну</td><td>число в каждой строке</td><td>строки не схлопываются</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <h3>Рамки</h3>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Рамка</th><th>Что берёт</th><th>Результат</th><th>Примечание</th></tr></thead>
+            <tbody>
+              <tr><td class="mono">ROWS BETWEEN 1 PRECEDING AND CURRENT ROW</td><td>текущую и предыдущую строку</td><td>скользящее окно</td><td>физические строки</td></tr>
+              <tr><td class="mono">ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW</td><td>от начала раздела до текущей</td><td>running total</td><td>типично для накопления</td></tr>
+              <tr><td class="mono">ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING</td><td>весь раздел</td><td>итог группы рядом со строкой</td><td>не зависит от текущей</td></tr>
+              <tr><td class="mono">по умолчанию с ORDER BY</td><td>RANGE UNBOUNDED PRECEDING … CURRENT ROW</td><td>накопление, равные — вместе</td><td>RANGE, не ROWS</td></tr>
+              <tr><td class="mono">по умолчанию без ORDER BY</td><td>весь раздел</td><td>одно значение на раздел</td><td>как SUM OVER (PARTITION BY ...)</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+      <!-- ══════════════════ 05. Разбор ══════════════════ -->
+      <section>
+        <h2><span class="num">05</span>Разбор по вариантам</h2>
+        <p>
+          Все запросы страницы собраны в файле
+          <a href="snippets/view.html?f=ref_sql_window_lab.sql"><code class="inl">ref_sql_window_lab.sql</code></a> —
+          запуск: <code class="inl">psql -d learning_shop -f guide/snippets/ref_sql_window_lab.sql</code>.
+          База <code class="inl">learning_shop</code>, выручка заказа — <code class="inl">quantity * price</code>.
+        </p>
+        <h3>OVER (): итог и среднее рядом</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_sql_window_lab.sql</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">SELECT o.id, (o.quantity * p.price) AS revenue,
+       SUM(o.quantity * p.price) OVER () AS total_all,
+       ROUND(AVG(o.quantity * p.price) OVER (), 2) AS avg_all
+FROM orders o
+JOIN products p ON p.id = o.product_id
+ORDER BY o.id;</pre>
+          <div class="out"> id | revenue  | total_all | avg_all
+----+----------+-----------+----------
+  1 | 75000.00 | 202400.00 | 20240.00
+  2 |  1800.00 | 202400.00 | 20240.00
+  3 |  1350.00 | 202400.00 | 20240.00
+  4 |  1500.00 | 202400.00 | 20240.00
+  5 | 22000.00 | 202400.00 | 20240.00
+  6 |  2250.00 | 202400.00 | 20240.00
+  7 |   600.00 | 202400.00 | 20240.00
+  8 |   900.00 | 202400.00 | 20240.00
+  9 | 75000.00 | 202400.00 | 20240.00
+ 10 | 22000.00 | 202400.00 | 20240.00
+(10 rows)</div>
+        </div>
+        <p>
+          <code class="inl">OVER ()</code> — окно по всему результату: итог 202 400 и средний чек
+          20 240 повторяются в каждой из десяти строк. Строк по-прежнему десять.
+        </p>
+        <h3>PARTITION BY: суммы по разделам</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_sql_window_lab.sql</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">SELECT o.id, u.name, (o.quantity * p.price) AS revenue,
+       SUM(o.quantity * p.price) OVER (PARTITION BY o.user_id) AS user_total
+FROM orders o
+JOIN users u ON u.id = o.user_id
+JOIN products p ON p.id = o.product_id
+ORDER BY u.name, o.id;</pre>
+          <div class="out"> id | name  | revenue  | user_total
+----+-------+----------+------------
+  1 | Anna  | 75000.00 |   76950.00
+  3 | Anna  |  1350.00 |   76950.00
+  7 | Anna  |   600.00 |   76950.00
+  2 | Ivan  |  1800.00 |   23800.00
+  5 | Ivan  | 22000.00 |   23800.00
+  6 | Maria |  2250.00 |    2250.00
+  4 | Olga  |  1500.00 |   76500.00
+  9 | Olga  | 75000.00 |   76500.00
+ 10 | Petr  | 22000.00 |   22000.00
+(9 rows)</div>
+        </div>
+        <p>
+          <code class="inl">PARTITION BY o.user_id</code> разбил строки на разделы, и
+          <code class="inl">user_total</code> повторяется внутри раздела. GROUP BY дал бы пять
+          строк; окно оставило все девять. Гостевой заказ сюда не попал из-за INNER JOIN.
+        </p>
+        <h3>ORDER BY и накопительная сумма</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_sql_window_lab.sql</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">SELECT o.id, o.created_at::date AS day, (o.quantity * p.price) AS revenue,
+       SUM(o.quantity * p.price) OVER (ORDER BY o.created_at, o.id) AS running_all
+FROM orders o
+JOIN products p ON p.id = o.product_id
+ORDER BY o.created_at, o.id;</pre>
+          <div class="out"> id |    day     | revenue  | running_all
+----+------------+----------+-------------
+  1 | 2024-01-05 | 75000.00 |    75000.00
+  2 | 2024-01-06 |  1800.00 |    76800.00
+  3 | 2024-01-15 |  1350.00 |    78150.00
+  4 | 2024-02-01 |  1500.00 |    79650.00
+  5 | 2024-02-10 | 22000.00 |   101650.00
+  6 | 2024-02-20 |  2250.00 |   103900.00
+  7 | 2024-03-03 |   600.00 |   104500.00
+  8 | 2024-03-07 |   900.00 |   105400.00
+  9 | 2024-03-15 | 75000.00 |   180400.00
+ 10 | 2024-03-20 | 22000.00 |   202400.00
+(10 rows)</div>
+        </div>
+        <p>
+          С <code class="inl">ORDER BY</code> рамка по умолчанию — от начала раздела до текущей
+          строки, поэтому сумма накапливается: 75 000 → 76 800 → … → 202 400. Это
+          <code class="inl">RANGE</code>, а не <code class="inl">ROWS</code>: строки с одинаковым
+          ключом сортировки попадают в окно вместе (здесь даты уникальны).
+        </p>
+        <h3>ROW_NUMBER, RANK и DENSE_RANK</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_sql_window_lab.sql</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">SELECT o.id, (o.quantity * p.price) AS revenue,
+       ROW_NUMBER() OVER (ORDER BY o.quantity * p.price DESC, o.id) AS rn,
+       RANK()       OVER (ORDER BY o.quantity * p.price DESC) AS rnk,
+       DENSE_RANK() OVER (ORDER BY o.quantity * p.price DESC) AS dense
+FROM orders o
+JOIN products p ON p.id = o.product_id
+ORDER BY o.quantity * p.price DESC, o.id;</pre>
+          <div class="out"> id | revenue  | rn | rnk | dense
+----+----------+----+-----+-------
+  1 | 75000.00 |  1 |   1 |     1
+  9 | 75000.00 |  2 |   1 |     1
+  5 | 22000.00 |  3 |   3 |     2
+ 10 | 22000.00 |  4 |   3 |     2
+  6 |  2250.00 |  5 |   5 |     3
+  2 |  1800.00 |  6 |   6 |     4
+  4 |  1500.00 |  7 |   7 |     5
+  3 |  1350.00 |  8 |   8 |     6
+  8 |   900.00 |  9 |   9 |     7
+  7 |   600.00 | 10 |  10 |     8
+(10 rows)</div>
+        </div>
+        <p>
+          Два заказа по 75 000: ROW_NUMBER дал номера 1 и 2 (равенство разрешено tie-breaker'ом
+          <code class="inl">o.id</code>), RANK — 1 и 1, следующий получает 3, DENSE_RANK — 1, 1, 2.
+          Для «выдать ровно N строк» нужен ROW_NUMBER, для «показать место» — RANK.
+        </p>
+        <h3>LAG и LEAD: соседние строки</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_sql_window_lab.sql</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">SELECT u.name, o.id, o.created_at::date AS day,
+       (o.quantity * p.price) AS revenue,
+       LAG(o.quantity * p.price) OVER (
+           PARTITION BY o.user_id ORDER BY o.created_at, o.id
+       ) AS prev,
+       LEAD(o.quantity * p.price) OVER (
+           PARTITION BY o.user_id ORDER BY o.created_at, o.id
+       ) AS next
+FROM orders o
+JOIN users u ON u.id = o.user_id
+JOIN products p ON p.id = o.product_id
+ORDER BY u.name, o.created_at, o.id;</pre>
+          <div class="out"> name  | id |    day     | revenue  |   prev   |   next
+-------+----+------------+----------+----------+----------
+ Anna  |  1 | 2024-01-05 | 75000.00 |          |  1350.00
+ Anna  |  3 | 2024-01-15 |  1350.00 | 75000.00 |   600.00
+ Anna  |  7 | 2024-03-03 |   600.00 |  1350.00 |
+ Ivan  |  2 | 2024-01-06 |  1800.00 |          | 22000.00
+ Ivan  |  5 | 2024-02-10 | 22000.00 |  1800.00 |
+ Maria |  6 | 2024-02-20 |  2250.00 |          |
+ Olga  |  4 | 2024-02-01 |  1500.00 |          | 75000.00
+ Olga  |  9 | 2024-03-15 | 75000.00 |  1500.00 |
+ Petr  | 10 | 2024-03-20 | 22000.00 |          |
+(9 rows)</div>
+        </div>
+        <p>
+          <code class="inl">LAG</code> берёт предыдущий заказ пользователя, <code class="inl">LEAD</code> —
+          следующий. На краях раздела NULL: у первого заказа нет предыдущего, у последнего —
+          следующего. Это дешевле self-join и не требует двух проходов по таблице.
+        </p>
+        <h3>Рамка ROWS BETWEEN</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_sql_window_lab.sql</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">SELECT u.name, o.id, (o.quantity * p.price) AS revenue,
+       SUM(o.quantity * p.price) OVER (
+           PARTITION BY o.user_id
+           ORDER BY o.created_at, o.id
+           ROWS BETWEEN 1 PRECEDING AND CURRENT ROW
+       ) AS last_two
+FROM orders o
+JOIN users u ON u.id = o.user_id
+JOIN products p ON p.id = o.product_id
+ORDER BY u.name, o.created_at, o.id;</pre>
+          <div class="out"> name  | id | revenue  | last_two
+-------+----+----------+----------
+ Anna  |  1 | 75000.00 | 75000.00
+ Anna  |  3 |  1350.00 | 76350.00
+ Anna  |  7 |   600.00 |  1950.00
+ Ivan  |  2 |  1800.00 |  1800.00
+ Ivan  |  5 | 22000.00 | 23800.00
+ Maria |  6 |  2250.00 |  2250.00
+ Olga  |  4 |  1500.00 |  1500.00
+ Olga  |  9 | 75000.00 | 76500.00
+ Petr  | 10 | 22000.00 | 22000.00
+(9 rows)</div>
+        </div>
+        <p>
+          <code class="inl">ROWS BETWEEN 1 PRECEDING AND CURRENT ROW</code> — окно из двух строк:
+          текущей и предыдущей. У Anna третий заказ на 600 в сумме с предыдущим 1 350 даёт 1 950;
+          у Ivan 1 800 + 22 000 = 23 800. <code class="inl">UNBOUNDED PRECEDING</code> вместо
+          <code class="inl">1 PRECEDING</code> — и получится накопительная сумма.
+        </p>
+        <h3>Доля в общей сумме</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_sql_window_lab.sql</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">SELECT o.id, u.name, (o.quantity * p.price) AS revenue,
+       ROUND(100.0 * (o.quantity * p.price)
+             / SUM(o.quantity * p.price) OVER (), 1) AS share_pct
+FROM orders o
+JOIN users u ON u.id = o.user_id
+JOIN products p ON p.id = o.product_id
+ORDER BY revenue DESC, o.id;</pre>
+          <div class="out"> id | name  | revenue  | share_pct
+----+-------+----------+-----------
+  1 | Anna  | 75000.00 |      37.2
+  9 | Olga  | 75000.00 |      37.2
+  5 | Ivan  | 22000.00 |      10.9
+ 10 | Petr  | 22000.00 |      10.9
+  6 | Maria |  2250.00 |       1.1
+  2 | Ivan  |  1800.00 |       0.9
+  4 | Olga  |  1500.00 |       0.7
+  3 | Anna  |  1350.00 |       0.7
+  7 | Anna  |   600.00 |       0.3
+(9 rows)</div>
+        </div>
+        <p>
+          Выручка строки делится на <code class="inl">SUM(...) OVER ()</code> — итог по всем строкам.
+          Два заказа по 75 000 дают по 37,2 %, заказ на 600 — 0,3 %. Сумма округлённых долей —
+          99,9, а не 100,0: это нормальное следствие округления.
+        </p>
+      </section>
+      <!-- ══════════════════ 06. Сценарии ══════════════════ -->
+      <section>
+        <h2><span class="num">06</span>Три сценария из практики</h2>
+        <h3>Топ-1 заказ на пользователя</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_sql_window_lab.sql</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">WITH ranked AS (
+    SELECT u.name, o.id, o.created_at::date AS day,
+           (o.quantity * p.price) AS revenue,
+           ROW_NUMBER() OVER (
+               PARTITION BY o.user_id
+               ORDER BY o.quantity * p.price DESC, o.id
+           ) AS rn
+    FROM orders o
+    JOIN users u ON u.id = o.user_id
+    JOIN products p ON p.id = o.product_id
+)
+SELECT name, id, day, revenue
+FROM ranked
+WHERE rn = 1
+ORDER BY name;</pre>
+          <div class="out"> name  | id |    day     | revenue
+-------+----+------------+----------
+ Anna  |  1 | 2024-01-05 | 75000.00
+ Ivan  |  5 | 2024-02-10 | 22000.00
+ Maria |  6 | 2024-02-20 |  2250.00
+ Olga  |  9 | 2024-03-15 | 75000.00
+ Petr  | 10 | 2024-03-20 | 22000.00
+(5 rows)</div>
+        </div>
+        <p>
+          Классический «top-1 на группу»: окно нумерует заказы внутри пользователя, внешний
+          <code class="inl">WHERE rn = 1</code> оставляет по одному. Напрямую в WHERE окно
+          использовать нельзя, поэтому нужен CTE. Anna и Olga выбрали ноутбуки на 75 000.
+        </p>
+        <h3>Накопительная выручка по месяцам</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_sql_window_lab.sql</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">SELECT DATE_TRUNC('month', o.created_at)::date AS month,
+       SUM(o.quantity * p.price) AS month_revenue,
+       SUM(SUM(o.quantity * p.price)) OVER (
+           ORDER BY DATE_TRUNC('month', o.created_at)
+       ) AS running
+FROM orders o
+JOIN products p ON p.id = o.product_id
+GROUP BY DATE_TRUNC('month', o.created_at)
+ORDER BY month;</pre>
+          <div class="out">   month    | month_revenue |  running
+------------+---------------+-----------
+ 2024-01-01 |      78150.00 |  78150.00
+ 2024-02-01 |      25750.00 | 103900.00
+ 2024-03-01 |      98500.00 | 202400.00
+(3 rows)</div>
+        </div>
+        <p>
+          GROUP BY и окно работают вместе: сначала выручка сворачивается по месяцам, затем
+          <code class="inl">SUM(SUM(...)) OVER (ORDER BY month)</code> накапливает её:
+          78 150 → 103 900 → 202 400.
+        </p>
+        <h3>Доля пользователя в общей выручке</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_sql_window_lab.sql</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">SELECT u.name,
+       SUM(o.quantity * p.price) AS revenue,
+       SUM(SUM(o.quantity * p.price)) OVER () AS total_revenue,
+       ROUND(100.0 * SUM(o.quantity * p.price)
+             / SUM(SUM(o.quantity * p.price)) OVER (), 1) AS share_pct
+FROM orders o
+JOIN users u ON u.id = o.user_id
+JOIN products p ON p.id = o.product_id
+GROUP BY u.name
+ORDER BY revenue DESC;</pre>
+          <div class="out"> name  | revenue  | total_revenue | share_pct
+-------+----------+---------------+-----------
+ Anna  | 76950.00 |     201500.00 |      38.2
+ Olga  | 76500.00 |     201500.00 |      38.0
+ Ivan  | 23800.00 |     201500.00 |      11.8
+ Petr  | 22000.00 |     201500.00 |      10.9
+ Maria |  2250.00 |     201500.00 |       1.1
+(5 rows)</div>
+        </div>
+        <p>
+          <code class="inl">SUM(SUM(...)) OVER ()</code> — итог по всем группам, 201 500; гостевая
+          выручка сюда не входит из-за INNER JOIN. Anna и Olga вместе дают 76,2 % продаж — это
+          видно в колонке <code class="inl">share_pct</code> без второго запроса.
+        </p>
+      </section>
+      <!-- ══════════════════ 07. Ошибки ══════════════════ -->
+      <section>
+        <h2><span class="num">07</span>Пять ошибок, на которых спотыкаются</h2>
+        <div class="errors">
+          <div class="err">
+            <div class="h">Окно в WHERE</div>
+            <p><code class="inl">WHERE ROW_NUMBER() OVER (...) = 1</code> — ошибка
+            <code class="inl">window functions are not allowed in WHERE</code>: окно считается
+            на этапе SELECT, уже после WHERE.</p>
+            <div class="fix">Обернуть в CTE или подзапрос и фильтровать снаружи: <code class="inl">WITH ranked AS (...) SELECT ... WHERE rn = 1</code>.</div>
+          </div>
+          <div class="err">
+            <div class="h">ROW_NUMBER вместо RANK при равенстве</div>
+            <p>Для «показать место» ROW_NUMBER врёт: при равных значениях он раздаёт разные
+            номера. Для «выдать ровно N строк» RANK, наоборот, вернёт больше строк, чем
+            ожидалось.</p>
+            <div class="fix">Топ-N — <code class="inl">ROW_NUMBER</code>; места и «все с таким результатом» — <code class="inl">RANK</code>/<code class="inl">DENSE_RANK</code>.</div>
+          </div>
+          <div class="err">
+            <div class="h">Рамка по умолчанию при ORDER BY</div>
+            <p>С ORDER BY сумма считается от начала раздела до текущей строки, а не по всему
+            разделу. Код, ожидавший «итог пользователя», получает накопительную сумму.</p>
+            <div class="fix">Для всего раздела — без ORDER BY либо <code class="inl">ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING</code>.</div>
+          </div>
+          <div class="err">
+            <div class="h">Забытый PARTITION BY</div>
+            <p>Без <code class="inl">PARTITION BY</code> окно считается по всему результату:
+            вместо «суммы пользователя» получается общая сумма, и ошибка не падает — просто
+            цифры не те.</p>
+            <div class="fix">Проверять, что раздел задан: <code class="inl">PARTITION BY o.user_id</code>.</div>
+          </div>
+          <div class="err">
+            <div class="h">Нестабильный порядок при равных значениях</div>
+            <p><code class="inl">ROW_NUMBER() OVER (ORDER BY revenue DESC)</code> при равных
+            revenue даёт произвольный порядок между ними: результат может меняться от запуска
+            к запуску.</p>
+            <div class="fix">Добавить уникальный tie-breaker: <code class="inl">ORDER BY revenue DESC, o.id</code>.</div>
+          </div>
+        </div>
+      </section>
+      <!-- ══════════════════ 08. Мини-проверка ══════════════════ -->
+      <section>
+        <h2><span class="num">08</span>Мини-проверка</h2>
+        <p>Пять вопросов на понимание и две задачи. Сначала своя попытка — потом спойлер.</p>
+        <div class="qa">
+          <details>
+            <summary>Чем окно отличается от GROUP BY?</summary>
+            <div class="a">
+              <p>GROUP BY сворачивает строки: одна строка на группу. Окно оставляет все строки
+              и дописывает агрегат к каждой. Поэтому после окна число строк такое же, как до него.</p>
+              <div class="verdict">Резюме: свернуть или добавить колонку.</div>
+            </div>
+          </details>
+        </div>
+        <div class="qa">
+          <details>
+            <summary>Что задают PARTITION BY и ORDER BY внутри OVER?</summary>
+            <div class="a">
+              <p><code class="inl">PARTITION BY</code> делит строки на независимые разделы —
+              «чьи строки». <code class="inl">ORDER BY</code> задаёт порядок внутри раздела и
+              определяет рамку по умолчанию, а также работу ROW_NUMBER/LAG.</p>
+              <div class="verdict">Резюме: разделы и порядок.</div>
+            </div>
+          </details>
+        </div>
+        <div class="qa">
+          <details>
+            <summary>Чем ROW_NUMBER отличается от RANK и DENSE_RANK?</summary>
+            <div class="a">
+              <p>ROW_NUMBER всегда уникален: 1, 2, 3, 4. RANK при равенстве оставляет пропуски:
+              1, 1, 3. DENSE_RANK без пропусков: 1, 1, 2. В лаборатории два заказа по 75 000
+              получают rn 1 и 2, rnk 1 и 1, dense 1 и 1.</p>
+              <div class="verdict">Резюме: уникальность против места.</div>
+            </div>
+          </details>
+        </div>
+        <div class="qa">
+          <details>
+            <summary>Почему окно нельзя использовать в WHERE?</summary>
+            <div class="a">
+              <p>Потому что WHERE выполняется до SELECT, а окна вычисляются на этапе SELECT,
+              после WHERE/GROUP BY/HAVING. Условие на результат окна — только снаружи,
+              в CTE или подзапросе.</p>
+              <div class="verdict">Резюме: этап выполнения важнее синтаксиса.</div>
+            </div>
+          </details>
+        </div>
+        <div class="qa">
+          <details>
+            <summary>Что такое рамка и какая она по умолчанию?</summary>
+            <div class="a">
+              <p>Рамка — набор строк раздела, которые участвуют в агрегате. Без ORDER BY это
+              весь раздел. С ORDER BY по умолчанию — от начала раздела до текущей строки
+              (RANGE UNBOUNDED PRECEDING … CURRENT ROW), поэтому сумма накапливается.</p>
+              <div class="verdict">Резюме: рамка отвечает на вопрос «какие именно строки».</div>
+            </div>
+          </details>
+        </div>
+        <h3><span style="color:var(--muted);font-family:var(--mono);font-size:.8rem">01</span> Топ-2 заказа на пользователя</h3>
+        <p>Оставьте по два самых дорогих заказа каждого пользователя.</p>
+        <div class="qa">
+          <details>
+            <summary>Показать решение и разбор</summary>
+            <div class="a">
+              <div class="code" style="margin-top:0">
+                <div class="bar"><span class="file">решение</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+                <pre data-lang="sql">WITH ranked AS (
+    SELECT u.name, o.id, (o.quantity * p.price) AS revenue,
+           ROW_NUMBER() OVER (
+               PARTITION BY o.user_id
+               ORDER BY o.quantity * p.price DESC, o.id
+           ) AS rn
+    FROM orders o
+    JOIN users u ON u.id = o.user_id
+    JOIN products p ON p.id = o.product_id
+)
+SELECT name, id, revenue
+FROM ranked
+WHERE rn &lt;= 2
+ORDER BY name, revenue DESC;</pre>
+                <div class="out"> name  | id | revenue
+-------+----+----------
+ Anna  |  1 | 75000.00
+ Anna  |  3 |  1350.00
+ Ivan  |  5 | 22000.00
+ Ivan  |  2 |  1800.00
+ Maria |  6 |  2250.00
+ Olga  |  9 | 75000.00
+ Olga  |  4 |  1500.00
+ Petr  | 10 | 22000.00
+(8 rows)</div>
+              </div>
+              <p><strong>Что важно.</strong> <code class="inl">rn &lt;= 2</code> применяется
+              снаружи CTE — внутри WHERE окно недоступно. У Maria и Petr всего по одному заказу,
+              поэтому строк меньше, чем 2 × 5: фильтр не добивает группы до двух строк, а просто
+              отбрасывает лишние.</p>
+            </div>
+          </details>
+        </div>
+        <h3><span style="color:var(--muted);font-family:var(--mono);font-size:.8rem">02</span> Разница с предыдущим заказом</h3>
+        <p>Для каждого заказа покажите, на сколько его выручка отличается от предыдущего заказа того же пользователя.</p>
+        <div class="qa">
+          <details>
+            <summary>Показать решение и разбор</summary>
+            <div class="a">
+              <div class="code" style="margin-top:0">
+                <div class="bar"><span class="file">решение</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+                <pre data-lang="sql">SELECT u.name, o.created_at::date AS day, (o.quantity * p.price) AS revenue,
+       (o.quantity * p.price)
+       - LAG(o.quantity * p.price) OVER (
+           PARTITION BY o.user_id ORDER BY o.created_at, o.id
+       ) AS delta
+FROM orders o
+JOIN users u ON u.id = o.user_id
+JOIN products p ON p.id = o.product_id
+ORDER BY u.name, o.created_at, o.id;</pre>
+                <div class="out"> name  |    day     | revenue  |   delta
+-------+------------+----------+-----------
+ Anna  | 2024-01-05 | 75000.00 |
+ Anna  | 2024-01-15 |  1350.00 | -73650.00
+ Anna  | 2024-03-03 |   600.00 |   -750.00
+ Ivan  | 2024-01-06 |  1800.00 |
+ Ivan  | 2024-02-10 | 22000.00 |  20200.00
+ Maria | 2024-02-20 |  2250.00 |
+ Olga  | 2024-02-01 |  1500.00 |
+ Olga  | 2024-03-15 | 75000.00 |  73500.00
+ Petr  | 2024-03-20 | 22000.00 |
+(9 rows)</div>
+              </div>
+              <p><strong>Что важно.</strong> <code class="inl">LAG</code> возвращает NULL на
+              первой строке раздела, и арифметика с NULL даёт NULL — это корректный ответ
+              «предыдущего нет». Если нужен 0, оберните в
+              <code class="inl">COALESCE(..., 0)</code> уже после вычитания.</p>
+            </div>
+          </details>
+        </div>
+      </section>
+      <!-- ══════════════════ 09. Мостик ══════════════════ -->
+      <section>
+        <h2><span class="num">09</span>Мостик: pandas и соседние страницы SQL</h2>
+        <h3>pandas: transform, cumsum, shift, rank</h3>
+        <div class="code">
+          <div class="bar"><span class="file">SQL → pandas</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">import pandas as pd
+df["running"] = df.groupby("user")["revenue"].cumsum()   # SUM OVER (PARTITION ...)
+df["prev"] = df.groupby("user")["revenue"].shift(1)      # LAG
+df["total"] = df["revenue"].sum()                        # SUM OVER ()
+df["share"] = (100 * df["revenue"] / df["revenue"].sum()).round(1)  # доля
+df["rn"] = df.groupby("user").cumcount() + 1             # ROW_NUMBER
+df["rank"] = df["revenue"].rank(method="min", ascending=False)  # RANK</pre>
+        </div>
+        <p>
+          <code class="inl">transform</code> из главы 15 — это и есть окно: результат той же длины,
+          что таблица. <code class="inl">cumsum</code>, <code class="inl">shift</code>,
+          <code class="inl">rank</code> — прямые аналоги SQL-функций.
+        </p>
+        <h3>Соседние страницы SQL</h3>
+        <div class="bridges">
+          <a class="bridge" href="ch-23-window-functions.html"><span class="to">Глава 23</span><span>Оконные функции: агрегат, который не схлопывает строки</span><span class="what">→ разбор с картинками и задачами</span></a>
+          <a class="bridge" href="ch-15-groupby.html"><span class="to">Глава 15</span><span>groupby в pandas</span><span class="what">→ transform и cumsum как окно</span></a>
+          <a class="bridge" href="ref-sql-group.html"><span class="to">Справочник SQL · 03</span><span>GROUP BY и HAVING</span><span class="what">→ предыдущая страница: строки схлопываются</span></a>
+          <a class="bridge" href="ref-sql-cte.html"><span class="to">Справочник SQL · 05</span><span>CTE и подзапросы</span><span class="what">→ обёртка для фильтра по окну</span></a>
+          <a class="bridge" href="ch-24-indexes-explain.html"><span class="to">Глава 24</span><span>Индексы и EXPLAIN</span><span class="what">→ почему окно требует сортировки</span></a>
+        </div>
+      </section>
+      <div class="pager">
+        <a class="prev" href="ref-sql-group.html"><span class="dir">← Назад</span><span class="ttl">03 · GROUP BY</span></a>
+        <a class="next" href="ref-sql-cte.html"><span class="dir">Дальше →</span><span class="ttl">05 · CTE</span></a>
+      </div>
+    </div>
+  </main>
+</div>
+<script src="assets/toc.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>

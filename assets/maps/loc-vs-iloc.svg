@@ -1,0 +1,96 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 500" role="img" aria-labelledby="t2 d2">
+  <title id="t2">loc ищет по метке индекса, iloc — по позиции строки</title>
+  <desc id="d2">Две панели: loc['ivan'] выделяет строку по метке, iloc[1] — по позиции; внизу пример, где метка и позиция расходятся.</desc>
+  <defs>
+    <marker id="a2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#c2410c"/>
+    </marker>
+    <marker id="a3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#2f6b4f"/>
+    </marker>
+    <style>
+      .h { font: 700 12.5px system-ui, -apple-system, "Segoe UI", sans-serif; fill: #1d1b26; }
+      .lbl { font: 700 10.5px system-ui, -apple-system, "Segoe UI", sans-serif; fill: #8a7f73; letter-spacing: .12em; }
+      .v { font: 500 13px ui-monospace, "SF Mono", Menlo, monospace; fill: #1d1b26; }
+      .s { font: 400 12.5px system-ui, -apple-system, "Segoe UI", sans-serif; fill: #4a4458; }
+      .n { font: 400 12px system-ui, -apple-system, "Segoe UI", sans-serif; fill: #7a7285; }
+      .o { font: 700 12.5px ui-monospace, "SF Mono", Menlo, monospace; fill: #c2410c; }
+      .g { font: 700 12.5px ui-monospace, "SF Mono", Menlo, monospace; fill: #2f6b4f; }
+    </style>
+  </defs>
+
+  <!-- panel A: loc -->
+  <text class="lbl" x="40" y="34">LOC — ПО МЕТКЕ</text>
+  <rect x="40" y="56" width="100" height="38" fill="#f4f1ea" stroke="#d8d1c6"/>
+  <text class="n" x="56" y="80">index</text>
+  <rect x="140" y="56" width="100" height="38" fill="#f4f1ea" stroke="#d8d1c6"/>
+  <text class="h" x="158" y="80">amount</text>
+  <rect x="240" y="56" width="170" height="38" fill="#f4f1ea" stroke="#d8d1c6"/>
+  <text class="h" x="258" y="80">city</text>
+
+  <rect x="40" y="94" width="100" height="42" fill="#faf8f4" stroke="#d8d1c6"/>
+  <text class="v" x="56" y="121">anna</text>
+  <rect x="140" y="94" width="100" height="42" fill="#fff" stroke="#d8d1c6"/>
+  <text class="v" x="158" y="121">1200</text>
+  <rect x="240" y="94" width="170" height="42" fill="#fff" stroke="#d8d1c6"/>
+  <text class="v" x="258" y="121">Москва</text>
+
+  <rect x="40" y="136" width="370" height="42" fill="#fdf0e6" stroke="#c2410c" stroke-width="1.6"/>
+  <text class="v" x="56" y="163">ivan</text>
+  <text class="v" x="158" y="163">800</text>
+  <text class="v" x="258" y="163">Казань</text>
+
+  <rect x="40" y="178" width="100" height="42" fill="#faf8f4" stroke="#d8d1c6"/>
+  <text class="v" x="56" y="205">olga</text>
+  <rect x="140" y="178" width="100" height="42" fill="#fff" stroke="#d8d1c6"/>
+  <text class="v" x="158" y="205">500</text>
+  <rect x="240" y="178" width="170" height="42" fill="#fff" stroke="#d8d1c6"/>
+  <text class="v" x="258" y="205">Москва</text>
+
+  <text class="o" x="196" y="34">df.loc["ivan"]</text>
+  <text class="s" x="40" y="316">ищет строку, у которой метка индекса — ivan</text>
+
+  <!-- panel B: iloc -->
+  <text class="lbl" x="520" y="34">ILOC — ПО ПОЗИЦИИ</text>
+  <rect x="520" y="56" width="52" height="38" fill="#e9f2ec" stroke="#9cc0a8"/>
+  <text class="n" x="532" y="80">поз.</text>
+  <rect x="572" y="56" width="100" height="38" fill="#f4f1ea" stroke="#d8d1c6"/>
+  <text class="n" x="588" y="80">index</text>
+  <rect x="672" y="56" width="100" height="38" fill="#f4f1ea" stroke="#d8d1c6"/>
+  <text class="h" x="690" y="80">amount</text>
+  <rect x="772" y="56" width="150" height="38" fill="#f4f1ea" stroke="#d8d1c6"/>
+  <text class="h" x="790" y="80">city</text>
+
+  <rect x="520" y="94" width="52" height="42" fill="#e9f2ec" stroke="#9cc0a8"/>
+  <text class="v" x="540" y="121">0</text>
+  <rect x="572" y="94" width="100" height="42" fill="#faf8f4" stroke="#d8d1c6"/>
+  <text class="v" x="588" y="121">anna</text>
+  <rect x="672" y="94" width="100" height="42" fill="#fff" stroke="#d8d1c6"/>
+  <text class="v" x="690" y="121">1200</text>
+  <rect x="772" y="94" width="150" height="42" fill="#fff" stroke="#d8d1c6"/>
+  <text class="v" x="790" y="121">Москва</text>
+
+  <rect x="520" y="136" width="402" height="42" fill="#e9f2ec" stroke="#2f6b4f" stroke-width="1.6"/>
+  <text class="v" x="540" y="163">1</text>
+  <text class="v" x="588" y="163">ivan</text>
+  <text class="v" x="690" y="163">800</text>
+  <text class="v" x="790" y="163">Казань</text>
+
+  <rect x="520" y="178" width="52" height="42" fill="#e9f2ec" stroke="#9cc0a8"/>
+  <text class="v" x="540" y="205">2</text>
+  <rect x="572" y="178" width="100" height="42" fill="#faf8f4" stroke="#d8d1c6"/>
+  <text class="v" x="588" y="205">olga</text>
+  <rect x="672" y="178" width="100" height="42" fill="#fff" stroke="#d8d1c6"/>
+  <text class="v" x="690" y="205">500</text>
+  <rect x="772" y="178" width="150" height="42" fill="#fff" stroke="#d8d1c6"/>
+  <text class="v" x="790" y="205">Москва</text>
+
+  <text class="g" x="684" y="34">df.iloc[1]</text>
+  <text class="s" x="520" y="316">берёт вторую строку по счёту — метка не важна</text>
+
+  <rect x="40" y="356" width="900" height="118" rx="12" fill="#f4f1ea" stroke="#e0d9cd"/>
+  <text class="s" x="60" y="382">Где они расходятся? Если индекс — это 10, 20, 30, то таблица такая же, но:</text>
+  <text class="n" x="60" y="406">df.loc[30]  → строка С МЕТКОЙ 30 (третья)</text>
+  <text class="n" x="60" y="428">df.iloc[1]  → ВТОРАЯ строка (метка 20)</text>
+  <text class="s" x="60" y="458">Срезы тоже разные: loc["anna":"ivan"] включает ivan, iloc[0:2] — не включает вторую позицию.</text>
+</svg>

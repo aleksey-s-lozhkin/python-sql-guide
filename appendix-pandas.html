@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Справочник по pandas — Ассоциативный гайд</title>
+<meta name="description" content="Справочник по pandas 3.0: Series и DataFrame, loc/iloc, фильтрация, groupby, merge, пропуски, reshape — операции, цена и ловушки.">
+<link rel="stylesheet" href="assets/style.css">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#fbf8f2" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#14131a" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="assets/icons/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="assets/icons/icon-180.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Гайд Py/SQL">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+</head>
+<body data-slug="appendix-pandas">
+<div class="app">
+  <aside class="sidebar" id="sidebar"></aside>
+  <main>
+    <div class="wrap">
+
+      <header class="chapter-head">
+        <div class="eyebrow">
+          <span class="part">Приложение · Справочник</span>
+          <span class="dot"></span>
+          <span>pandas · вне программы</span>
+          <span class="dot"></span>
+          <span>готово</span>
+        </div>
+        <h1>Справочник по pandas
+          <span class="sub">Семь страниц: от Series до reshape — что вызвать и что оно вернёт</span>
+        </h1>
+        <p class="lead">
+          Главы 12–18 объясняют, <em>почему</em> pandas устроен так, а не иначе. Здесь — рабочая
+          шпаргалка: какой метод вызвать, какую форму примет результат, где копия и где view,
+          и на чём обычно спотыкаются. Версия — <b>pandas 3.0.1</b>, как в книге.
+        </p>
+        <div class="meta">
+          <span class="chip">⏱ <b>5 минут</b> на выбор</span>
+          <span class="chip">🎯 уровень <b>2</b></span>
+          <span class="chip">🐼 <b>pandas 3.0.1</b></span>
+          <span class="chip">📚 <b>главы 12–18</b></span>
+        </div>
+      </header>
+
+                  <p class="small">
+        Справочники: <a href="appendix-types.html">Python-коллекции</a> · <a href="appendix-numpy.html">NumPy</a> · <b>pandas</b> · <a href="appendix-sql.html">SQL</a> · <a href="appendix-datetime.html">Дата и время</a>
+      </p>
+
+      <div class="tldr">
+        <div class="t">Самое главное</div>
+        <ul>
+          <li>Это <b>reference, а не глава</b>: сюда возвращаются за точным синтаксисом и формой
+              результата, когда задача уже понятна.</li>
+          <li>Главная развилка pandas — <b>метка или позиция</b> (<code class="inl">loc</code> против
+              <code class="inl">iloc</code>) и <b>копия или view</b> (Copy-on-Write в pandas 3.0).</li>
+          <li>Раздел не входит в 8-недельную программу и не меняет счётчик «освоено глав».</li>
+        </ul>
+      </div>
+
+      <!-- ══════════════════ 01. Как пользоваться ══════════════════ -->
+      <section>
+        <h2><span class="num">01</span>Как пользоваться</h2>
+        <ol>
+          <li><strong>Найдите задачу в карте ниже.</strong> Обычно это одна из семи: посмотреть,
+              выбрать, отфильтровать, сгруппировать, соединить, почистить пропуски, развернуть.</li>
+          <li><strong>Откройте страницу.</strong> Вверху — когда это нужно, в середине — таблицы
+              операций, внизу — сценарии и ошибки.</li>
+          <li><strong>Проверьте на своих данных.</strong> Каждая страница ссылается на лабораторию
+              <code class="inl">ref_pd_*_lab.py</code>: запустите, поменяйте одну строку, посмотрите форму
+              результата.</li>
+        </ol>
+        <div class="note">
+          <span class="t">Чем pandas отличается от справочника Python-коллекций</span>
+          <p>У <code class="inl">list</code> и <code class="inl">dict</code> была честная цена
+          <code class="inl">O(1)</code>/<code class="inl">O(n)</code>. В pandas вместо неё —
+          <b>память и копирование</b>: операция может быть векторизованной, а может копировать таблицу.
+          Поэтому в таблицах ниже «цена» — это примечание о копии/view, а не выдуманная асимптотика.</p>
+        </div>
+      </section>
+
+      <!-- ══════════════════ 02. Карта выбора ══════════════════ -->
+      <section>
+        <h2><span class="num">02</span>Карта выбора: от задачи к странице</h2>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Задача</th><th>Что взять</th><th>Страница</th></tr></thead>
+            <tbody>
+              <tr><td>Посмотреть данные: форма, типы, память, первый обзор</td><td><code class="inl">Series</code>, <code class="inl">DataFrame</code>, <code class="inl">info</code>, <code class="inl">describe</code></td><td><a href="ref-pd-series.html">01</a></td></tr>
+              <tr><td>Выбрать строки или ячейки по метке / позиции</td><td><code class="inl">loc</code>, <code class="inl">iloc</code>, <code class="inl">at</code>, <code class="inl">iat</code></td><td><a href="ref-pd-loc.html">02</a></td></tr>
+              <tr><td>Отобрать строки по условию</td><td>маска, <code class="inl">isin</code>, <code class="inl">between</code>, <code class="inl">query</code></td><td><a href="ref-pd-filter.html">03</a></td></tr>
+              <tr><td>Сводка по группам: сумма, среднее, доля</td><td><code class="inl">groupby</code>, <code class="inl">agg</code>, <code class="inl">transform</code></td><td><a href="ref-pd-groupby.html">04</a></td></tr>
+              <tr><td>Соединить две таблицы по ключу</td><td><code class="inl">merge</code>, <code class="inl">join</code>, <code class="inl">concat</code></td><td><a href="ref-pd-merge.html">05</a></td></tr>
+              <tr><td>Разобраться с пропусками и типами</td><td><code class="inl">isna</code>, <code class="inl">dropna</code>, <code class="inl">fillna</code>, <code class="inl">Int64</code></td><td><a href="ref-pd-missing.html">06</a></td></tr>
+              <tr><td>Развернуть/свернуть таблицу, даты, строки</td><td><code class="inl">pivot_table</code>, <code class="inl">melt</code>, <code class="inl">.dt</code>, <code class="inl">.str</code></td><td><a href="ref-pd-reshape.html">07</a></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="small">
+          Если не знаете, с чего начать, — <a href="ch-12-series-dataframe.html">глава 12</a>:
+          там разобрано, что такое Series, DataFrame и индекс.
+        </p>
+      </section>
+
+      <!-- ══════════════════ 03. Цена в pandas ══════════════════ -->
+      <section>
+        <h2><span class="num">03</span>«Цена» в pandas: копия, view и CoW</h2>
+        <p>
+          В pandas 3.0 по умолчанию включён <b>Copy-on-Write</b>. Производные объекты — срез
+          <code class="inl">df[mask]</code>, выбор колонок <code class="inl">df[["a"]]</code>,
+          результат <code class="inl">rename</code> — ведут себя как копии: правка «ветки» не меняет
+          исходную таблицу. Но <code class="inl">df2 = df</code> — это не копия, а второе имя того же
+          объекта; независимую копию даёт <code class="inl">df.copy()</code>.
+        </p>
+        <ul>
+          <li><strong>Изменение — через <code class="inl">.loc</code>.</strong>
+              <code class="inl">df.loc[df["amount"] &gt; 1000, "flag"] = True</code> работает;
+              цепочка <code class="inl">df[df["amount"] &gt; 1000]["flag"] = True</code> — не меняет
+              исходную таблицу.</li>
+          <li><strong>Память считается.</strong> <code class="inl">df.memory_usage(deep=True)</code>
+              показывает вклад колонок; строки в pandas 3 хранятся как dtype <code class="inl">str</code>,
+              а не <code class="inl">object</code>.</li>
+          <li><strong>Векторизация важнее циклов.</strong> Если тянет написать <code class="inl">for</code>
+              по строкам — сначала ищите колонковую операцию: маску, <code class="inl">.str</code>,
+              <code class="inl">.dt</code>, <code class="inl">groupby</code>.</li>
+        </ul>
+      </section>
+
+      <!-- ══════════════════ 04. Конвертации ══════════════════ -->
+      <section>
+        <h2><span class="num">04</span>Конвертации: dict, список, CSV, индекс</h2>
+        <div class="code">
+          <div class="bar"><span class="file">конвертации</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">import io
+import pandas as pd
+
+s = pd.Series({"anna": 1200, "ivan": 800}, name="amount")
+df = pd.DataFrame({"user": ["anna", "olga"], "amount": [1200, 500]})
+
+print(df.to_dict("records"))                 # DataFrame → список словарей
+print(df["user"].tolist())                   # Series → список
+print(df.set_index("user").index.tolist())   # колонка → индекс
+print(df.reset_index().columns.tolist())     # индекс → колонка
+print(pd.read_csv(io.StringIO("user,amount\nanna,1200\n")).shape)</pre>
+          <div class="out">[{'user': 'anna', 'amount': 1200}, {'user': 'olga', 'amount': 500}]
+['anna', 'olga']
+['anna', 'olga']
+['index', 'user', 'amount']
+(1, 2)</div>
+        </div>
+        <p class="small">
+          Вывод получен на pandas 3.0.1. Для чтения CSV из файла — <code class="inl">pd.read_csv("path")</code>;
+          из строки (так удобнее в лабораториях) — <code class="inl">io.StringIO</code>.
+        </p>
+      </section>
+
+      <!-- ══════════════════ 05. Страницы ══════════════════ -->
+      <section>
+        <h2><span class="num">05</span>Семь страниц</h2>
+        <div class="bridges">
+          <a class="bridge" href="ref-pd-series.html"><span class="to">01 · Series и DataFrame</span><span>Таблица с оглавлением</span><span class="what">→ создание, свойства, dtypes, память</span></a>
+          <a class="bridge" href="ref-pd-loc.html"><span class="to">02 · loc и iloc</span><span>Имя против номера</span><span class="what">→ выбор по метке/позиции, присваивание</span></a>
+          <a class="bridge" href="ref-pd-filter.html"><span class="to">03 · Фильтрация</span><span>Маска как сито</span><span class="what">→ &amp;, |, ~, isin, between, query</span></a>
+          <a class="bridge" href="ref-pd-groupby.html"><span class="to">04 · groupby</span><span>Разложить — посчитать — собрать</span><span class="what">→ agg, transform, filter, доли</span></a>
+          <a class="bridge" href="ref-pd-merge.html"><span class="to">05 · merge</span><span>Кардинальность важнее синтаксиса</span><span class="what">→ how, validate, indicator, concat</span></a>
+          <a class="bridge" href="ref-pd-missing.html"><span class="to">06 · Пропуски</span><span>NaN, None и pd.NA</span><span class="what">→ dropna, fillna, Int64, CoW</span></a>
+          <a class="bridge" href="ref-pd-reshape.html"><span class="to">07 · Reshape, даты, строки</span><span>Широко ↔ длинно</span><span class="what">→ pivot_table, melt, explode, .dt, .str</span></a>
+        </div>
+        <p class="small">
+          Порядок — как в книге: объект → доступ → отбор → группировка → соединение → пропуски →
+          форма таблицы. Каждая страница заканчивается мостиком в SQL.
+        </p>
+      </section>
+
+      <!-- ══════════════════ 06. Куда дальше ══════════════════ -->
+      <section>
+        <h2><span class="num">06</span>Куда дальше</h2>
+        <div class="bridges">
+          <a class="bridge" href="ch-12-series-dataframe.html"><span class="to">Глава 12</span><span>Series и DataFrame: таблица с оглавлением</span><span class="what">→ индекс, dtypes, первый взгляд</span></a>
+          <a class="bridge" href="ch-13-loc-iloc.html"><span class="to">Глава 13</span><span>loc и iloc: имя против номера</span><span class="what">→ почему срезы ведут себя по-разному</span></a>
+          <a class="bridge" href="ch-15-groupby.html"><span class="to">Глава 15</span><span>groupby: разложить — посчитать — собрать</span><span class="what">→ ядро pandas-аналитики</span></a>
+          <a class="bridge" href="ch-16-merge.html"><span class="to">Глава 16</span><span>merge: кардинальность важнее синтаксиса</span><span class="what">→ соединения без раздувания строк</span></a>
+          <a class="bridge" href="ch-21-group-by-having.html"><span class="to">Глава 21</span><span>GROUP BY и HAVING в SQL</span><span class="what">→ та же группировка на стороне базы</span></a>
+          <a class="bridge" href="appendix-types.html"><span class="to">Справочник</span><span>Python-коллекции</span><span class="what">→ list, dict, set и остальные</span></a>
+        </div>
+      </section>
+
+      <div class="pager">
+        <a class="prev" href="appendix-numpy.html"><span class="dir">← Назад</span><span class="ttl">Справочник: NumPy</span></a>
+        <a class="next" href="ref-pd-series.html"><span class="dir">Дальше →</span><span class="ttl">01 · Series и DataFrame</span></a>
+      </div>
+
+    </div>
+  </main>
+</div>
+<script src="assets/toc.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>

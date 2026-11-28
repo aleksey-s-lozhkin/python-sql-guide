@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 560" role="img" aria-labelledby="t1 d1">
+  <title id="t1">Логический порядок выполнения SQL-запроса: FROM, WHERE, GROUP BY, HAVING, SELECT, DISTINCT, ORDER BY, LIMIT</title>
+  <desc id="d1">Восемь этапов конвейера сверху вниз; SELECT выполняется поздно, поэтому алиасы не видны в WHERE, но видны в ORDER BY.</desc>
+  <defs>
+    <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#b9ad9d"/>
+    </marker>
+    <style>
+      .st { font: 700 13px ui-monospace, "SF Mono", Menlo, monospace; fill: #1d1b26; }
+      .d { font: 400 12px system-ui, -apple-system, "Segoe UI", sans-serif; fill: #4a4458; }
+      .n { font: 400 11.5px system-ui, -apple-system, "Segoe UI", sans-serif; fill: #7a7285; }
+      .lbl { font: 700 10.5px system-ui, -apple-system, "Segoe UI", sans-serif; fill: #8a7f73; letter-spacing: .12em; }
+    </style>
+  </defs>
+
+  <text class="lbl" x="70" y="34">ЭТАП</text>
+  <text class="lbl" x="560" y="34">ЧТО ПРОИСХОДИТ</text>
+
+  <!-- stages -->
+  <rect x="70" y="48" width="330" height="44" rx="9" fill="#fff" stroke="#d8d1c6"/>
+  <text class="st" x="88" y="76">FROM / JOIN</text>
+  <text class="d" x="560" y="66">откуда берём строки и как их соединяем</text>
+  <path d="M235,94 L235,106" stroke="#b9ad9d" stroke-width="1.6" marker-end="url(#ar)"/>
+
+  <rect x="70" y="108" width="330" height="44" rx="9" fill="#fff" stroke="#d8d1c6"/>
+  <text class="st" x="88" y="136">WHERE</text>
+  <text class="d" x="560" y="126">отбрасываем строки — алиасы SELECT ещё не существуют</text>
+  <path d="M235,154 L235,166" stroke="#b9ad9d" stroke-width="1.6" marker-end="url(#ar)"/>
+
+  <rect x="70" y="168" width="330" height="44" rx="9" fill="#fff" stroke="#d8d1c6"/>
+  <text class="st" x="88" y="196">GROUP BY</text>
+  <text class="d" x="560" y="186">собираем строки в группы по ключу</text>
+  <path d="M235,214 L235,226" stroke="#b9ad9d" stroke-width="1.6" marker-end="url(#ar)"/>
+
+  <rect x="70" y="228" width="330" height="44" rx="9" fill="#fff" stroke="#d8d1c6"/>
+  <text class="st" x="88" y="256">HAVING</text>
+  <text class="d" x="560" y="246">отбрасываем целые группы — это WHERE для групп</text>
+  <path d="M235,274 L235,286" stroke="#b9ad9d" stroke-width="1.6" marker-end="url(#ar)"/>
+
+  <rect x="70" y="288" width="330" height="44" rx="9" fill="#fdf0e6" stroke="#c2410c" stroke-width="1.6"/>
+  <text class="st" x="88" y="316">SELECT</text>
+  <text class="d" x="560" y="306">выбираем колонки и вычисляем выражения</text>
+  <text class="n" x="560" y="324">здесь появляются алиасы</text>
+  <path d="M235,334 L235,346" stroke="#b9ad9d" stroke-width="1.6" marker-end="url(#ar)"/>
+
+  <rect x="70" y="348" width="330" height="44" rx="9" fill="#fff" stroke="#d8d1c6"/>
+  <text class="st" x="88" y="376">DISTINCT</text>
+  <text class="d" x="560" y="366">убираем дубли из результата</text>
+  <path d="M235,394 L235,406" stroke="#b9ad9d" stroke-width="1.6" marker-end="url(#ar)"/>
+
+  <rect x="70" y="408" width="330" height="44" rx="9" fill="#fff" stroke="#d8d1c6"/>
+  <text class="st" x="88" y="436">ORDER BY</text>
+  <text class="d" x="560" y="426">сортируем — алиасы из SELECT уже доступны</text>
+  <path d="M235,454 L235,466" stroke="#b9ad9d" stroke-width="1.6" marker-end="url(#ar)"/>
+
+  <rect x="70" y="468" width="330" height="44" rx="9" fill="#fff" stroke="#d8d1c6"/>
+  <text class="st" x="88" y="496">LIMIT / OFFSET</text>
+  <text class="d" x="560" y="486">отрезаем нужное количество строк — последним</text>
+
+  <text class="n" x="70" y="540">Порядок логический; база может выполнять иначе, но результат обязан совпадать с этим конвейером.</text>
+</svg>

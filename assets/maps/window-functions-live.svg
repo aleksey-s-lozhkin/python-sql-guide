@@ -1,0 +1,85 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 500" role="img" aria-labelledby="t1 d1">
+  <title id="t1">Оконная функция: PARTITION BY разбивает строки на группы, но не схлопывает их</title>
+  <desc id="d1">Таблица заказов с разбиением по пользователю, накопительной суммой и LAG; строки остаются.</desc>
+  <defs>
+    <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#8a7f73"/>
+    </marker>
+    <style>
+      .h { font: 700 11px system-ui, -apple-system, "Segoe UI", sans-serif; fill: #1d1b26; }
+      .lbl { font: 700 10px system-ui, -apple-system, "Segoe UI", sans-serif; fill: #8a7f73; letter-spacing: .1em; }
+      .v { font: 500 11.5px ui-monospace, "SF Mono", Menlo, monospace; fill: #1d1b26; }
+      .s { font: 400 11.5px system-ui, -apple-system, "Segoe UI", sans-serif; fill: #4a4458; }
+      .n { font: 400 11px system-ui, -apple-system, "Segoe UI", sans-serif; fill: #7a7285; }
+      .o { font: 700 11.5px ui-monospace, "SF Mono", Menlo, monospace; fill: #c2410c; }
+    
+      .wf-frame { fill: none; stroke: #c2410c; stroke-width: 2; animation: wf-frame 8s ease-in-out infinite; }
+      .wf-h1 { fill: #c2410c; opacity: 0; animation: wf-h1 8s ease-in-out infinite; }
+      .wf-h2 { fill: #c2410c; opacity: 0; animation: wf-h2 8s ease-in-out infinite; }
+      .wf-h3 { fill: #c2410c; opacity: 0; animation: wf-h3 8s ease-in-out infinite; }
+      @keyframes wf-frame {
+        0%, 8% { transform: translate(0, 0); }
+        25% { transform: translate(0, 34px); }
+        42% { transform: translate(0, 68px); }
+        58%, 100% { transform: translate(0, 0); }
+      }
+      @keyframes wf-h1 { 0%, 8% { opacity: .18; } 22% { opacity: 0; } 58% { opacity: 0; } 70%, 100% { opacity: .18; } }
+      @keyframes wf-h2 { 0%, 18% { opacity: 0; } 25% { opacity: .18; } 38% { opacity: 0; } 100% { opacity: 0; } }
+      @keyframes wf-h3 { 0%, 34% { opacity: 0; } 42% { opacity: .18; } 55% { opacity: 0; } 100% { opacity: 0; } }
+        </style>
+  </defs>
+
+  <text class="lbl" x="40" y="34">СТРОКИ</text>
+  <text class="lbl" x="360" y="34">PARTITION BY user</text>
+  <text class="lbl" x="640" y="34">РЕЗУЛЬТАТ ОКНА</text>
+
+  <!-- rows table -->
+  <rect x="40" y="52" width="300" height="32" fill="#f4f1ea" stroke="#d8d1c6"/>
+  <text class="h" x="54" y="73">user</text><text class="h" x="150" y="73">day</text><text class="h" x="250" y="73">revenue</text>
+
+  <rect x="40" y="84" width="300" height="34" fill="#fdf0e6" stroke="#d8d1c6"/>
+  <text class="v" x="54" y="106">Anna</text><text class="v" x="150" y="106">01-05</text><text class="v" x="250" y="106">75000</text>
+  <rect x="40" y="118" width="300" height="34" fill="#fdf0e6" stroke="#d8d1c6"/>
+  <text class="v" x="54" y="140">Anna</text><text class="v" x="150" y="140">01-15</text><text class="v" x="250" y="140">1350</text>
+  <rect x="40" y="152" width="300" height="34" fill="#fdf0e6" stroke="#d8d1c6"/>
+  <text class="v" x="54" y="174">Anna</text><text class="v" x="150" y="174">03-03</text><text class="v" x="250" y="174">600</text>
+  <rect x="40" y="186" width="300" height="34" fill="#e9f2ec" stroke="#d8d1c6"/>
+  <text class="v" x="54" y="208">Ivan</text><text class="v" x="150" y="208">01-06</text><text class="v" x="250" y="208">1800</text>
+  <rect x="40" y="220" width="300" height="34" fill="#e9f2ec" stroke="#d8d1c6"/>
+  <text class="v" x="54" y="242">Ivan</text><text class="v" x="150" y="242">02-10</text><text class="v" x="250" y="242">22000</text>
+
+  <!-- partition brackets -->
+  <path d="M352,84 L352,84 L372,84 L372,186 L352,186" fill="none" stroke="#c2410c" stroke-width="1.6"/>
+  <path d="M352,186 L352,220 L372,220 L372,254 L352,254" fill="none" stroke="#2f6b4f" stroke-width="1.6"/>
+  <text class="o" x="382" y="140">Anna</text>
+
+  <!-- arrow to results -->
+  <path d="M600,170 L632,170" fill="none" stroke="#8a7f73" stroke-width="1.8" marker-end="url(#ar)"/>
+
+  <!-- result table (Anna 3 rows) -->
+  <rect x="640" y="52" width="300" height="32" fill="#f4f1ea" stroke="#d8d1c6"/>
+  <text class="h" x="652" y="73">revenue</text><text class="h" x="750" y="73">running</text><text class="h" x="850" y="73">prev</text>
+  <rect x="640" y="84" width="300" height="34" fill="#fdf0e6" stroke="#d8d1c6"/>
+  <text class="v" x="652" y="106">75000</text><text class="v" x="750" y="106">75000</text><text class="v" x="850" y="106">NULL</text>
+  <rect x="640" y="118" width="300" height="34" fill="#fdf0e6" stroke="#d8d1c6"/>
+  <text class="v" x="652" y="140">1350</text><text class="v" x="750" y="140">76350</text><text class="v" x="850" y="140">75000</text>
+  <rect x="640" y="152" width="300" height="34" fill="#fdf0e6" stroke="#d8d1c6"/>
+  <text class="v" x="652" y="174">600</text><text class="v" x="750" y="174">76950</text><text class="v" x="850" y="174">1350</text>
+
+  <text class="s" x="640" y="216">строки не исчезли — в отличие от GROUP BY</text>
+
+  <rect x="40" y="290" width="900" height="90" rx="10" fill="#f4f1ea" stroke="#e0d9cd"/>
+  <text class="s" x="60" y="316">SELECT ..., SUM(revenue) OVER (PARTITION BY user ORDER BY day) AS running</text>
+  <text class="n" x="60" y="340">PARTITION BY — какие строки считаются «своими»; ORDER BY — в каком порядке;</text>
+  <text class="n" x="60" y="362">рамка по умолчанию — от начала раздела до текущей строки.</text>
+
+  <rect x="40" y="398" width="900" height="76" rx="10" fill="#fff" stroke="#d8d1c6"/>
+  <text class="s" x="60" y="424">LAG/LEAD смотрят на предыдущую/следующую строку раздела; у первой строки LAG = NULL.</text>
+  <text class="n" x="60" y="448">Окно — это «агрегат, не схлопывающий строки»: та же SUM, но рядом с каждой строкой.</text>
+
+  <!-- рамка окна едет по строкам, справа подсвечивается результат -->
+  <rect class="wf-frame" x="40" y="84" width="300" height="34" rx="6"/>
+  <rect class="wf-h1" x="640" y="84" width="300" height="34"/>
+  <rect class="wf-h2" x="640" y="118" width="300" height="34"/>
+  <rect class="wf-h3" x="640" y="152" width="300" height="34"/>
+        </svg>

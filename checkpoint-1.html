@@ -1,0 +1,580 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Проверочная работа: часть I — Ассоциативный гайд</title>
+<meta name="description" content="Контрольная после недели 1: 8 вопросов теории, 4 задачи на код и 2 мостика в pandas/SQL. Баллы и рекомендации.">
+<link rel="stylesheet" href="assets/style.css">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#fbf8f2" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#14131a" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="assets/icons/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="assets/icons/icon-180.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Гайд Py/SQL">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+</head>
+<body data-slug="checkpoint-1">
+<div class="app">
+  <aside class="sidebar" id="sidebar"></aside>
+  <main>
+    <div class="wrap">
+
+      <header class="chapter-head">
+        <div class="eyebrow">
+          <span class="part">Проверочная работа</span>
+          <span class="dot"></span>
+          <span>Часть I · главы 01–06</span>
+          <span class="dot"></span>
+          <span>60 минут</span>
+        </div>
+        <h1>Проверочная работа: Python-коллекции
+          <span class="sub">20 баллов: 8 вопросов, 4 задачи и 2 мостика в pandas и SQL</span>
+        </h1>
+        <p class="lead">
+          Это не экзамен, а контрольная точка. Она показывает, можно ли переходить к NumPy или стоит
+          задержаться на неделе 1 — и, что важнее, какие именно главы перечитать.
+        </p>
+        <div class="meta">
+          <span class="chip">✍️ <b>14 заданий</b></span>
+          <span class="chip">🎯 <b>20 баллов</b></span>
+          <span class="chip">⏱ <b>60 минут</b></span>
+          <span class="chip">🖨 <b>печатается как бланк</b></span>
+        </div>
+      </header>
+
+      <section>
+        <h2><span class="num">01</span>Как устроена работа</h2>
+        <ul>
+          <li><strong>Часть A — 8 вопросов по 1 баллу.</strong> Проверяют понимание: алиасинг, hashable, операции над множествами, генераторы, Counter. Отвечайте сразу — после выбора покажется разбор.</li>
+          <li><strong>Часть B — 4 задачи по 2 балла.</strong> Нужно написать код. Оцените себя по рубрике: 2 — решил и объяснил, 1 — решил, но объяснить не смог, 0 — не решил.</li>
+          <li><strong>Часть C — 2 мостика по 2 балла.</strong> То же самое, но в терминах pandas и SQL: проверяем, что модель переносится.</li>
+          <li><strong>Главное правило:</strong> сначала своё решение, потом спойлер. Иначе работа измеряет не вас, а память.</li>
+        </ul>
+
+        <div class="diag-panel">
+          <div class="col"><span class="cap">таймер</span><span class="diag-timer" id="timer">60:00</span></div>
+          <button id="start">Старт</button>
+          <div class="col" style="margin-left:auto"><span class="cap">баллы</span><span class="scoreline"><span class="n" id="total">0</span><span class="of">из 20</span></span></div>
+        </div>
+        <p class="small print-hint">Нужен бумажный вариант? Нажмите «Печатать» — решения, рубрики и подсказки при печати скрываются, остаются только задания и пустые места.
+          <button class="ghost" onclick="window.print()" style="font-family:var(--sans);font-size:12px;padding:4px 10px;border:1px solid var(--line);border-radius:7px;background:var(--card);cursor:pointer;margin-left:6px">Печать</button>
+        </p>
+      </section>
+
+      <section>
+        <h2><span class="num">02</span>Часть A. Теория</h2>
+
+        <!-- A1 -->
+        <div class="q-item" data-q="a1" data-answer="c">
+          <div class="q-h"><span class="qn">A1</span><span>Что выведет код?</span><span class="pt">1 балл</span></div>
+          <div class="code">
+            <div class="bar"><span class="file">A1</span><span class="lang">python</span><button class="copy">копировать</button></div>
+            <pre data-lang="python">a = [1, 2]
+b = a
+b.append(3)
+print(a)</pre>
+          </div>
+          <div class="options">
+            <label><input type="radio" name="a1" value="a"><span>[1, 2]</span></label>
+            <label><input type="radio" name="a1" value="b"><span>TypeError</span></label>
+            <label><input type="radio" name="a1" value="c"><span>[1, 2, 3]</span></label>
+            <label><input type="radio" name="a1" value="d"><span>[1, 2] и [1, 2, 3] — зависит от версии</span></label>
+          </div>
+          <div class="verdict" hidden></div>
+          <div class="explain" hidden><code class="inl">b = a</code> — второе имя одного объекта, а не копия. Копия — <code class="inl">a[:]</code>. Глава 03.</div>
+        </div>
+
+        <!-- A2 -->
+        <div class="q-item" data-q="a2" data-answer="b">
+          <div class="q-h"><span class="qn">A2</span><span>Почему падает <code class="inl">{["a"]: 1}</code>?</span><span class="pt">1 балл</span></div>
+          <div class="options">
+            <label><input type="radio" name="a2" value="a"><span>dict не поддерживает списки как значения</span></label>
+            <label><input type="radio" name="a2" value="b"><span>list изменяем, у него нет стабильного хеша</span></label>
+            <label><input type="radio" name="a2" value="c"><span>list слишком большой для ключа</span></label>
+            <label><input type="radio" name="a2" value="d"><span>ключом может быть только строка</span></label>
+          </div>
+          <div class="verdict" hidden></div>
+          <div class="explain" hidden><code class="inl">TypeError: unhashable type: 'list'</code>. Ключ должен быть hashable — то же правило, что у <code class="inl">set</code>. Главы 02 и 03.</div>
+        </div>
+
+        <!-- A3 -->
+        <div class="q-item" data-q="a3" data-answer="d">
+          <div class="q-h"><span class="qn">A3</span><span>Что вернёт <code class="inl">{1, 2, 3} &amp; {2, 3, 4}</code>?</span><span class="pt">1 балл</span></div>
+          <div class="options">
+            <label><input type="radio" name="a3" value="a"><span>{1, 4}</span></label>
+            <label><input type="radio" name="a3" value="b"><span>{1, 2, 3, 4}</span></label>
+            <label><input type="radio" name="a3" value="c"><span>TypeError</span></label>
+            <label><input type="radio" name="a3" value="d"><span>{2, 3}</span></label>
+          </div>
+          <div class="verdict" hidden></div>
+          <div class="explain" hidden><code class="inl">&amp;</code> — пересечение: «было и там, и там». Объединение — <code class="inl">|</code>, разность — <code class="inl">-</code>. Глава 04.</div>
+        </div>
+
+        <!-- A4 -->
+        <div class="q-item" data-q="a4" data-answer="c">
+          <div class="q-h"><span class="qn">A4</span><span>Чем tuple отличается от list?</span><span class="pt">1 балл</span></div>
+          <div class="options">
+            <label><input type="radio" name="a4" value="a"><span>tuple быстрее во всех операциях</span></label>
+            <label><input type="radio" name="a4" value="b"><span>tuple не поддерживает индексы</span></label>
+            <label><input type="radio" name="a4" value="c"><span>tuple неизменяем и, если элементы hashable, годится в ключи</span></label>
+            <label><input type="radio" name="a4" value="d"><span>tuple хранит только числа</span></label>
+          </div>
+          <div class="verdict" hidden></div>
+          <div class="explain" hidden>Неизменяемость — причина, по которой tuple компактнее, хешируем и безопасен для делёжа. Глава 03.</div>
+        </div>
+
+        <!-- A5 -->
+        <div class="q-item" data-q="a5" data-answer="b">
+          <div class="q-h"><span class="qn">A5</span><span>Что выведет код?</span><span class="pt">1 балл</span></div>
+          <div class="code">
+            <div class="bar"><span class="file">A5</span><span class="lang">python</span><button class="copy">копировать</button></div>
+            <pre data-lang="python">print([x * x for x in range(5) if x % 2])</pre>
+          </div>
+          <div class="options">
+            <label><input type="radio" name="a5" value="a"><span>[0, 4, 16]</span></label>
+            <label><input type="radio" name="a5" value="b"><span>[1, 9]</span></label>
+            <label><input type="radio" name="a5" value="c"><span>[1, 4, 9, 16]</span></label>
+            <label><input type="radio" name="a5" value="d"><span>[]</span></label>
+          </div>
+          <div class="verdict" hidden></div>
+          <div class="explain" hidden><code class="inl">x % 2</code> истинно для нечётных, то есть 1 и 3. Их квадраты — 1 и 9. Глава 05.</div>
+        </div>
+
+        <!-- A6 -->
+        <div class="q-item" data-q="a6" data-answer="c">
+          <div class="q-h"><span class="qn">A6</span><span>Что выведет второй <code class="inl">sum(g)</code>?</span><span class="pt">1 балл</span></div>
+          <div class="code">
+            <div class="bar"><span class="file">A6</span><span class="lang">python</span><button class="copy">копировать</button></div>
+            <pre data-lang="python">g = (x for x in range(5))
+print(sum(g))
+print(sum(g))</pre>
+          </div>
+          <div class="options">
+            <label><input type="radio" name="a6" value="a"><span>10, затем снова 10</span></label>
+            <label><input type="radio" name="a6" value="b"><span>TypeError</span></label>
+            <label><input type="radio" name="a6" value="c"><span>10, затем 0</span></label>
+            <label><input type="radio" name="a6" value="d"><span>StopIteration</span></label>
+          </div>
+          <div class="verdict" hidden></div>
+          <div class="explain" hidden>Генератор исчерпывается за один проход: второй раз он уже пуст. Глава 05.</div>
+        </div>
+
+        <!-- A7 -->
+        <div class="q-item" data-q="a7" data-answer="d">
+          <div class="q-h"><span class="qn">A7</span><span>Counter — это…</span><span class="pt">1 балл</span></div>
+          <div class="options">
+            <label><input type="radio" name="a7" value="a"><span>разновидность set</span></label>
+            <label><input type="radio" name="a7" value="b"><span>функция подсчёта</span></label>
+            <label><input type="radio" name="a7" value="c"><span>список пар «значение — частота»</span></label>
+            <label><input type="radio" name="a7" value="d"><span>подкласс dict для подсчёта частот</span></label>
+          </div>
+          <div class="verdict" hidden></div>
+          <div class="explain" hidden>Counter хранит «ключ → число», как словарь, но отсутствующий ключ читается как 0. Глава 06.</div>
+        </div>
+
+        <!-- A8 -->
+        <div class="q-item" data-q="a8" data-answer="b">
+          <div class="q-h"><span class="qn">A8</span><span>Где проверка <code class="inl">"x" in collection</code> быстрее на миллионе элементов?</span><span class="pt">1 балл</span></div>
+          <div class="options">
+            <label><input type="radio" name="a8" value="a"><span>list</span></label>
+            <label><input type="radio" name="a8" value="b"><span>set</span></label>
+            <label><input type="radio" name="a8" value="c"><span>tuple</span></label>
+            <label><input type="radio" name="a8" value="d"><span>одинаково</span></label>
+          </div>
+          <div class="verdict" hidden></div>
+          <div class="explain" hidden>set — хеш-таблица: O(1) в среднем против O(n) у последовательностей. Главы 02 и 04.</div>
+        </div>
+      </section>
+
+      <section>
+        <h2><span class="num">03</span>Часть B. Задачи на код</h2>
+        <p class="small">2 балла за задачу: 1 — работает, 1 — вы объяснили, почему выбрали эту структуру и какова сложность.</p>
+
+        <!-- B1 -->
+        <div class="task">
+          <h3>B1. Сводка по заказам <span class="point">2 балла</span></h3>
+          <p>По списку заказов получите для каждого пользователя количество и сумму, затем найдите пользователя с максимальной суммой.</p>
+          <div class="code">
+            <div class="bar"><span class="file">B1</span><span class="lang">python</span><button class="copy">копировать</button></div>
+            <pre data-lang="python">orders = [
+    {"user": "Anna", "amount": 1200},
+    {"user": "Ivan", "amount": 800},
+    {"user": "Anna", "amount": 500},
+    {"user": "Petr", "amount": 2100},
+]</pre>
+          </div>
+          <div class="qa">
+            <details>
+              <summary>Показать решение</summary>
+              <div class="a">
+                <div class="code" style="margin-top:0">
+                  <div class="bar"><span class="file">решение</span><span class="lang">python</span><button class="copy">копировать</button></div>
+                  <pre data-lang="python">from collections import defaultdict
+
+stats = defaultdict(lambda: {"count": 0, "total": 0})
+for o in orders:
+    s = stats[o["user"]]
+    s["count"] += 1
+    s["total"] += o["amount"]
+
+best = max(stats, key=lambda u: stats[u]["total"])
+print(dict(stats))
+print(best)</pre>
+                  <div class="out">{'Anna': {'count': 2, 'total': 1700}, 'Ivan': {'count': 1, 'total': 800}, 'Petr': {'count': 1, 'total': 2100}}
+Petr</div>
+                </div>
+                <p><strong>Критерии.</strong> Нет pandas; используется <code class="inl">get</code>/<code class="inl">defaultdict</code>; <code class="inl">max</code> с ключом, а не сортировка. В объяснении — O(n) по заказам и O(k) по пользователям.</p>
+              </div>
+            </details>
+          </div>
+          <div class="rubric" data-task="b1">
+            <span class="h">Оценка:</span>
+            <label><input type="radio" name="b1" value="0"> 0 — не решил</label>
+            <label><input type="radio" name="b1" value="1"> 1 — решил, объяснить не смог</label>
+            <label><input type="radio" name="b1" value="2"> 2 — решил и объяснил</label>
+          </div>
+        </div>
+
+        <!-- B2 -->
+        <div class="task">
+          <h3>B2. Нормализация email <span class="point">2 балла</span></h3>
+          <p>Приведите адреса к нижнему регистру, уберите пробелы по краям и удалите дубликаты, сохранив порядок появления. Объясните, почему <code class="inl">list(set(...))</code> здесь не подходит.</p>
+          <div class="code">
+            <div class="bar"><span class="file">B2</span><span class="lang">python</span><button class="copy">копировать</button></div>
+            <pre data-lang="python">raw = [" Anna@Mail.ru ", "ivan@mail.ru", "anna@mail.ru", "IVAN@mail.ru "]</pre>
+          </div>
+          <div class="qa">
+            <details>
+              <summary>Показать решение</summary>
+              <div class="a">
+                <div class="code" style="margin-top:0">
+                  <div class="bar"><span class="file">решение</span><span class="lang">python</span><button class="copy">копировать</button></div>
+                  <pre data-lang="python">clean = [e.strip().lower() for e in raw]
+unique = list(dict.fromkeys(clean))
+print(unique)</pre>
+                  <div class="out">['anna@mail.ru', 'ivan@mail.ru']</div>
+                </div>
+                <p><strong>Критерии.</strong> Нормализация до дедупликации; порядок сохранён; объяснено, что set не гарантирует порядок, а dict.fromkeys — да.</p>
+              </div>
+            </details>
+          </div>
+          <div class="rubric" data-task="b2">
+            <span class="h">Оценка:</span>
+            <label><input type="radio" name="b2" value="0"> 0 — не решил</label>
+            <label><input type="radio" name="b2" value="1"> 1 — решил, объяснить не смог</label>
+            <label><input type="radio" name="b2" value="2"> 2 — решил и объяснил</label>
+          </div>
+        </div>
+
+        <!-- B3 -->
+        <div class="task">
+          <h3>B3. Топ-3 слова <span class="point">2 балла</span></h3>
+          <p>Найдите три самых частых слова. Объясните, что произойдёт при равных частотах и как получить стабильный порядок.</p>
+          <div class="code">
+            <div class="bar"><span class="file">B3</span><span class="lang">python</span><button class="copy">копировать</button></div>
+            <pre data-lang="python">text = "sql python sql pandas python sql airflow"</pre>
+          </div>
+          <div class="qa">
+            <details>
+              <summary>Показать решение</summary>
+              <div class="a">
+                <div class="code" style="margin-top:0">
+                  <div class="bar"><span class="file">решение</span><span class="lang">python</span><button class="copy">копировать</button></div>
+                  <pre data-lang="python">from collections import Counter
+
+counts = Counter(text.split())
+print(counts.most_common(3))
+
+# стабильный порядок при равных частотах:
+print(sorted(counts.items(), key=lambda kv: (-kv[1], kv[0]))[:3])</pre>
+                  <div class="out">[('sql', 3), ('python', 2), ('pandas', 1)]
+[('sql', 3), ('python', 2), ('airflow', 1)]</div>
+                </div>
+                <p><strong>Критерии.</strong> Использован Counter; объяснено, что <code class="inl">most_common</code> при равных частотах сохраняет порядок первого появления, а для детерминированного вывода нужен явный ключ сортировки.</p>
+              </div>
+            </details>
+          </div>
+          <div class="rubric" data-task="b3">
+            <span class="h">Оценка:</span>
+            <label><input type="radio" name="b3" value="0"> 0 — не решил</label>
+            <label><input type="radio" name="b3" value="1"> 1 — решил, объяснить не смог</label>
+            <label><input type="radio" name="b3" value="2"> 2 — решил и объяснил</label>
+          </div>
+        </div>
+
+        <!-- B4 -->
+        <div class="task">
+          <h3>B4. Последние пять событий <span class="point">2 балла</span></h3>
+          <p>Храните последние пять событий пользователя в порядке поступления. Объясните, почему для этого не подходит обычный список.</p>
+          <div class="code">
+            <div class="bar"><span class="file">B4</span><span class="lang">python</span><button class="copy">копировать</button></div>
+            <pre data-lang="python">events = ["login", "view", "search", "click", "pay", "logout", "export"]</pre>
+          </div>
+          <div class="qa">
+            <details>
+              <summary>Показать решение</summary>
+              <div class="a">
+                <div class="code" style="margin-top:0">
+                  <div class="bar"><span class="file">решение</span><span class="lang">python</span><button class="copy">копировать</button></div>
+                  <pre data-lang="python">from collections import deque
+
+last = deque(maxlen=5)
+for event in events:
+    last.append(event)
+
+print(list(last))</pre>
+                  <div class="out">['search', 'click', 'pay', 'logout', 'export']</div>
+                </div>
+                <p><strong>Критерии.</strong> deque с maxlen; объяснено, что у списка удаление из начала — O(n), а у deque — O(1), и что maxlen сам вытесняет старые элементы.</p>
+              </div>
+            </details>
+          </div>
+          <div class="rubric" data-task="b4">
+            <span class="h">Оценка:</span>
+            <label><input type="radio" name="b4" value="0"> 0 — не решил</label>
+            <label><input type="radio" name="b4" value="1"> 1 — решил, объяснить не смог</label>
+            <label><input type="radio" name="b4" value="2"> 2 — решил и объяснил</label>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h2><span class="num">04</span>Часть C. Мостики</h2>
+        <p class="small">Здесь важно не написать код, а показать, что одна модель работает в трёх технологиях.</p>
+
+        <div class="task">
+          <h3>C1. Та же группировка в pandas и SQL <span class="point">2 балла</span></h3>
+          <p>Перепишите B1 в двух видах: таблицей pandas и SQL-запросом. Объясните, что в обоих случаях играет роль «словаря-аккумулятора».</p>
+          <div class="qa">
+            <details>
+              <summary>Показать решение</summary>
+              <div class="a">
+                <div class="code" style="margin-top:0">
+                  <div class="bar"><span class="file">pandas</span><span class="lang">python</span><button class="copy">копировать</button></div>
+                  <pre data-lang="python">import pandas as pd
+
+df = pd.DataFrame(orders)
+summary = df.groupby("user")["amount"].agg(["count", "sum"])
+print(summary)</pre>
+                  <div class="out">       count   sum
+user
+Anna       2  1700
+Ivan       1   800
+Petr       1  2100</div>
+                </div>
+                <p class="small">В базе колонка называется <code class="inl">user_id</code> — это то же поле,
+                что <code class="inl">user</code> в Python/pandas. В примерах ниже схема условная.</p>
+                <div class="code">
+                  <div class="bar"><span class="file">sql</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+                  <pre data-lang="sql">SELECT user_id,
+       COUNT(*)   AS cnt,
+       SUM(amount) AS total
+FROM orders
+GROUP BY user_id;</pre>
+                </div>
+                <p><strong>Критерии.</strong> Оба варианта без циклов; сказано, что <code class="inl">groupby</code> и <code class="inl">GROUP BY</code> — тот же defaultdict с агрегацией, а <code class="inl">agg(["count","sum"])</code> — тот же набор накопителей.</p>
+              </div>
+            </details>
+          </div>
+          <div class="rubric" data-task="c1">
+            <span class="h">Оценка:</span>
+            <label><input type="radio" name="c1" value="0"> 0 — не решил</label>
+            <label><input type="radio" name="c1" value="1"> 1 — написал, но связь не объяснил</label>
+            <label><input type="radio" name="c1" value="2"> 2 — написал и объяснил связь</label>
+          </div>
+        </div>
+
+        <div class="task">
+          <h3>C2. Фильтр по запрещённым и ловушка NULL <span class="point">2 балла</span></h3>
+          <p>
+            Есть множество запрещённых ID. Отфильтруйте пользователей в Python. Как записать то же в SQL?
+            И почему <code class="inl">NOT IN (SELECT ...)</code> может вернуть пустой результат, если в подзапросе есть NULL?
+          </p>
+          <div class="qa">
+            <details>
+              <summary>Показать решение</summary>
+              <div class="a">
+                <div class="code" style="margin-top:0">
+                  <div class="bar"><span class="file">python</span><span class="lang">python</span><button class="copy">копировать</button></div>
+                  <pre data-lang="python">banned = {1, 2, 3}
+users = [{"id": 1}, {"id": 4}, {"id": 5}]
+
+active = [u for u in users if u["id"] not in banned]
+print(active)   # [{'id': 4}, {'id': 5}]</pre>
+                  <div class="out">[{'id': 4}, {'id': 5}]</div>
+                </div>
+                <div class="code">
+                  <div class="bar"><span class="file">sql</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+                  <pre data-lang="sql">SELECT * FROM users
+WHERE id NOT IN (SELECT user_id FROM bans);
+
+-- надёжнее: NOT EXISTS не ломается на NULL
+SELECT * FROM users u
+WHERE NOT EXISTS (SELECT 1 FROM bans b WHERE b.user_id = u.id);</pre>
+                </div>
+                <p><strong>Почему пусто.</strong> <code class="inl">NOT IN</code> — это цепочка сравнений с NULL, а любое сравнение с NULL даёт UNKNOWN, а не TRUE. Поэтому строка не проходит фильтр. <code class="inl">NOT EXISTS</code> проверяет наличие строки и от NULL не зависит.</p>
+                <p><strong>Критерии.</strong> Python-фильтр по set; SQL-вариант; объяснение трёхзначной логики или хотя бы вывод «NOT EXISTS безопаснее».</p>
+              </div>
+            </details>
+          </div>
+          <div class="rubric" data-task="c2">
+            <span class="h">Оценка:</span>
+            <label><input type="radio" name="c2" value="0"> 0 — не решил</label>
+            <label><input type="radio" name="c2" value="1"> 1 — написал, но связь не объяснил</label>
+            <label><input type="radio" name="c2" value="2"> 2 — написал и объяснил связь</label>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h2><span class="num">05</span>Результат</h2>
+        <div class="result">
+          <div class="scoreline"><span class="n" id="total2">0</span><span class="of">из 20 баллов</span></div>
+          <div class="band" id="band"><b>Пока пусто</b><p>Отвечайте на вопросы и ставьте оценки за задачи — результат посчитается сам.</p></div>
+          <p class="small" style="margin-top:14px">
+            Часть A: <span id="partA">0</span>/8 · Часть B: <span id="partB">0</span>/8 · Часть C: <span id="partC">0</span>/4
+          </p>
+          <button id="reset" class="ghost" style="font-family:var(--sans);font-size:12.5px;padding:7px 14px;border:1px solid var(--line);border-radius:8px;background:var(--card);cursor:pointer;margin-top:8px">Сбросить ответы</button>
+        </div>
+
+        <div class="note">
+          <span class="t">Что делать с результатом</span>
+          <p>17–20 — можно переходить к NumPy. 12–16 — перечитайте главы по темам с потерями и перепройдите работу.
+          Меньше 12 — вернитесь к диагностике и пройдите главы 02–06 ещё раз, решая задачи, а не перечитывая текст.</p>
+        </div>
+      </section>
+
+      <div class="pager">
+        <a class="prev" href="ch-06-collections.html"><span class="dir">← Назад</span><span class="ttl">06 · Counter, defaultdict, deque</span></a>
+        <a class="next" href="ch-07-ndarray.html"><span class="dir">Дальше →</span><span class="ttl">07 · ndarray: сетка вместо списка</span></a>
+      </div>
+
+    </div>
+  </main>
+</div>
+<script src="assets/toc.js"></script>
+<script src="assets/app.js"></script>
+<script>
+(function () {
+  const STORE = "assoc-checkpoint-1";
+  let state = { quiz: {}, self: {} };
+  try {
+    const s = JSON.parse(localStorage.getItem(STORE) || "null");
+    if (s) state = { quiz: s.quiz || {}, self: s.self || {} };
+  } catch {}
+
+  const qItems = [...document.querySelectorAll(".q-item")];
+  const selfInputs = [...document.querySelectorAll(".rubric input")];
+  const totalEl = document.getElementById("total");
+  const total2El = document.getElementById("total2");
+  const bandEl = document.getElementById("band");
+  const partA = document.getElementById("partA");
+  const partB = document.getElementById("partB");
+  const partC = document.getElementById("partC");
+
+  function evalQuiz(q) {
+    const sel = q.querySelector("input:checked");
+    q.querySelectorAll(".options label").forEach((l) => l.classList.remove("ok", "bad"));
+    const exp = q.querySelector(".explain");
+    const ver = q.querySelector(".verdict");
+    if (!sel) { exp.hidden = true; ver.hidden = true; return 0; }
+    const good = sel.value === q.dataset.answer;
+    sel.closest("label").classList.add(good ? "ok" : "bad");
+    if (!good) {
+      const right = q.querySelector('input[value="' + q.dataset.answer + '"]');
+      if (right) right.closest("label").classList.add("ok");
+    }
+    ver.hidden = false;
+    ver.className = "verdict " + (good ? "ok" : "bad");
+    ver.textContent = good ? "Верно (+1)" : "Неверно";
+    exp.hidden = false;
+    return good ? 1 : 0;
+  }
+
+  function update() {
+    let a = 0;
+    qItems.forEach((q) => { a += evalQuiz(q); });
+    let b = 0, c = 0;
+    selfInputs.forEach((i) => {
+      if (!i.checked) return;
+      const v = Number(i.value);
+      if (i.name.startsWith("b")) b += v; else c += v;
+    });
+    const total = a + b + c;
+    totalEl.textContent = String(total);
+    total2El.textContent = String(total);
+    partA.textContent = String(a);
+    partB.textContent = String(b);
+    partC.textContent = String(c);
+
+    let title, desc;
+    if (total >= 17) {
+      title = "Готово к части II";
+      desc = "База на месте. Просмотрите только главы по темам, где потеряли баллы, и переходите к NumPy.";
+    } else if (total >= 12) {
+      title = "Почти: закройте 1–2 темы";
+      desc = "Перечитайте главы, где были ошибки, и перепройдите работу. Ориентир для перехода — 17 баллов.";
+    } else if (total === 0) {
+      title = "Пока пусто";
+      desc = "Отвечайте на вопросы и ставьте оценки за задачи — результат посчитается сам.";
+    } else {
+      title = "Стоит повторить неделю";
+      desc = "Вернитесь к диагностике и главам 02–06, решайте по 2–3 задачи в день. Это не экзамен, а карта пробелов.";
+    }
+    bandEl.innerHTML = "<b>" + title + "</b><p>" + desc + "</p>";
+    try { localStorage.setItem(STORE, JSON.stringify(state)); } catch {}
+  }
+
+  qItems.forEach((q) => {
+    const saved = state.quiz[q.dataset.q];
+    if (saved) {
+      const r = q.querySelector('input[value="' + saved + '"]');
+      if (r) r.checked = true;
+    }
+    q.querySelectorAll("input").forEach((inp) =>
+      inp.addEventListener("change", () => { state.quiz[q.dataset.q] = inp.value; update(); })
+    );
+  });
+
+  selfInputs.forEach((i) => {
+    if (state.self[i.name] === i.value) i.checked = true;
+    i.addEventListener("change", () => { state.self[i.name] = i.value; update(); });
+  });
+
+  document.getElementById("reset").addEventListener("click", () => {
+    qItems.forEach((q) => q.querySelectorAll("input").forEach((i) => (i.checked = false)));
+    selfInputs.forEach((i) => (i.checked = false));
+    state = { quiz: {}, self: {} };
+    localStorage.removeItem(STORE);
+    update();
+  });
+
+  // таймер
+  const timer = document.getElementById("timer");
+  let left = 60 * 60, id = null, running = false;
+  const fmt = (s) => String(Math.floor(s / 60)).padStart(2, "0") + ":" + String(s % 60).padStart(2, "0");
+  timer.textContent = fmt(left);
+  document.getElementById("start").addEventListener("click", (e) => {
+    if (running) return;
+    running = true;
+    e.target.disabled = true;
+    e.target.textContent = "идёт";
+    id = setInterval(() => {
+      left -= 1;
+      timer.textContent = fmt(Math.max(0, left));
+      if (left <= 0) {
+        clearInterval(id);
+        timer.classList.add("out");
+        e.target.textContent = "время вышло";
+      }
+    }, 1000);
+  });
+
+  update();
+})();
+</script>
+</body>
+</html>

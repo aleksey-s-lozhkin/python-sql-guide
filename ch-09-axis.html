@@ -1,0 +1,460 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>09 · axis: вдоль какой стены считать — Ассоциативный гайд</title>
+<meta name="description" content="axis в NumPy и pandas: почему axis=0 схлопывает строки, axis=1 — столбцы, зачем keepdims и как не перепутать направление.">
+<link rel="stylesheet" href="assets/style.css">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#fbf8f2" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#14131a" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="assets/icons/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="assets/icons/icon-180.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Гайд Py/SQL">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+</head>
+<body data-slug="ch-09-axis">
+<div class="app">
+  <aside class="sidebar" id="sidebar"></aside>
+  <main>
+    <div class="wrap">
+
+      <header class="chapter-head">
+        <div class="eyebrow">
+          <span class="part">Часть II · NumPy</span>
+          <span class="dot"></span>
+          <span>Неделя 2 · день 3</span>
+          <span class="dot"></span>
+          <span>готово</span>
+        </div>
+        <h1>axis: вдоль какой стены считать
+          <span class="sub">Ось — это направление свёртки, а не то, что останется</span>
+        </h1>
+        <p class="lead">
+          <code class="inl">axis</code> путают все: кажется, что он указывает, «что оставить». На самом деле он
+          указывает, <em>вдоль чего идти</em>, складывая значения. Ось, по которой прошли, исчезает из результата.
+        </p>
+        <div class="meta">
+          <span class="chip">⏱ <b>40 минут</b></span>
+          <span class="chip">🎯 уровень <b>2 — применить</b></span>
+          <span class="chip">🧮 <b>numpy 2.3</b></span>
+          <span class="chip">📚 <b>Aggregates</b></span>
+        </div>
+      </header>
+
+      <details class="glossary">
+        <summary>Словарь главы — если забыли термины</summary>
+        <dl>
+          <dt>axis</dt><dd>Номер оси, вдоль которой идёт свёртка: <code>0</code> — вниз по строкам, <code>1</code> — вправо.</dd>
+          <dt>свёртка</dt><dd>Агрегат вдоль оси: сумма, среднее, максимум — размерность уменьшается.</dd>
+          <dt>keepdims</dt><dd>Оставить ось размером 1, чтобы форма результата сошлась с исходной.</dd>
+          <dt>argmax</dt><dd>Индекс максимального элемента, а не само значение.</dd>
+        </dl>
+      </details>
+
+
+      <section>
+        <h2><span class="num">01</span>Зачем это backend-разработчику</h2>
+        <ul>
+          <li><strong>Отчёты.</strong> «Сумма по каждому дню», «средний чек по категориям», «максимум по месяцам» — это агрегаты по оси.</li>
+          <li><strong>pandas.</strong> Там axis встречается в <code class="inl">sum</code>, <code class="inl">mean</code>, <code class="inl">dropna</code>, <code class="inl">apply</code> — и ошибиться в нём ещё легче.</li>
+          <li><strong>Подготовка к groupby.</strong> Понимание «по какой оси» напрямую переносится в <code class="inl">GROUP BY</code> и в <code class="inl">groupby</code>.</li>
+          <li><strong>Собеседование:</strong> «что делает axis=0», «почему форма результата такая» — проверяют, понимаете ли вы размерности.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2><span class="num">02</span>Ассоциация-якорь: идёшь вдоль стены</h2>
+
+        <div class="anchor">
+          <div class="glyph">🧱</div>
+          <div>
+            <div class="t">Держите эту картинку в голове</div>
+            <p class="kick"><strong>Вы идёте вдоль стены и складываете кирпичи.</strong> Кирпичи на стене
+            складываются в один результат, и сама стена после этого исчезает.</p>
+            <p><strong>axis=0 — идём вниз по строкам.</strong> Складываем всё, что стоит в столбце, — остаются
+            столбцы (4 числа). <strong>axis=1 — идём вправо по столбцам.</strong> Складываем всё, что стоит в строке, —
+            остаются строки (3 числа).</p>
+          </div>
+        </div>
+
+        <figure class="art">
+          <div class="frame">
+            <img src="assets/illustrations/09-axis-wall.webp" width="1168" height="876" loading="lazy" decoding="async" alt="Маленькая фигура со спины идёт вдоль высокой стены библиотеки и считает полки.">
+          </div>
+          <figcaption><b>Рис. 1.</b> Идти вдоль стены и считать полки — axis: направление, вдоль которого схлопывается измерение.</figcaption>
+        </figure>
+
+      </section>
+
+      <section>
+        <h2><span class="num">03</span>Ассоциативный ряд: восемь звеньев</h2>
+        <ol class="chain">
+          <li><b>shape (3, 4)</b><span>3 строки, 4 столбца</span></li>
+          <li><b>axis=0</b><span>идём вниз по строкам</span></li>
+          <li><b>результат (4,)</b><span>строка исчезла, столбцы остались</span></li>
+          <li><b>axis=1</b><span>идём вправо по столбцам</span></li>
+          <li><b>результат (3,)</b><span>столбцы исчезли, строки остались</span></li>
+          <li><b>axis=None</b><span>свернуть всё в одно число</span></li>
+          <li><b>keepdims</b><span>оставить ось размером 1</span></li>
+          <li><b>axis=-1</b><span>последняя ось, без подсчёта</span></li>
+        </ol>
+      </section>
+
+      <section>
+        <h2><span class="num">04</span>Схема: две оси, два результата</h2>
+
+        <figure class="wide">
+          <div class="frame">
+            <img class="live-anim" data-live="assets/maps/axis-flatten-live.svg" data-static="assets/maps/axis-flatten.svg" src="assets/maps/axis-flatten-live.svg" alt="Матрица 3×4: при axis=0 результат [12 15 18 21], при axis=1 — [6, 22, 38].">
+          </div>
+          <figcaption>
+            <b>Рис. 2.</b> Одна и та же матрица. Ось показывает направление обхода; из формы результата эта ось
+            исчезает. <code class="inl">keepdims=True</code> оставляет её размером 1.
+          </figcaption>
+        </figure>
+      </section>
+
+      <section>
+        <h2><span class="num">05</span>Как это устроено на самом деле</h2>
+        <p>
+          Агрегат «схлопывает» ось: размер по ней превращается в единицу, а потом и вовсе исчезает из формы.
+          Поэтому <code class="inl">m.sum(axis=0)</code> из <code class="inl">(3, 4)</code> даёт <code class="inl">(4,)</code>,
+          а <code class="inl">m.sum(axis=None)</code> — скаляр. Тот же принцип у <code class="inl">mean</code>,
+          <code class="inl">max</code>, <code class="inl">std</code>, <code class="inl">argmax</code>.
+        </p>
+
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Вызов</th><th>Форма результата</th><th>Смысл</th></tr></thead>
+            <tbody>
+              <tr><td class="mono">m.sum()</td><td class="mono">скаляр</td><td>сумма всех элементов</td></tr>
+              <tr><td class="mono">m.sum(axis=0)</td><td class="mono">(4,)</td><td>по столбцам: свернули строки</td></tr>
+              <tr><td class="mono">m.sum(axis=1)</td><td class="mono">(3,)</td><td>по строкам: свернули столбцы</td></tr>
+              <tr><td class="mono">m.sum(axis=0, keepdims=True)</td><td class="mono">(1, 4)</td><td>та же ось, но размер 1</td></tr>
+              <tr><td class="mono">cube.sum(axis=(0, 2))</td><td class="mono">(3,)</td><td>свернули две оси сразу</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>Зачем keepdims</h3>
+        <p>
+          Без <code class="inl">keepdims</code> результат теряет ось, и его нельзя вычесть из исходной матрицы:
+          <code class="inl">(3, 4) - (4,)</code> сработает благодаря broadcasting, но смысл может оказаться не тем.
+          С <code class="inl">keepdims</code> форма <code class="inl">(1, 4)</code> однозначно говорит: «это средние
+          по столбцам, по одному на столбец».
+        </p>
+
+        <h3>axis=-1</h3>
+        <p>
+          Отрицательные оси считаются с конца: <code class="inl">-1</code> — последняя, <code class="inl">-2</code> —
+          предпоследняя. Это удобно в функциях, которые не знают размерности заранее.
+        </p>
+      </section>
+
+      <section>
+        <h2><span class="num">06</span>Лаборатория: запустить и увидеть</h2>
+        <p>
+          Фрагменты файла <a title="Открыть файл с номерами строк" href="snippets/view.html?f=09_axis_lab.py"><code class="inl">09_axis_lab.py</code></a>.
+        </p>
+
+        <h3>Шаг 1. Две суммы одной матрицы</h3>
+        <div class="code">
+          <div class="bar"><span class="file">09_axis_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">import numpy as np
+
+m = np.arange(12).reshape(3, 4)
+print(m.sum(axis=0), m.sum(axis=0).shape)
+print(m.sum(axis=1), m.sum(axis=1).shape)
+print(m.sum(), m.sum().shape)</pre>
+          <div class="out">[12 15 18 21] (4,)
+[ 6 22 38] (3,)
+66 ()</div>
+        </div>
+
+        <h3>Шаг 2. Средние, максимум и argmax</h3>
+        <div class="code">
+          <div class="bar"><span class="file">09_axis_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">print(m.mean(axis=0))
+print(m.mean(axis=1))
+print(m.max(axis=1))
+print(m.argmax(axis=0), m.argmax(axis=1))</pre>
+          <div class="out">[4. 5. 6. 7.]
+[1.5 5.5 9.5]
+[ 3  7 11]
+[2 2 2 2] [3 3 3]</div>
+        </div>
+        <p>
+          <code class="inl">argmax(axis=0)</code> ищет максимум в каждом столбце и возвращает <em>индекс строки</em>,
+          где он стоит. Во всех столбцах максимум в последней строке, поэтому результат <code class="inl">[2 2 2 2]</code>.
+        </p>
+
+        <h3>Шаг 3. keepdims и отрицательные оси</h3>
+        <div class="code">
+          <div class="bar"><span class="file">09_axis_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">print(m.sum(axis=0).shape)
+print(m.sum(axis=0, keepdims=True).shape)
+print(m.sum(axis=0, keepdims=True))
+
+print(m.sum(axis=-1))
+print(np.array_equal(m.sum(axis=-1), m.sum(axis=1)))</pre>
+          <div class="out">(4,)
+(1, 4)
+[[12 15 18 21]]
+[ 6 22 38]
+True</div>
+        </div>
+
+        <h3>Шаг 4. Трёхмерный массив</h3>
+        <div class="code">
+          <div class="bar"><span class="file">09_axis_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">cube = np.arange(24).reshape(2, 3, 4)
+print(cube.sum(axis=0).shape)      # (3, 4)
+print(cube.sum(axis=(0, 2)).shape) # (3,)
+print(cube.sum(axis=(0, 2)))</pre>
+          <div class="out">(3, 4)
+(3,)
+[ 60  92 124]</div>
+        </div>
+
+        <h3>Шаг 5. Ошибка оси и pandas</h3>
+        <div class="code">
+          <div class="bar"><span class="file">09_axis_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">m.sum(axis=2)
+# AxisError: axis 2 is out of bounds for array of dimension 2
+
+import pandas as pd
+df = pd.DataFrame(m, columns=["q1", "q2", "q3", "q4"],
+                  index=["anna", "ivan", "olga"])
+print(df.sum(axis=0).tolist())   # [12, 15, 18, 21]
+print(df.sum(axis=1).tolist())   # [6, 22, 38]</pre>
+          <div class="out">[12, 15, 18, 21]
+[6, 22, 38]</div>
+        </div>
+      </section>
+
+      <section>
+        <h2><span class="num">07</span>Мост: axis в pandas и SQL</h2>
+
+        <h3>pandas: axis=0 — по строкам таблицы</h3>
+        <div class="code">
+          <div class="bar"><span class="file">мост в pandas</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">df.sum(axis=0)        # сумма по каждому столбцу (свернули строки)
+df.sum(axis=1)        # сумма по каждой строке (свернули столбцы)
+df.dropna(axis=0)     # удалить строки с пропусками
+df.dropna(axis=1)     # удалить столбцы с пропусками</pre>
+        </div>
+        <p>
+          В pandas <code class="inl">axis=0</code> — это индекс (строки), <code class="inl">axis=1</code> — колонки.
+          Логика та же, что в NumPy, но формулировка «удалить по оси 0» звучит ещё более запутанно. Спасает
+          правило: <em>axis — то, что исчезает</em>.
+        </p>
+
+        <h3>SQL: GROUP BY — это «свернуть по колонке»</h3>
+        <div class="code">
+          <div class="bar"><span class="file">мост в SQL</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">SELECT city, SUM(amount) AS total
+FROM orders
+GROUP BY city;    -- свернули строки по city, остался один ряд на город</pre>
+        </div>
+        <p>
+          <code class="inl">GROUP BY</code> — это агрегат по оси значений, а не по позиции: вы говорите,
+          по какому столбцу группировать. В NumPy роль такой «колонки» играет ось.
+        </p>
+      </section>
+
+      <section>
+        <h2><span class="num">08</span>Пять ошибок, на которых спотыкаются</h2>
+
+        <div class="errors">
+          <div class="err">
+            <div class="h">Путать axis=0 и axis=1</div>
+            <p>Кажется, что «axis=0 — это по строкам», и результат ожидается длиной 3. На деле 0 — направление вниз, результат по столбцам.</p>
+            <div class="fix">Проговаривать: «ось исчезает». axis=0 → строки исчезли → остались столбцы.</div>
+          </div>
+          <div class="err">
+            <div class="h">Ожидать форму исходной матрицы</div>
+            <p><code class="inl">m.mean(axis=1)</code> возвращает <code class="inl">(3,)</code>, а не <code class="inl">(3, 4)</code>. Дальше вычитание из матрицы может дать не тот смысл.</p>
+            <div class="fix"><code class="inl">keepdims=True</code>, когда результат будет участвовать в операциях с исходной формой.</div>
+          </div>
+          <div class="err">
+            <div class="h">Ось вне диапазона</div>
+            <p>Для двумерного массива <code class="inl">axis=2</code> → <code class="inl">AxisError</code>.</p>
+            <div class="fix">Проверять <code class="inl">ndim</code>; использовать отрицательные оси, если размерность неизвестна.</div>
+          </div>
+          <div class="err">
+            <div class="h">Считать, что axis=0 в pandas — «строки»</div>
+            <p>В pandas axis=0 означает «действие по индексу», а результат — по колонкам. Формулировки сбивают.</p>
+            <div class="fix">Помнить правило «axis — что исчезает» и проверять форму результата.</div>
+          </div>
+          <div class="err">
+            <div class="h">Забыть про NaN в агрегатах</div>
+            <p><code class="inl">mean</code> с NaN вернёт NaN, а не среднее по остальным.</p>
+            <div class="fix"><code class="inl">np.nanmean</code> / <code class="inl">df.mean(skipna=True)</code> — но осознанно: пропуск может быть значимым.</div>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h2><span class="num">09</span>Вопросы с собеседования</h2>
+        <div class="qa">
+          <details>
+            <summary>Что означает axis=0?</summary>
+            <div class="a">
+              <p>Агрегат идёт вдоль строк (вниз), поэтому строки схлопываются, а результат содержит по одному значению на столбец. Для матрицы (3, 4) результат — (4,).</p>
+              <div class="verdict">Резюме: ось исчезает, остаётся перпендикулярное.</div>
+            </div>
+          </details>
+          <details>
+            <summary>Почему sum(axis=1) даёт (3,)?</summary>
+            <div class="a">
+              <p>Потому что свёртка идёт вдоль столбцов: каждая строка превращается в одно число. Строк было 3 — остаётся вектор длины 3.</p>
+              <div class="verdict">Резюме: свернули столбцы — остались строки.</div>
+            </div>
+          </details>
+          <details>
+            <summary>Зачем keepdims?</summary>
+            <div class="a">
+              <p>Оставляет свёрнутую ось размером 1, чтобы форма результата была совместима с исходной. Это делает broadcasting предсказуемым: <code class="inl">(3,4) - (1,4)</code> вместо <code class="inl">(3,4) - (4,)</code>.</p>
+              <div class="verdict">Резюме: сохранить форму — сохранить смысл.</div>
+            </div>
+          </details>
+          <details>
+            <summary>Что делает axis=None?</summary>
+            <div class="a">
+              <p>Сворачивает все оси: результат — скаляр. Это то же, что <code class="inl">arr.sum()</code> без аргументов.</p>
+              <div class="verdict">Резюме: всё в одно число.</div>
+            </div>
+          </details>
+          <details>
+            <summary>Что такое отрицательная ось?</summary>
+            <div class="a">
+              <p>Отсчёт с конца: -1 — последняя ось, -2 — предпоследняя. Удобно в универсальном коде, где размерность неизвестна.</p>
+              <div class="verdict">Резюме: -1 = «последняя».</div>
+            </div>
+          </details>
+          <details>
+            <summary>В чём разница axis в NumPy и pandas?</summary>
+            <div class="a">
+              <p>Смысл тот же — направление свёртки. В pandas axis=0 — индекс (строки), axis=1 — колонки, и это часто формулируют как «удалить строки/столбцы».</p>
+              <div class="verdict">Резюме: одна логика, разные названия.</div>
+            </div>
+          </details>
+          <details>
+            <summary>Как посчитать сумму по двум осям сразу?</summary>
+            <div class="a">
+              <p>Передать кортеж: <code class="inl">cube.sum(axis=(0, 2))</code>. Обе оси исчезнут, останется третья.</p>
+              <div class="verdict">Резюме: осей может быть несколько.</div>
+            </div>
+          </details>
+          <details>
+            <summary>Почему argmax(axis=0) возвращает индексы строк?</summary>
+            <div class="a">
+              <p>Потому что ищется максимум в каждом столбце, и позиция внутри столбца — это номер строки. Форма результата — число столбцов.</p>
+              <div class="verdict">Резюме: позиция внутри свёрнутой оси.</div>
+            </div>
+          </details>
+        </div>
+      </section>
+
+      <section>
+        <h2><span class="num">10</span>Три задачи: сначала своя попытка</h2>
+
+        <h3><span style="color:var(--muted);font-family:var(--mono);font-size:.8rem">01</span> Суммы по столбцам</h3>
+        <p>Для матрицы 4×3 посчитайте сумму и среднее по каждому столбцу, не используя циклы.</p>
+        <div class="qa">
+          <details>
+            <summary>Показать решение</summary>
+            <div class="a">
+              <div class="code" style="margin-top:0">
+                <div class="bar"><span class="file">решение</span><span class="lang">python</span><button class="copy">копировать</button></div>
+                <pre data-lang="python">m = np.arange(12).reshape(4, 3)
+print(m.sum(axis=0), m.mean(axis=0))</pre>
+                <div class="out">[18 22 26] [4.5 5.5 6.5]</div>
+              </div>
+              <p><strong>Что важно.</strong> axis=0 сворачивает строки: результат длины 3 — по числу столбцов.</p>
+            </div>
+          </details>
+        </div>
+
+        <h3><span style="color:var(--muted);font-family:var(--mono);font-size:.8rem">02</span> Доля от общего</h3>
+        <p>Посчитайте, какую долю каждая строка составляет от общей суммы матрицы.</p>
+        <div class="qa">
+          <details>
+            <summary>Показать решение</summary>
+            <div class="a">
+              <div class="code" style="margin-top:0">
+                <div class="bar"><span class="file">решение</span><span class="lang">python</span><button class="copy">копировать</button></div>
+                <pre data-lang="python">row_sums = m.sum(axis=1)
+shares = row_sums / m.sum()
+print(shares.round(3))</pre>
+                <div class="out">[0.045 0.182 0.318 0.455]</div>
+              </div>
+              <p><strong>Что важно.</strong> Сначала агрегат по оси, потом деление на скаляр — векторная операция без цикла.</p>
+            </div>
+          </details>
+        </div>
+
+        <h3><span style="color:var(--muted);font-family:var(--mono);font-size:.8rem">03</span> Центрирование с keepdims</h3>
+        <p>Вычтите из каждой строки её среднее так, чтобы форма не «сломалась».</p>
+        <div class="qa">
+          <details>
+            <summary>Показать решение</summary>
+            <div class="a">
+              <div class="code" style="margin-top:0">
+                <div class="bar"><span class="file">решение</span><span class="lang">python</span><button class="copy">копировать</button></div>
+                <pre data-lang="python">row_means = m.mean(axis=1, keepdims=True)   # (4, 1)
+centered = m - row_means
+print(centered.round(3))</pre>
+                <div class="out">[[-1.  0.  1.]
+ [-1.  0.  1.]
+ [-1.  0.  1.]
+ [-1.  0.  1.]]</div>
+              </div>
+              <p><strong>Что важно.</strong> Без keepdims форма была бы <code class="inl">(4,)</code>,
+              и вычитание из <code class="inl">(4, 3)</code> дало бы <code class="inl">ValueError</code>:
+              последние оси не совпадают. Глава 10 объясняет, как NumPy выравнивает формы и почему
+              <code class="inl">keepdims</code> убирает двусмысленность.</p>
+            </div>
+          </details>
+        </div>
+      </section>
+
+      <section>
+        <h2><span class="num">11</span>Чек-лист освоения</h2>
+        <div class="check">
+          <label><input type="checkbox"><span class="box"></span><span class="txt">Сказать словами, что делает axis=0 и axis=1, не подглядывая</span></label>
+          <label><input type="checkbox"><span class="box"></span><span class="txt">Предсказать форму результата для 2D и 3D</span></label>
+          <label><input type="checkbox"><span class="box"></span><span class="txt">Объяснить, зачем keepdims</span></label>
+          <label><input type="checkbox"><span class="box"></span><span class="txt">Перевести axis-логику в pandas и GROUP BY</span></label>
+          <label><input type="checkbox"><span class="box"></span><span class="txt">Найти ошибку оси в чужом коде</span></label>
+        </div>
+      </section>
+
+      <section>
+        <h2><span class="num">12</span>Куда ведут мостики</h2>
+        <div class="bridges">
+          <a class="bridge" href="ref-np-axis.html"><span class="to">Справочник</span><span>NumPy: axis</span><span class="what">→ агрегаты, keepdims, argmax</span></a>
+          <a class="bridge" href="ch-08-indexing.html"><span class="to">Глава 08</span><span>Индексация и маски</span><span class="what">→ выбрать элементы</span></a>
+          <a class="bridge" href="ch-10-broadcasting.html"><span class="to">Глава 10</span><span>Broadcasting</span><span class="what">→ почему keepdims важен</span></a>
+          <a class="bridge" href="ch-11-views-copies.html"><span class="to">Глава 11</span><span>View и copy</span><span class="what">→ агрегат создаёт новый массив</span></a>
+          <a class="bridge" href="ch-15-groupby.html"><span class="to">Глава 15</span><span>groupby в pandas</span><span class="what">→ агрегаты по группам</span></a>
+          <a class="bridge" href="ch-21-group-by-having.html"><span class="to">Глава 21</span><span>GROUP BY и HAVING</span><span class="what">→ свёртка в базе</span></a>
+        </div>
+      </section>
+
+      <div class="pager">
+        <a class="prev" href="ch-08-indexing.html"><span class="dir">← Назад</span><span class="ttl">08 · индексация и маски</span></a>
+        <a class="next" href="ch-10-broadcasting.html"><span class="dir">Дальше →</span><span class="ttl">10 · broadcasting: штамп и тесто</span></a>
+      </div>
+
+    </div>
+  </main>
+</div>
+<script src="assets/toc.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>

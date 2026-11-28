@@ -1,0 +1,800 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Справочник «Дата и время» · NumPy datetime64: сетка времени — Ассоциативный гайд</title>
+<meta name="description" content="Справочник по numpy datetime64 и timedelta64: единицы, NaT, разности дат, конвертация в datetime и pandas, таймзоны — с реальным выводом numpy 2.3.5.">
+<link rel="stylesheet" href="assets/style.css">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#fbf8f2" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#14131a" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="assets/icons/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="assets/icons/icon-180.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Гайд Py/SQL">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+</head>
+<body data-slug="ref-dt-numpy">
+<div class="app">
+  <aside class="sidebar" id="sidebar"></aside>
+  <main>
+    <div class="wrap">
+
+      <header class="chapter-head">
+        <div class="eyebrow">
+          <span class="part">Справочник · дата и время</span>
+          <span class="dot"></span>
+          <span>страница 2 из 4</span>
+          <span class="dot"></span>
+          <span>готово</span>
+        </div>
+        <h1>NumPy datetime64: сетка времени
+          <span class="sub">Моменты и длительности как целые такты: единицы, NaT и мостик в pandas</span>
+        </h1>
+        <p class="lead">
+          <code class="inl">datetime64</code> — момент времени, записанный целым числом тактов
+          выбранной единицы: день, секунда, наносекунда. <code class="inl">timedelta64</code> —
+          расстояние по той же сетке. Здесь — все единицы, разности дат, NaT, конвертации и то,
+          чего у NumPy нет: таймзон и календаря.
+        </p>
+        <div class="meta">
+          <span class="chip">⏱ <b>12 минут</b></span>
+          <span class="chip">🎯 уровень <b>2</b></span>
+          <span class="chip">🧮 <b>numpy 2.3.5</b></span>
+          <span class="chip">📚 <b>docs: datetime64</b></span>
+        </div>
+      </header>
+
+      <p class="small">
+        Справочник «Дата и время»: <a href="appendix-datetime.html">вся карта</a> ·
+        <a href="ref-dt-python.html">01 · Python</a> · <b>02 · NumPy</b> ·
+        <a href="ref-dt-pandas.html">03 · pandas</a> · <a href="ref-dt-sql.html">04 · SQL</a>
+      </p>
+
+      <div class="tldr">
+        <div class="t">Самое главное</div>
+        <ul>
+          <li><code class="inl">datetime64[D]</code>, <code class="inl">[s]</code>,
+              <code class="inl">[ns]</code> — один и тот же момент в разных единицах: тип говорит,
+              какой шаг сетки хранится. Массив дат — обычный <code class="inl">ndarray</code>
+              с этим dtype.</li>
+          <li>Разность двух моментов даёт <code class="inl">timedelta64</code>
+              (<code class="inl">9 days</code>), а момент плюс длительность — снова момент.
+              Единица задаёт точность и усечение.</li>
+          <li>Таймзон и календаря в типе нет: момент — наивные такты. «Нет даты» — это
+              <code class="inl">NaT</code>, и проверяется он только через
+              <code class="inl">np.isnat</code>.</li>
+        </ul>
+      </div>
+
+      <!-- ══════════════════ 01. Что это ══════════════════ -->
+      <section>
+        <h2><span class="num">01</span>Что это и как устроено</h2>
+        <p>
+          <code class="inl">np.datetime64</code> хранит момент как целое число тактов выбранной
+          единицы от точки отсчёта (1970-01-01). <code class="inl">datetime64[D]</code> — день,
+          <code class="inl">datetime64[s]</code> — секунда, <code class="inl">datetime64[ns]</code> —
+          наносекунда. Каждый момент занимает те же 8 байт, меняется лишь смысл числа: dtype говорит,
+          какой шаг сетки мы считаем.
+        </p>
+        <p>
+          <code class="inl">timedelta64</code> — длительность на той же сетке. Разность дат даёт
+          длительность, прибавление длительности к дате — снова дата. Всё это массивы:
+          сравнения, сортировка, разности и фильтры работают векторизованно, как числа.
+          Чего нет: таймзон, календарных месяцев и форматирования — NumPy знает только такты.
+        </p>
+
+        <div class="anchor">
+          <div class="glyph">📏</div>
+          <div>
+            <div class="t">Держите эту картинку в голове</div>
+            <p class="kick"><strong>Сетка времени.</strong> Время натянуто на линейку с шагом:
+            у <code class="inl">datetime64[D]</code> шаг — день, у <code class="inl">[ns]</code> —
+            наносекунда. Момент — узел сетки, длительность — расстояние между узлами.</p>
+            <p>Чем мельче шаг, тем точнее момент и тем меньше диапазон, который влезает в целое.
+            Линейка не знает ни часовых поясов, ни календаря — только такты. Подробный разбор
+            момента, календаря и длительности — в
+            <a href="ch-27-date-time.html">главе 27</a>.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ══════════════════ 02. Когда брать ══════════════════ -->
+      <section>
+        <h2><span class="num">02</span>Когда брать, а когда нет</h2>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Задача</th><th>datetime64?</th><th>Что взять вместо</th></tr></thead>
+            <tbody>
+              <tr><td>Массив моментов: сравнения, сортировка, разности</td><td><b>да</b></td><td>—</td></tr>
+              <tr><td>Диапазон дат: календарь или временной ряд</td><td><b>да</b></td><td>—</td></tr>
+              <tr><td>Векторные операции над датами без циклов</td><td><b>да</b></td><td>—</td></tr>
+              <tr><td>Пропуски в ряду дат</td><td><b>да</b></td><td><code class="inl">NaT</code></td></tr>
+              <tr><td>Таблица с датами, группировки, <code class="inl">.dt</code></td><td>как основа</td><td><code class="inl">pandas</code></td></tr>
+              <tr><td>Часовые пояса и переходы DST</td><td>нет</td><td>Python <code class="inl">datetime</code> + <code class="inl">zoneinfo</code></td></tr>
+              <tr><td>«То же число следующего месяца»</td><td>нет</td><td><code class="inl">dateutil</code>, <code class="inl">pandas</code></td></tr>
+              <tr><td>Форматы и локали в выводе</td><td>частично</td><td><code class="inl">datetime_as_string</code>, <code class="inl">pandas</code></td></tr>
+              <tr><td>Один-два момента и арифметика с tz</td><td>нет</td><td>Python <code class="inl">datetime</code></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="small">
+          pandas 3.0.1 хранит моменты как <code class="inl">datetime64[us]</code> и добавляет
+          календарь через <code class="inl">.dt</code>; NumPy — нижний слой, на котором это стоит.
+          Соседние страницы — <a href="ref-dt-python.html">Python datetime</a> и
+          <a href="ref-dt-pandas.html">pandas</a>.
+        </p>
+      </section>
+
+      <!-- ══════════════════ 03. Как создать ══════════════════ -->
+      <section>
+        <h2><span class="num">03</span>Как создать</h2>
+        <div class="code">
+          <div class="bar"><span class="file">ref_dt_numpy_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">import numpy as np
+
+day = np.datetime64("2024-01-01")
+print(day, day.dtype)
+
+dates = np.array(["2024-01-01", "2024-02-15", "2024-03-10"],
+                 dtype="datetime64[D]")
+print(dates)
+print(dates.dtype)
+
+days = np.arange("2024-01-01", "2024-01-08", dtype="datetime64[D]")
+print(days)
+
+moment = np.datetime64("2024-03-15T10:30:45.123456789")
+print(moment, moment.dtype)</pre>
+          <div class="out">2024-01-01 datetime64[D]
+['2024-01-01' '2024-02-15' '2024-03-10']
+datetime64[D]
+['2024-01-01' '2024-01-02' '2024-01-03' '2024-01-04' '2024-01-05'
+ '2024-01-06' '2024-01-07']
+2024-03-15T10:30:45.123456789 datetime64[ns]</div>
+        </div>
+        <p>
+          Единица выводится из строки: только дата — <code class="inl">[D]</code>, дата со временем
+          и долями — <code class="inl">[m]</code>, <code class="inl">[us]</code>,
+          <code class="inl">[ns]</code>. Массиву единицу задают явно через
+          <code class="inl">dtype=</code>; без неё NumPy оставит строки.
+          <code class="inl">np.arange</code> для дат работает как <code class="inl">range</code>:
+          правый край не включается.
+        </p>
+      </section>
+
+      <!-- ══════════════════ 04. Все операции ══════════════════ -->
+      <section>
+        <h2><span class="num">04</span>Все операции</h2>
+        <p>
+          Три таблицы: единицы, создание и преобразование, арифметика. «Единицы» — в какой единице
+          получается результат.
+        </p>
+
+        <h3>Единицы datetime64</h3>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Единица</th><th>Что значит</th><th>Пример значения</th><th>Примечание</th></tr></thead>
+            <tbody>
+              <tr><td class="mono">Y</td><td>год</td><td class="mono">2024</td><td>грубая сетка</td></tr>
+              <tr><td class="mono">M</td><td>месяц</td><td class="mono">2024-03</td><td><code class="inl">M</code> — месяц, <code class="inl">m</code> — минута</td></tr>
+              <tr><td class="mono">W</td><td>неделя</td><td class="mono">2024-03-14</td><td>начало недель считается от 1970-01-01 (четверг)</td></tr>
+              <tr><td class="mono">D</td><td>день</td><td class="mono">2024-03-15</td><td>типичный выбор для дат</td></tr>
+              <tr><td class="mono">h</td><td>час</td><td class="mono">2024-03-15T10</td><td>час без минут</td></tr>
+              <tr><td class="mono">m</td><td>минута</td><td class="mono">2024-03-15T10:30</td><td>дата и время без секунд</td></tr>
+              <tr><td class="mono">s</td><td>секунда</td><td class="mono">2024-03-15T10:30:45</td><td>разрешение pandas для <code class="inl">datetime64[s]</code></td></tr>
+              <tr><td class="mono">ms</td><td>миллисекунда</td><td class="mono">…:45.123</td><td>три знака после точки</td></tr>
+              <tr><td class="mono">us</td><td>микросекунда</td><td class="mono">…:45.123456</td><td>точность pandas 3 по умолчанию</td></tr>
+              <tr><td class="mono">ns</td><td>наносекунда</td><td class="mono">…:45.123456789</td><td>самая мелкая; диапазон уже</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>Создание и преобразование</h3>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Операция</th><th>Результат</th><th>Единицы</th><th>Примечание</th></tr></thead>
+            <tbody>
+              <tr><td class="mono">np.datetime64("2024-01-01")</td><td>0-мерный момент</td><td>D</td><td>единица из строки</td></tr>
+              <tr><td class="mono">np.array([...], dtype="datetime64[D]")</td><td>ndarray</td><td>D</td><td>без dtype будут строки</td></tr>
+              <tr><td class="mono">np.arange(start, stop, dtype="datetime64[D]")</td><td>ndarray</td><td>D</td><td>правый край не включается</td></tr>
+              <tr><td class="mono">.astype("datetime64[unit]")</td><td>момент или массив</td><td>новая</td><td>усечение к грубой единице</td></tr>
+              <tr><td class="mono">.astype(datetime)</td><td>date или datetime</td><td>Python</td><td>для <code class="inl">[D]</code> — date, со временем — datetime</td></tr>
+              <tr><td class="mono">np.datetime64(datetime(...))</td><td>0-мерный момент</td><td>us</td><td>таймзона теряется</td></tr>
+              <tr><td class="mono">np.datetime_as_string(x, unit=...)</td><td>str или массив str</td><td>по unit</td><td>формат, данные не меняются</td></tr>
+              <tr><td class="mono">.astype(int)</td><td>int или массив int</td><td>такты</td><td>число с 1970-01-01, зависит от единицы</td></tr>
+              <tr><td class="mono">.dtype, .shape</td><td>dtype, tuple</td><td>—</td><td>паспорт массива, как у ndarray</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>Арифметика и сравнение</h3>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Операция</th><th>Результат</th><th>Единицы</th><th>Примечание</th></tr></thead>
+            <tbody>
+              <tr><td class="mono">date - date</td><td>timedelta64</td><td>как у операндов</td><td><code class="inl">9 days</code></td></tr>
+              <tr><td class="mono">np.diff(dates)</td><td>timedelta64</td><td>как у массива</td><td>разности соседних элементов</td></tr>
+              <tr><td class="mono">date + timedelta64</td><td>datetime64</td><td>более мелкая из двух</td><td>момент сдвинулся</td></tr>
+              <tr><td class="mono">td + td</td><td>timedelta64</td><td>общая</td><td>длительности складываются</td></tr>
+              <tr><td class="mono">td / td</td><td>float</td><td>без единиц</td><td><code class="inl">3.0</code>, <code class="inl">1.5</code></td></tr>
+              <tr><td class="mono">td.astype("timedelta64[D]")</td><td>timedelta64</td><td>D</td><td>усечение, не округление</td></tr>
+              <tr><td class="mono">date &gt; date, date == date</td><td>bool или массив bool</td><td>—</td><td>с NaT всегда False</td></tr>
+              <tr><td class="mono">np.sort(dates)</td><td>ndarray</td><td>те же</td><td>NaT уходит в конец</td></tr>
+              <tr><td class="mono">np.isnat(x)</td><td>bool или массив bool</td><td>—</td><td>единственный надёжный тест NaT</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ══════════════════ 05. Разбор ══════════════════ -->
+      <section>
+        <h2><span class="num">05</span>Разбор по группам</h2>
+        <p>
+          Все примеры — в файле
+          <a href="snippets/view.html?f=ref_dt_numpy_lab.py"><code class="inl">ref_dt_numpy_lab.py</code></a>
+          (numpy 2.3.5): запустите и поменяйте даты.
+        </p>
+
+        <h3>Единицы и точность</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_dt_numpy_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">for unit in ["Y", "M", "W", "D", "h", "m", "s", "ms", "us", "ns"]:
+    print(unit, "→", np.datetime64("2024-03-15T10:30:45.123456789", unit))
+
+moment = np.datetime64("2024-03-15T10:30:45.123456789")
+print(moment)
+print(moment.astype("datetime64[D]"))
+print(moment.astype("datetime64[h]"))
+print(moment.astype("datetime64[s]"))
+print(moment.astype("datetime64[ns]").dtype)</pre>
+          <div class="out">Y → 2024
+M → 2024-03
+W → 2024-03-14
+D → 2024-03-15
+h → 2024-03-15T10
+m → 2024-03-15T10:30
+s → 2024-03-15T10:30:45
+ms → 2024-03-15T10:30:45.123
+us → 2024-03-15T10:30:45.123456
+ns → 2024-03-15T10:30:45.123456789
+2024-03-15T10:30:45.123456789
+2024-03-15
+2024-03-15T10
+2024-03-15T10:30:45
+datetime64[ns]</div>
+        </div>
+        <p>
+          Одна и та же строка, десять единиц — десять разных значений. Заметьте
+          <code class="inl">W → 2024-03-14</code>: неделя режется не до понедельника, а до начала
+          недель от 1970-01-01. <code class="inl">astype</code> к грубой единице отбрасывает
+          «лишнее» время: <code class="inl">10:30:45</code> в <code class="inl">[D]</code> —
+          это <code class="inl">2024-03-15</code>, а в <code class="inl">[h]</code> —
+          <code class="inl">2024-03-15T10</code>.
+        </p>
+
+        <h3>Диапазоны: arange по датам</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_dt_numpy_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">every_two = np.arange("2024-01-01", "2024-01-11",
+                      np.timedelta64(2, "D"), dtype="datetime64[D]")
+print(every_two)
+
+months = np.arange("2024-01", "2025-01", dtype="datetime64[M]")
+print(months)
+
+hours = np.arange("2024-01-01T00", "2024-01-01T06:00",
+                  dtype="datetime64[h]")
+print(hours)</pre>
+          <div class="out">['2024-01-01' '2024-01-03' '2024-01-05' '2024-01-07' '2024-01-09']
+['2024-01' '2024-02' '2024-03' '2024-04' '2024-05' '2024-06' '2024-07'
+ '2024-08' '2024-09' '2024-10' '2024-11' '2024-12']
+['2024-01-01T00' '2024-01-01T01' '2024-01-01T02' '2024-01-01T03'
+ '2024-01-01T04' '2024-01-01T05']</div>
+        </div>
+        <p>
+          Шаг — любая длительность: <code class="inl">np.timedelta64(2, "D")</code> даёт каждый второй
+          день. Для месяцев есть готовая единица <code class="inl">[M]</code>: ряд из двенадцати дат
+          строится одним <code class="inl">arange</code>. Правый край по-прежнему не включается.
+        </p>
+
+        <h3>Разности и длительности</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_dt_numpy_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">dates = np.array(["2024-01-01", "2024-01-10", "2024-02-01"],
+                 dtype="datetime64[D]")
+print(dates[1] - dates[0])
+print(dates - dates[0])
+print((dates - dates[0]).dtype)
+
+print(dates + np.timedelta64(3, "D"))
+print(np.timedelta64(36, "h"))
+print(np.timedelta64(36, "h").astype("timedelta64[D]"))
+print(np.timedelta64(3, "D") / np.timedelta64(1, "D"))
+print(np.timedelta64(90, "m") / np.timedelta64(1, "h"))
+
+early = np.datetime64("2024-02-28T09:15")
+late = np.datetime64("2024-03-01T12:00")
+gap = late - early
+print(gap)
+print(gap.astype("timedelta64[h]"))
+print(dates[0].astype(int))
+print(np.datetime64("2024-01-01T00:00:00").astype(int))</pre>
+          <div class="out">9 days
+[ 0  9 31]
+timedelta64[D]
+['2024-01-04' '2024-01-13' '2024-02-04']
+36 hours
+1 days
+3.0
+1.5
+3045 minutes
+50 hours
+19723
+1704067200</div>
+        </div>
+        <p>
+          Разность дат — <code class="inl">timedelta64</code> в единице операндов. Деление двух
+          длительностей даёт безразмерное число: <code class="inl">3.0</code> дня и
+          <code class="inl">1.5</code> часа. <code class="inl">astype(int)</code> показывает,
+          что момент — просто целое: одна и та же дата в <code class="inl">[D]</code> — это
+          <code class="inl">19723</code>, а в <code class="inl">[s]</code> — уже
+          <code class="inl">1704067200</code>.
+        </p>
+
+        <h3>NaT и сравнения</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_dt_numpy_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">mixed = np.array(["2024-01-01", "NaT", "2024-03-01"],
+                 dtype="datetime64[D]")
+print(mixed)
+print(np.isnat(mixed))
+print(mixed == np.datetime64("NaT"))
+print(np.sort(mixed))
+print(mixed[~np.isnat(mixed)])
+print(mixed[0] + np.timedelta64(1, "D"), mixed[1] + np.timedelta64(1, "D"))
+
+mask = mixed &gt;= np.datetime64("2024-02-01")
+print(mask)
+print(mixed[mask])</pre>
+          <div class="out">['2024-01-01'        'NaT' '2024-03-01']
+[False  True False]
+[False False False]
+['2024-01-01' '2024-03-01'        'NaT']
+['2024-01-01' '2024-03-01']
+2024-01-02 NaT
+[False False  True]
+['2024-03-01']</div>
+        </div>
+        <p>
+          <code class="inl">NaT</code> — «нет даты», аналог <code class="inl">NaN</code>.
+          Сравнение с ним даёт <code class="inl">False</code> даже для самого
+          <code class="inl">NaT</code>, поэтому фильтр «не NaT» пишется через
+          <code class="inl">np.isnat</code>. Арифметика с <code class="inl">NaT</code> возвращает
+          <code class="inl">NaT</code>, а сортировка ставит его в конец.
+        </p>
+
+        <h3>Строки и datetime_as_string</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_dt_numpy_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">dates = np.array(["2024-01-01", "2024-01-10", "2024-02-01"],
+                 dtype="datetime64[D]")
+print(np.datetime_as_string(dates))
+print(np.datetime_as_string(dates, unit="M"))
+print(np.datetime_as_string(np.datetime64("2024-01-01T10:30:45"), unit="m"))
+print(dates.astype(str))</pre>
+          <div class="out">['2024-01-01' '2024-01-10' '2024-02-01']
+['2024-01' '2024-01' '2024-02']
+2024-01-01T10:30
+['2024-01-01' '2024-01-10' '2024-02-01']</div>
+        </div>
+        <p>
+          <code class="inl">datetime_as_string</code> — только форматирование: <code class="inl">unit</code>
+          задаёт, до какой единицы печатать, но сам момент не меняется. <code class="inl">astype(str)</code>
+          даёт тот же ISO-формат строкой. Для нестандартных форматов NumPy не помощник — это
+          <code class="inl">strftime</code> в Python или pandas.
+        </p>
+
+        <h3>Python datetime туда и обратно</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_dt_numpy_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">from datetime import datetime
+
+day = np.datetime64("2024-01-01")
+converted = day.astype(datetime)
+print(converted, type(converted).__name__)
+
+stamp = np.datetime64("2024-01-01T10:30:45")
+converted = stamp.astype(datetime)
+print(converted, type(converted).__name__)
+
+print(np.datetime64(datetime(2024, 1, 1, 10, 30)))
+print(np.array([datetime(2024, 1, 1), datetime(2024, 2, 1)]).dtype)
+print(np.array([datetime(2024, 1, 1), datetime(2024, 2, 1)],
+               dtype="datetime64[us]"))</pre>
+          <div class="out">2024-01-01 date
+2024-01-01 10:30:45 datetime
+2024-01-01T10:30:00.000000
+object
+['2024-01-01T00:00:00.000000' '2024-02-01T00:00:00.000000']</div>
+        </div>
+        <p>
+          <code class="inl">astype(datetime)</code> возвращает <code class="inl">date</code> для
+          дневной единицы и <code class="inl">datetime</code> для временной. Обратно:
+          <code class="inl">np.datetime64(datetime(...))</code> даёт момент, но массив из Python-дат
+          без <code class="inl">dtype=</code> остаётся <code class="inl">object</code> — NumPy не
+          угадывает тип, его задают явно.
+        </p>
+
+        <h3>Таймзоны: их нет</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_dt_numpy_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">import warnings
+from datetime import datetime, timedelta, timezone
+
+aware = datetime(2024, 1, 1, 12, 0, tzinfo=timezone(timedelta(hours=3)))
+with warnings.catch_warnings():
+    warnings.simplefilter("ignore")
+    as_numpy = np.datetime64(aware)
+print(as_numpy, as_numpy.dtype)
+with warnings.catch_warnings():
+    warnings.simplefilter("ignore")
+    print(np.datetime64("2024-01-01T00:00+03:00"))
+print(np.array([aware]).dtype)
+with warnings.catch_warnings():
+    warnings.simplefilter("ignore")
+    print(np.array([aware], dtype="datetime64[us]"))</pre>
+          <div class="out">2024-01-01T09:00:00.000000 datetime64[us]
+2023-12-31T21:00
+object
+['2024-01-01T09:00:00.000000']</div>
+        </div>
+        <p>
+          В типе <code class="inl">datetime64</code> нет поля таймзоны. Осведомлённый
+          <code class="inl">datetime</code> NumPy переводит в UTC (12:00+03:00 →
+          <code class="inl">09:00</code>) и предупреждает, что таймзоны не представлены; строка
+          с <code class="inl">+03:00</code> переводится молча. Массив таких объектов становится
+          <code class="inl">object</code>-массивом, а не датой.
+        </p>
+
+        <h3>0-мерные скаляры и массивы</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_dt_numpy_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">scalar = np.datetime64("2024-01-01")
+array = np.array(scalar)
+print(scalar.shape, array.shape)
+print(type(scalar).__name__, type(array).__name__)
+print(np.array(["2024-01-01"], dtype="datetime64[D]").shape)</pre>
+          <div class="out">() ()
+datetime64 ndarray
+(1,)</div>
+        </div>
+        <p>
+          <code class="inl">np.datetime64(...)</code> — скаляр с формой <code class="inl">()</code>
+          и типом <code class="inl">datetime64</code>; <code class="inl">np.array(...)</code>
+          превращает его в 0-мерный <code class="inl">ndarray</code>. Массив с одной датой уже имеет
+          форму <code class="inl">(1,)</code> — разница видна в <code class="inl">shape</code>
+          и в том, что массивные операции возвращают массивы.
+        </p>
+      </section>
+
+      <!-- ══════════════════ 06. Сценарии ══════════════════ -->
+      <section>
+        <h2><span class="num">06</span>Три сценария из практики</h2>
+
+        <h3>Диапазон дат отчёта</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_dt_numpy_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">days = np.arange("2024-01-01", "2024-02-01", dtype="datetime64[D]")
+print(days[:3], "...", days[-1], "всего", days.size)
+
+week = days[(days &gt;= np.datetime64("2024-01-15"))
+            &amp; (days &lt;= np.datetime64("2024-01-21"))]
+print(week)
+print("дней в неделе:", week.size)</pre>
+          <div class="out">['2024-01-01' '2024-01-02' '2024-01-03'] ... 2024-01-31 всего 31
+['2024-01-15' '2024-01-16' '2024-01-17' '2024-01-18' '2024-01-19'
+ '2024-01-20' '2024-01-21']
+дней в неделе: 7</div>
+        </div>
+        <p>
+          Весь январь — один <code class="inl">arange</code>. Неделя — обычная маска: сравнение дат
+          работает как сравнение чисел, границы включаются вручную
+          (<code class="inl">&gt;=</code> и <code class="inl">&lt;=</code>). Тот же приём — для
+          кварталов и любых «от и до».
+        </p>
+
+        <h3>Временной ряд по часам</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_dt_numpy_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">hours = np.arange("2024-01-01T00", "2024-01-01T06:00",
+                  dtype="datetime64[h]")
+print(hours)
+print("шаг:", hours[1] - hours[0])
+print("от начала:", hours - hours[0])</pre>
+          <div class="out">['2024-01-01T00' '2024-01-01T01' '2024-01-01T02' '2024-01-01T03'
+ '2024-01-01T04' '2024-01-01T05']
+шаг: 1 hours
+от начала: [0 1 2 3 4 5]</div>
+        </div>
+        <p>
+          Шаг ряда — <code class="inl">[h]</code>, и <code class="inl">hours - hours[0]</code>
+          даёт позицию каждого шага в часах. Так строят оси для графиков и индексы для рядов:
+          без цикла и без <code class="inl">range</code> по числам.
+        </p>
+
+        <h3>Длительности между событиями</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_dt_numpy_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">events = np.array(["2024-01-01", "2024-01-10", "2024-02-01", "2024-03-15"],
+                  dtype="datetime64[D]")
+gaps = np.diff(events)
+print(gaps, "итого:", gaps.sum())
+print("в днях числом:", gaps / np.timedelta64(1, "D"))
+print("в часах:", gaps.astype("timedelta64[h]"))</pre>
+          <div class="out">[ 9 22 43] итого: 74 days
+в днях числом: [ 9. 22. 43.]
+в часах: [ 216  528 1032]</div>
+        </div>
+        <p>
+          <code class="inl">np.diff</code> по датам — это интервалы между соседними событиями:
+          сразу массив <code class="inl">timedelta64</code>. Дальше выбираем, в чём считать:
+          дни числом (деление на <code class="inl">1 D</code>), часы
+          (<code class="inl">astype</code>) или проценты от суммы.
+        </p>
+      </section>
+
+      <!-- ══════════════════ 07. Ошибки ══════════════════ -->
+      <section>
+        <h2><span class="num">07</span>Пять ошибок, на которых спотыкаются</h2>
+        <div class="errors">
+          <div class="err">
+            <div class="h">Ждать таймзон от datetime64</div>
+            <p>В типе нет таймзоны: осведомлённый <code class="inl">datetime</code> переводится в UTC
+            с предупреждением, строка с <code class="inl">+03:00</code> — молча. «Момент» получается
+            правильным, а «локальное время» — нет.</p>
+            <div class="fix">Храните UTC в <code class="inl">datetime64</code>, а таймзону — отдельной
+            колонкой. Нужны переходы DST — Python <code class="inl">datetime</code> +
+            <code class="inl">zoneinfo</code> или pandas.</div>
+          </div>
+
+          <div class="err">
+            <div class="h">Усечение единиц при создании</div>
+            <p><code class="inl">np.array(["2024-01-15T10:30"], dtype="datetime64[D]")</code>
+            молча даёт <code class="inl">2024-01-15</code>: время отброшено, ошибки нет.
+            Так же теряются доли секунды при <code class="inl">[s]</code>.</p>
+            <div class="fix">Выбирайте единицу под данные: <code class="inl">[m]</code>,
+            <code class="inl">[s]</code>, <code class="inl">[us]</code>. Проверяйте
+            <code class="inl">dtype</code> после создания массива.</div>
+          </div>
+
+          <div class="err">
+            <div class="h">NaT в сравнениях</div>
+            <p><code class="inl">dates == np.datetime64("NaT")</code> — это
+            <code class="inl">False</code> для всех элементов, включая сам NaT. Фильтр
+            <code class="inl">dates &gt;= ...</code> молча выкидывает пропуски, а
+            <code class="inl">np.min</code>/<code class="inl">np.max</code> могут вернуть
+            <code class="inl">NaT</code> вместо числа.</p>
+            <div class="fix">Проверка — <code class="inl">np.isnat(x)</code>, фильтр —
+            <code class="inl">dates[~np.isnat(dates)]</code>. Для агрегатов пропуски убирают
+            заранее.</div>
+          </div>
+
+          <div class="err">
+            <div class="h">astype к дню «для порядка»</div>
+            <p><code class="inl">np.datetime64("2024-01-01T23:59").astype("datetime64[D]")</code>
+            — это <code class="inl">2024-01-01</code>: усечение вниз, а не округление. Время
+            исчезает из значения, а не только из печати.</p>
+            <div class="fix">Печатать с нужной точностью — <code class="inl">datetime_as_string(unit=...)</code>.
+            Менять данные к грубой единице — только осознанно.</div>
+          </div>
+
+          <div class="err">
+            <div class="h">Python datetime с tz в массиве</div>
+            <p><code class="inl">np.array([aware_dt])</code> без dtype даёт
+            <code class="inl">object</code>-массив Python-объектов, а не дату; с
+            <code class="inl">dtype="datetime64[us]"</code> время переводится в UTC. Оба варианта
+            легко принять за «локальное время».</p>
+            <div class="fix">Сначала приведите к UTC явно и уберите tzinfo
+            (<code class="inl">aware.astimezone(timezone.utc).replace(tzinfo=None)</code>), затем
+            создавайте <code class="inl">datetime64</code>.</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ══════════════════ 08. Мини-проверка ══════════════════ -->
+      <section>
+        <h2><span class="num">08</span>Мини-проверка</h2>
+        <p>Пять вопросов на понимание и две задачи. Сначала своя попытка — потом спойлер.</p>
+
+        <div class="qa">
+          <details>
+            <summary>Чем datetime64 отличается от Python datetime?</summary>
+            <div class="a">
+              <p><code class="inl">datetime64</code> — целое число тактов фиксированной единицы
+              в массиве одного dtype. Отсюда векторные сравнения и разности. Python
+              <code class="inl">datetime</code> — объект с полями и таймзоной, но по одному;
+              массив из них — <code class="inl">object</code>-массив.</p>
+              <div class="verdict">Резюме: datetime64 — сетка чисел, datetime — объект с календарём.</div>
+            </div>
+          </details>
+        </div>
+
+        <div class="qa">
+          <details>
+            <summary>Что произойдёт при astype к более грубой единице?</summary>
+            <div class="a">
+              <p>Значение усечётся к началу единицы: <code class="inl">[D]</code> оставит только дату,
+              <code class="inl">[h]</code> — час. Это не округление: 23:59 станет этим же днём, а не
+              следующим. Данные теряются молча.</p>
+              <div class="verdict">Резюме: astype вниз — потеря точности без ошибки.</div>
+            </div>
+          </details>
+        </div>
+
+        <div class="qa">
+          <details>
+            <summary>Что вернёт разность двух дат?</summary>
+            <div class="a">
+              <p><code class="inl">timedelta64</code> в единице операндов: разность дней —
+              <code class="inl">9 days</code>, разность минут — <code class="inl">750 minutes</code>.
+              Делится на другую длительность (получаем число) и приводится к другим единицам
+              через <code class="inl">astype</code>.</p>
+              <div class="verdict">Резюме: дата минус дата — расстояние по сетке.</div>
+            </div>
+          </details>
+        </div>
+
+        <div class="qa">
+          <details>
+            <summary>Как найти и отфильтровать NaT?</summary>
+            <div class="a">
+              <p>Только <code class="inl">np.isnat(x)</code>: сравнение
+              <code class="inl">x == NaT</code> всегда <code class="inl">False</code>. Фильтр без
+              пропусков — <code class="inl">dates[~np.isnat(dates)]</code>; арифметика с NaT даёт NaT.</p>
+              <div class="verdict">Резюме: NaT не равен даже сам себе — только isnat.</div>
+            </div>
+          </details>
+        </div>
+
+        <div class="qa">
+          <details>
+            <summary>Как перевести момент в Python datetime и обратно?</summary>
+            <div class="a">
+              <p>Туда — <code class="inl">moment.astype(datetime)</code>: для дневной единицы будет
+              <code class="inl">date</code>, для временной — <code class="inl">datetime</code>.
+              Обратно — <code class="inl">np.datetime64(datetime(...))</code>. Массив Python-дат
+              требует явного <code class="inl">dtype="datetime64[us]"</code>.</p>
+              <div class="verdict">Резюме: astype(datetime) и np.datetime64 — два направления.</div>
+            </div>
+          </details>
+        </div>
+
+        <h3><span style="color:var(--muted);font-family:var(--mono);font-size:.8rem">01</span> От заказа до доставки</h3>
+        <p>Даны моменты заказа и доставки. Найдите ожидание в минутах и в часах.</p>
+        <div class="code">
+          <div class="bar"><span class="file">условие</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">ordered = np.array(["2024-02-28T09:15", "2024-03-01T18:40"],
+                   dtype="datetime64[m]")
+delivered = np.array(["2024-03-01T12:00", "2024-03-04T09:30"],
+                     dtype="datetime64[m]")
+# ожидается: [3045 3770] минут; [50 62] часов</pre>
+        </div>
+        <div class="qa">
+          <details>
+            <summary>Показать решение и разбор</summary>
+            <div class="a">
+              <div class="code" style="margin-top:0">
+                <div class="bar"><span class="file">решение</span><span class="lang">python</span><button class="copy">копировать</button></div>
+                <pre data-lang="python">ordered = np.array(["2024-02-28T09:15", "2024-03-01T18:40"],
+                   dtype="datetime64[m]")
+delivered = np.array(["2024-03-01T12:00", "2024-03-04T09:30"],
+                     dtype="datetime64[m]")
+wait = delivered - ordered
+print(wait)
+print("в часах:", wait.astype("timedelta64[h]"))</pre>
+          <div class="out">[3045 3770]
+в часах: [50 62]</div>
+              </div>
+              <p><strong>Что важно.</strong> Разность массивов даёт массив
+              <code class="inl">timedelta64[m]</code>; <code class="inl">astype("timedelta64[h]")</code>
+              переводит в часы с усечением. Оба массива должны иметь одну единицу — иначе NumPy
+              приведёт их к более мелкой автоматически.</p>
+            </div>
+          </details>
+        </div>
+
+        <h3><span style="color:var(--muted);font-family:var(--mono);font-size:.8rem">02</span> Месяцы года</h3>
+        <p>Постройте ряд первых чисел всех месяцев 2024 года и выведите его строками.</p>
+        <div class="code">
+          <div class="bar"><span class="file">условие</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python"># ожидается: 12 значений от 2024-01 до 2024-12</pre>
+        </div>
+        <div class="qa">
+          <details>
+            <summary>Показать решение и разбор</summary>
+            <div class="a">
+              <div class="code" style="margin-top:0">
+                <div class="bar"><span class="file">решение</span><span class="lang">python</span><button class="copy">копировать</button></div>
+                <pre data-lang="python">months = np.arange("2024-01", "2025-01", dtype="datetime64[M]")
+print(np.datetime_as_string(months))
+print("всего:", months.size, "| от", months[0], "до", months[-1])</pre>
+          <div class="out">['2024-01' '2024-02' '2024-03' '2024-04' '2024-05' '2024-06' '2024-07'
+ '2024-08' '2024-09' '2024-10' '2024-11' '2024-12']
+всего: 12 | от 2024-01 до 2024-12</div>
+              </div>
+              <p><strong>Что важно.</strong> <code class="inl">arange</code> с единицей
+              <code class="inl">[M]</code> сам шагает по месяцам, а правый край
+              (<code class="inl">2025-01</code>) не входит. <code class="inl">datetime_as_string</code>
+              печатает месяцы в ISO-формате без времени.</p>
+            </div>
+          </details>
+        </div>
+      </section>
+
+      <!-- ══════════════════ 09. Мостик ══════════════════ -->
+      <section>
+        <h2><span class="num">09</span>Мостик: та же сетка в pandas и SQL</h2>
+
+        <h3>pandas: datetime64 плюс календарь</h3>
+        <div class="code">
+          <div class="bar"><span class="file">мост в pandas</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">import numpy as np
+import pandas as pd
+
+dates = np.array(["2024-01-01", "2024-01-10"], dtype="datetime64[D]")
+s = pd.Series(dates)                  # dtype datetime64[s]
+s.dt.day.tolist()                     # [1, 10] — календарь pandas
+s.to_numpy().dtype                    # datetime64[s] обратно
+
+pd.to_datetime(["2024-01-01"]).dtype  # datetime64[us]</pre>
+        </div>
+        <p>
+          pandas 3.0.1 хранит моменты как <code class="inl">datetime64[us]</code> и добавляет
+          <code class="inl">.dt</code>: год, день недели, месяц, <code class="inl">floor</code>.
+          NumPy-массив приходит со своей единицей — <code class="inl">[D]</code> становится
+          <code class="inl">[s]</code>; точные <code class="inl">[us]</code>/<code class="inl">[ns]</code>
+          сохраняются. Подробнее — <a href="ref-dt-pandas.html">страница 03</a>.
+        </p>
+
+        <h3>SQL: date, timestamp и interval</h3>
+        <div class="code">
+          <div class="bar"><span class="file">мост в SQL</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">-- DATE — день, TIMESTAMP — момент; разность — интервал или дни
+SELECT delivered_at - ordered_at AS wait
+FROM deliveries;
+
+SELECT ordered_at + INTERVAL '3 days' AS promised
+FROM deliveries;
+
+SELECT CURRENT_DATE, CURRENT_TIMESTAMP;</pre>
+        </div>
+        <p>
+          В PostgreSQL <code class="inl">timestamp - timestamp</code> даёт
+          <code class="inl">interval</code>, а <code class="inl">date - date</code> — целое число
+          дней: та же идея, но с календарём и таймзоной на стороне базы
+          (<code class="inl">TIMESTAMPTZ</code>). NumPy хранит только наивные такты — календарь
+          и зоны добавляют pandas и СУБД.
+        </p>
+
+        <div class="bridges">
+          <a class="bridge" href="ch-18-dates-reshape.html"><span class="to">Глава 18</span><span>Даты, reshape и строки в pandas</span><span class="what">→ to_datetime, .dt, datetime64[us]</span></a>
+          <a class="bridge" href="ch-27-date-time.html"><span class="to">Глава 27</span><span>Дата и время: момент, календарь и длительность</span><span class="what">→ картина целиком</span></a>
+          <a class="bridge" href="appendix-datetime.html"><span class="to">Справочник</span><span>«Дата и время»: вся карта</span><span class="what">→ Python, NumPy, pandas, SQL</span></a>
+        </div>
+      </section>
+
+      <div class="pager">
+        <a class="prev" href="ref-dt-python.html"><span class="dir">← Назад</span><span class="ttl">01 · Python datetime</span></a>
+        <a class="next" href="ref-dt-pandas.html"><span class="dir">Дальше →</span><span class="ttl">03 · pandas: Timestamp и .dt</span></a>
+      </div>
+
+    </div>
+  </main>
+</div>
+<script src="assets/toc.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>

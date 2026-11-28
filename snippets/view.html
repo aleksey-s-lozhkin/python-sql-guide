@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Код лаборатории — Ассоциативный гайд</title>
+<meta name="description" content="Читаемый просмотр файла лаборатории: код с нумерацией строк, скачивание и копирование.">
+<link rel="icon" href="data:,">
+<style>
+  :root{
+    --paper:#fbf8f2;--card:#fffdf9;--ink:#1d1b26;--muted:#8a7f73;--line:#e6dfd3;
+    --accent:#c2410c;--accent-soft:#fdf0e6;--code:#1b1a21;
+    --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{--paper:#14131a;--card:#1b1a22;--ink:#ece8f2;--muted:#9d95a8;--line:#2a2833;--accent-soft:#2a211d;}
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--paper);color:var(--ink);font:16px/1.6 var(--sans)}
+  header{position:sticky;top:0;z-index:2;background:var(--card);border-bottom:1px solid var(--line)}
+  .bar{max-width:1000px;margin:0 auto;padding:12px 18px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+  .name{font-family:var(--mono);font-size:14px;font-weight:600}
+  .lang{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:2px 9px}
+  .spacer{margin-left:auto}
+  button,a.btn{font:inherit;font-size:13px;border:1px solid var(--line);background:transparent;color:var(--ink);
+    border-radius:8px;padding:6px 12px;cursor:pointer;text-decoration:none}
+  button:hover,a.btn:hover{border-color:var(--accent)}
+  main{max-width:1000px;margin:0 auto;padding:18px}
+  .frame{background:var(--code);border-radius:12px;overflow:auto;border:1px solid var(--line)}
+  .code{padding:14px 0;min-width:max-content}
+  .row{display:flex}
+  .no{flex:none;width:52px;text-align:right;padding:0 12px 0 10px;color:#6f6a7d;user-select:none;font:12px/1.65 var(--mono)}
+  .src{white-space:pre;font:13px/1.65 var(--mono);color:#e7e2ef;padding-right:18px}
+  .hint{color:var(--muted);font-size:13px;margin:12px 0 0}
+  .err{background:#fbeeee;border:1px solid #e0b8b8;color:#a23b3b;padding:14px;border-radius:10px}
+  .badge{font-size:12px;color:var(--muted)}
+  @media (max-width:640px){
+    .no{width:34px;padding-right:8px}
+    .src{font-size:12px}
+  }
+</style>
+</head>
+<body>
+<header>
+  <div class="bar">
+    <a class="btn" id="back" href="../index.html">← Назад</a>
+    <span class="name" id="name">код</span>
+    <span class="lang" id="lang"></span>
+    <span class="spacer"></span>
+    <a class="btn" id="download" href="#" download>Скачать</a>
+    <button id="copy" type="button">Копировать</button>
+  </div>
+</header>
+<main>
+  <p class="hint" id="hint">Полный файл лаборатории. Его можно запустить локально
+    (<code>python3 файл.py</code> или <code>psql -f файл.sql</code>) и сверить вывод с главой.</p>
+  <div id="content"></div>
+</main>
+<script>
+(function () {
+  const params = new URLSearchParams(location.search);
+  const file = (params.get("f") || "").trim();
+  const nameEl = document.getElementById("name");
+  const langEl = document.getElementById("lang");
+  const back = document.getElementById("back");
+  const dl = document.getElementById("download");
+  const copy = document.getElementById("copy");
+
+  if (!/^[A-Za-z0-9_.-]+\.(py|sql)$/.test(file) || file.includes("..")) {
+    document.getElementById("content").innerHTML =
+      '<div class="err">Файл не указан. Вернитесь в главу и нажмите на ссылку с кодом лаборатории.</div>';
+    return;
+  }
+
+  nameEl.textContent = file;
+  const isSql = file.endsWith(".sql");
+  langEl.textContent = isSql ? "SQL" : "Python";
+  dl.href = file;
+  dl.setAttribute("download", file);
+
+  if (document.referrer && document.referrer.startsWith(location.origin)) {
+    back.href = document.referrer;
+  }
+
+  fetch(file, { cache: "no-cache" })
+    .then((r) => {
+      if (!r.ok) throw new Error("HTTP " + r.status);
+      return r.text();
+    })
+    .then((text) => {
+      const lines = text.replace(/\r\n/g, "\n").split("\n");
+      if (lines.length > 1 && lines[lines.length - 1] === "") lines.pop();
+      const wrap = document.getElementById("content");
+      const frame = document.createElement("div");
+      frame.className = "frame";
+      const code = document.createElement("div");
+      code.className = "code";
+      const width = String(lines.length).length;
+      lines.forEach((line, i) => {
+        const row = document.createElement("div");
+        row.className = "row";
+        const no = document.createElement("span");
+        no.className = "no";
+        no.textContent = String(i + 1).padStart(width, " ");
+        const src = document.createElement("span");
+        src.className = "src";
+        src.textContent = line.length ? line : " ";
+        row.appendChild(no);
+        row.appendChild(src);
+        code.appendChild(row);
+      });
+      frame.appendChild(code);
+      wrap.appendChild(frame);
+
+      copy.addEventListener("click", async () => {
+        try {
+          await navigator.clipboard.writeText(text);
+          copy.textContent = "Скопировано";
+          setTimeout(() => { copy.textContent = "Копировать"; }, 1500);
+        } catch (e) {
+          copy.textContent = "Не вышло";
+        }
+      });
+    })
+    .catch((e) => {
+      const direct = '<a href="' + file + '" download>скачать ' + file + '</a>';
+      const hint = location.protocol === "file:"
+        ? 'Книга открыта как файл: браузер блокирует чтение соседних файлов. Запустите <code>start.command</code> (локальный сервер) или '
+        : 'Не удалось загрузить файл. ';
+      document.getElementById("content").innerHTML =
+        '<div class="err">' + hint + 'Можно ' + direct + ' и открыть в редакторе.' +
+        '<br><a href="../index.html">Вернуться к оглавлению</a>.</div>';
+    });
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,79 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 470" role="img" aria-labelledby="t1 d1">
+  <title id="t1">GROUP BY собирает строки в группы, HAVING отбрасывает группы, WHERE работает до группировки</title>
+  <desc id="d1">Таблица заказов с выручкой, группы по пользователю с суммами, результат после HAVING COUNT больше 1.</desc>
+  <defs>
+    <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#8a7f73"/>
+    </marker>
+    <style>
+      .h { font: 700 11.5px system-ui, -apple-system, "Segoe UI", sans-serif; fill: #1d1b26; }
+      .lbl { font: 700 10px system-ui, -apple-system, "Segoe UI", sans-serif; fill: #8a7f73; letter-spacing: .1em; }
+      .v { font: 500 12px ui-monospace, "SF Mono", Menlo, monospace; fill: #1d1b26; }
+      .s { font: 400 12px system-ui, -apple-system, "Segoe UI", sans-serif; fill: #4a4458; }
+      .n { font: 400 11.5px system-ui, -apple-system, "Segoe UI", sans-serif; fill: #7a7285; }
+      .r { font: 700 12px ui-monospace, "SF Mono", Menlo, monospace; fill: #2f6b4f; }
+    </style>
+  </defs>
+
+  <text class="lbl" x="30" y="34">СТРОКИ ПОСЛЕ WHERE</text>
+  <text class="lbl" x="400" y="34">ГРУППЫ</text>
+  <text class="lbl" x="700" y="34">ПОСЛЕ HAVING</text>
+
+  <!-- source rows -->
+  <rect x="30" y="52" width="90" height="32" fill="#f4f1ea" stroke="#d8d1c6"/>
+  <text class="h" x="42" y="73">user</text>
+  <rect x="120" y="52" width="110" height="32" fill="#f4f1ea" stroke="#d8d1c6"/>
+  <text class="h" x="132" y="73">revenue</text>
+
+  <rect x="30" y="84" width="90" height="34" fill="#fdf0e6" stroke="#d8d1c6"/><text class="v" x="42" y="107">Anna</text>
+  <rect x="120" y="84" width="110" height="34" fill="#fdf0e6" stroke="#d8d1c6"/><text class="v" x="132" y="107">75000</text>
+  <rect x="30" y="118" width="90" height="34" fill="#e9f2ec" stroke="#d8d1c6"/><text class="v" x="42" y="141">Ivan</text>
+  <rect x="120" y="118" width="110" height="34" fill="#e9f2ec" stroke="#d8d1c6"/><text class="v" x="132" y="141">1800</text>
+  <rect x="30" y="152" width="90" height="34" fill="#fdf0e6" stroke="#d8d1c6"/><text class="v" x="42" y="175">Anna</text>
+  <rect x="120" y="152" width="110" height="34" fill="#fdf0e6" stroke="#d8d1c6"/><text class="v" x="132" y="175">1350</text>
+  <rect x="30" y="186" width="90" height="34" fill="#f3eefb" stroke="#d8d1c6"/><text class="v" x="42" y="209">Petr</text>
+  <rect x="120" y="186" width="110" height="34" fill="#f3eefb" stroke="#d8d1c6"/><text class="v" x="132" y="209">22000</text>
+  <rect x="30" y="220" width="90" height="34" fill="#e9f2ec" stroke="#d8d1c6"/><text class="v" x="42" y="243">Ivan</text>
+  <rect x="120" y="220" width="110" height="34" fill="#e9f2ec" stroke="#d8d1c6"/><text class="v" x="132" y="243">22000</text>
+
+  <text class="n" x="30" y="278">WHERE отбросил часть строк</text>
+  <text class="n" x="30" y="298">ДО группировки</text>
+
+  <!-- split line -->
+  <line x1="330" y1="50" x2="330" y2="300" stroke="#c2410c" stroke-dasharray="5 5"/>
+  <text class="lbl" x="290" y="318">GROUP BY</text>
+
+  <!-- groups -->
+  <rect x="360" y="62" width="220" height="70" rx="10" fill="#fff" stroke="#e8b48c"/>
+  <text class="v" x="376" y="86">Anna · 3 заказа</text>
+  <text class="r" x="376" y="112">Σ 76950</text>
+
+  <rect x="360" y="152" width="220" height="70" rx="10" fill="#fff" stroke="#9cc0a8"/>
+  <text class="v" x="376" y="176">Ivan · 2 заказа</text>
+  <text class="r" x="376" y="202">Σ 23800</text>
+
+  <rect x="360" y="242" width="220" height="70" rx="10" fill="#fff" stroke="#c9b8e0"/>
+  <text class="v" x="376" y="266">Petr · 1 заказ</text>
+  <text class="r" x="376" y="292">Σ 22000</text>
+
+  <path d="M242,120 C280,120 300,100 352,96" fill="none" stroke="#8a7f73" stroke-width="1.6" marker-end="url(#ar)"/>
+  <path d="M242,160 C280,160 300,230 352,250" fill="none" stroke="#8a7f73" stroke-width="1.6" marker-end="url(#ar)"/>
+
+  <!-- having line -->
+  <line x1="620" y1="50" x2="620" y2="300" stroke="#c2410c" stroke-dasharray="5 5"/>
+  <text class="lbl" x="606" y="318">HAVING</text>
+
+  <!-- result -->
+  <rect x="660" y="62" width="260" height="34" fill="#f4f1ea" stroke="#d8d1c6"/>
+  <text class="h" x="676" y="84">name</text><text class="h" x="826" y="84">revenue</text>
+  <rect x="660" y="96" width="260" height="34" fill="#fff" stroke="#d8d1c6"/>
+  <text class="v" x="676" y="118">Anna</text><text class="v" x="826" y="118">76950</text>
+  <rect x="660" y="130" width="260" height="34" fill="#fff" stroke="#d8d1c6"/>
+  <text class="v" x="676" y="152">Ivan</text><text class="v" x="826" y="152">23800</text>
+  <text class="n" x="660" y="196">Petr отброшен: у него один заказ</text>
+
+  <rect x="30" y="352" width="910" height="94" rx="12" fill="#f4f1ea" stroke="#e0d9cd"/>
+  <text class="s" x="50" y="380">WHERE фильтрует строки до группировки — он не знает про COUNT и SUM.</text>
+  <text class="s" x="50" y="404">HAVING фильтрует готовые группы: условие на агрегат (COUNT(*) &gt; 1).</text>
+  <text class="n" x="50" y="428">Внутри группы агрегаты игнорируют NULL: COUNT(city) считает только известные города.</text>
+</svg>

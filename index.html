@@ -1,0 +1,223 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ассоциативный гайд · Python → pandas → SQL</title>
+<meta name="description" content="Учебный гайд по Python, NumPy, pandas и SQL: ассоциативные карты, разборы, практика и вопросы с собеседований.">
+<link rel="stylesheet" href="assets/style.css">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#fbf8f2" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#14131a" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="assets/icons/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="assets/icons/icon-180.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Гайд Py/SQL">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+</head>
+<body data-slug="index">
+<div class="app">
+  <aside class="sidebar" id="sidebar"></aside>
+  <main>
+    <div class="wrap">
+
+      <header class="cover">
+        <div class="kicker">Выпуск 13 · 26 глав + дополнения</div>
+        <h1>Python, pandas и SQL как одна система понятий</h1>
+        <p class="lead">
+          Учебный гайд для backend-разработчика: от коллекций Python до оконных функций SQL.
+          Каждая глава — одна идея, одна ассоциация, проверяемый код и ответы на вопросы с собеседования.
+        </p>
+        <div class="stats">
+          <div><b>26</b>глав по 20–40 минут, проект 60–90</div>
+          <div><b>8</b>недель программы</div>
+          <div><b>5</b>частей: Python → NumPy → pandas → SQL → интеграция</div>
+          <div><b>0</b>внешних зависимостей: открывается двойным щелчком</div>
+        </div>
+      </header>
+
+      <div id="resume"></div>
+      <div id="bookmarks" class="bookmarks"></div>
+
+      <a class="resume" href="diagnostic.html">
+        <span class="k">Начать с диагностики</span>
+        <span class="t">10 задач за 20 минут — с какой главы начинать</span>
+      </a>
+
+      <a class="resume" href="checkpoint-1.html">
+        <span class="k">Проверочная: часть I</span>
+        <span class="t">14 заданий и 20 баллов — Python-коллекции</span>
+      </a>
+
+      <a class="resume" href="checkpoint-2.html">
+        <span class="k">Проверочная: часть II</span>
+        <span class="t">14 заданий и 20 баллов — NumPy перед pandas</span>
+      </a>
+
+      <a class="resume" href="checkpoint-3.html">
+        <span class="k">Проверочная: часть III</span>
+        <span class="t">14 заданий и 20 баллов — pandas перед SQL</span>
+      </a>
+
+      <a class="resume" href="checkpoint-4.html">
+        <span class="k">Проверочная: SQL</span>
+        <span class="t">14 заданий и 20 баллов — финальная проверка</span>
+      </a>
+
+      <a class="resume" href="appendix-types.html">
+        <span class="k">Справочник по типам данных</span>
+        <span class="t">str, list, tuple, dict, set, frozenset, Counter, defaultdict, deque — методы с ценой и примерами</span>
+      </a>
+
+      <a class="resume" href="appendix-numpy.html">
+        <span class="k">Справочник: NumPy</span>
+        <span class="t">ndarray, индексация и маски, axis, broadcasting, view/copy — с примерами</span>
+      </a>
+
+      <a class="resume" href="appendix-pandas.html">
+        <span class="k">Справочник: pandas</span>
+        <span class="t">Series, loc/iloc, фильтрация, groupby, merge, пропуски, reshape — методы с примерами</span>
+      </a>
+
+      <a class="resume" href="appendix-sql.html">
+        <span class="k">Справочник: SQL</span>
+        <span class="t">SELECT и NULL, JOIN, GROUP BY, окна, CTE, индексы и EXPLAIN — на PostgreSQL 14</span>
+      </a>
+
+      <a class="resume" href="appendix-datetime.html">
+        <span class="k">Справочник: дата и время</span>
+        <span class="t">Python datetime, NumPy datetime64, pandas Timestamp/.dt/tz, SQL date/timestamp/interval</span>
+      </a>
+
+      <section>
+        <h2><span class="num">01</span>Главная ставка гайда</h2>
+        <p>
+          Большинство учебников дают темы по отдельности: вот <code class="inl">dict</code>, вот индекс pandas, вот
+          <code class="inl">JOIN</code>. В голове при этом остаются три несвязанных набора правил, и на собеседовании
+          приходится вспоминать, «как было в статье», вместо того чтобы вывести ответ.
+        </p>
+        <p>
+          Здесь устроено иначе. <strong>Одна ментальная модель — один и тот же рисунок в голове — используется во всех
+          четырёх технологиях.</strong> Хеш-таблица объясняет <code class="inl">dict</code>, индекс pandas и
+          <code class="inl">hash join</code> в PostgreSQL. «Разложить — посчитать — собрать» объясняет
+          <code class="inl">defaultdict</code>, <code class="inl">groupby</code> и <code class="inl">GROUP BY</code>.
+          Тогда новый синтаксис не учится с нуля — он <em>узнаётся</em>.
+        </p>
+        <p class="small">
+          Это не отменяет официальную документацию: каждая глава ссылается на конкретные разделы docs и на этом
+          заканчивается. Гайд — это карта, а не замена местности.
+        </p>
+      </section>
+
+      <section>
+        <h2><span class="num">02</span>Как читать главу</h2>
+        <p>В каждой главе одни и те же блоки, в одном и том же порядке. Через две главы вы перестаёте читать заголовки — глаз сам находит нужное.</p>
+        <div class="legend">
+          <div><b>🎯 Зачем</b>3 причины, по которым это нужно backend-разработчику и на собеседовании.</div>
+          <div><b>🧠 Якорь</b>Одна бытовая метафора, к которой крепится вся тема.</div>
+          <div><b>🔗 Ассоциативный ряд</b>8 звеньев: от метафоры к механике и названиям.</div>
+          <div><b>📐 Схема</b>Картинка, которую стоит уметь нарисовать на бумаге.</div>
+          <div><b>💻 Лаборатория</b>Код, который реально запускался, с выводом и разбором строк.</div>
+          <div><b>🌉 Мост</b>Та же идея в pandas и SQL — чтобы не учить три раза.</div>
+          <div><b>⚠️ Ошибки</b>То, на чём спотыкаются в реальном коде и на интервью.</div>
+          <div><b>🎤 Вопросы</b>Вопросы с эталонными ответами на 1–2 минуты.</div>
+          <div><b>✍️ Задачи</b>С решением под спойлером — сначала своя попытка.</div>
+          <div><b>✅ Чек-лист</b>Отметки сохраняются: видно, что уже освоено.</div>
+        </div>
+        <div class="note">
+          <span class="t">Правило гайда</span>
+          <p>Не читать код глазами. Запускать. Менять одну строку и смотреть, что сломается. Вопрос «а что если?» — это и есть обучение.</p>
+        </div>
+        <div class="note">
+          <span class="t">Если читать тяжело</span>
+          <p>Первый проход — только 🎯 зачем, 🧠 якорь и 💻 лаборатория. Не старайтесь удержать весь ряд
+          и все таблицы: это второй проход. Незнакомые слова смотрите в «Словаре главы» в начале
+          главы (в 01–02 он есть) и возвращайтесь. Один непонятный абзац — не повод бросать главу.</p>
+        </div>
+        <div class="note">
+          <span class="t">Телефон и офлайн</span>
+          <p>Книга работает как приложение: после публикации на GitHub Pages откройте ссылку на телефоне и добавьте на домашний экран. Service worker скачает все страницы один раз — дальше они открываются без интернета. Позиция чтения и размер текста сохраняются.</p>
+        </div>
+      </section>
+
+      <section>
+        <h2><span class="num">03</span>Оглавление</h2>
+        <div class="toc" id="toc"></div>
+        <p class="small">Готовы все 26 глав: Python → NumPy → pandas → SQL → интеграция и проект. Плюс четыре проверочные. Номера и порядок глав соответствуют программе на 8 недель.</p>
+        <p class="small">Справочник по типам данных — <a href="appendix-types.html">отдельный раздел</a>: описание, методы с ценой и примерами для девяти типов: str и frozenset плюс семь структур из главы 01.</p>
+        <p class="small">Справочник по NumPy — <a href="appendix-numpy.html">отдельный раздел</a>: ndarray, индексация, axis, broadcasting, view/copy.</p>
+        <p class="small">Справочник по pandas — <a href="appendix-pandas.html">отдельный раздел</a>: Series и DataFrame, loc/iloc, фильтрация, groupby, merge, пропуски, reshape.</p>
+        <p class="small">Справочник по SQL — <a href="appendix-sql.html">отдельный раздел</a>: SELECT и NULL, JOIN, GROUP BY, окна, CTE, индексы и EXPLAIN.</p>
+        <p class="small">Справочник «Дата и время» — <a href="appendix-datetime.html">отдельный раздел</a>: моменты, зоны, календарные даты и длительности в Python, NumPy, pandas и SQL.</p>
+        <p class="small">Все файлы лабораторий с командами запуска — в <a href="appendix-snippets.html">приложении «Файлы лабораторий»</a>.</p>
+      </section>
+
+      <section>
+        <h2><span class="num">04</span>Пять частей</h2>
+        <p>
+          У каждой части — свой набор метафор и свой триптих. Это не украшение: по картинкам
+          видно, что части связаны, а не просто идут друг за другом.
+        </p>
+        <div class="parts">
+          <a class="part" href="ch-01-python-collections.html">
+            <img src="assets/illustrations/part-1-python.webp" width="1168" height="880" loading="lazy" decoding="async" alt="Триптих части I: гардероб с пальто, вагон поезда и турникет.">
+            <span class="k">Часть I · Неделя 1</span>
+            <span class="n">Фундамент Python</span>
+            <span class="d">01–06 · гардероб, поезд, турникет</span>
+          </a>
+          <a class="part" href="ch-07-ndarray.html">
+            <img src="assets/illustrations/part-2-numpy.webp" width="1168" height="876" loading="lazy" decoding="async" alt="Триптих части II: лист в клетку, трафарет на мозаике и штамп на тесте.">
+            <span class="k">Часть II · Неделя 2</span>
+            <span class="n">NumPy</span>
+            <span class="d">07–11 · сетка, трафарет, штамп</span>
+          </a>
+          <a class="part" href="ch-12-series-dataframe.html">
+            <img src="assets/illustrations/part-3-pandas.webp" width="1168" height="876" loading="lazy" decoding="async" alt="Триптих части III: книга-таблица, сито и лотки с карточками.">
+            <span class="k">Часть III · Недели 3–5</span>
+            <span class="n">pandas</span>
+            <span class="d">12–18 · таблица, сито, лотки</span>
+          </a>
+          <a class="part" href="ch-19-order-of-execution.html">
+            <img src="assets/illustrations/part-4-sql.webp" width="1168" height="876" loading="lazy" decoding="async" alt="Триптих части IV: сборочный конвейер, светофор и картотека.">
+            <span class="k">Часть IV · Недели 6–7</span>
+            <span class="n">SQL</span>
+            <span class="d">19–24 · конвейер, три значения, индексы</span>
+          </a>
+          <a class="part" href="ch-25-sql-vs-pandas.html">
+            <img src="assets/illustrations/part-5-integration.webp" width="1168" height="876" loading="lazy" decoding="async" alt="Триптих части V: склад, верстак и стол с готовым отчётом.">
+            <span class="k">Часть V · Неделя 8</span>
+            <span class="n">Интеграция</span>
+            <span class="d">25–26 · склад, верстак, отчёт</span>
+          </a>
+        </div>
+        <p class="small">
+          Вся карта целиком — <a href="course-map.html">постер «Карта курса»</a> (A3, можно распечатать).
+        </p>
+      </section>
+
+      <section>
+        <h2><span class="num">05</span>Дополнения</h2>
+        <p>
+          Спецглавы вне 8-недельной программы: темы, которые не влезли в маршрут, но нужны каждый
+          день. Они не меняют счётчик «освоено глав» и не переставляют программу — только добавляются.
+        </p>
+        <div class="toc" id="extras"></div>
+        <p class="small">
+          Первое дополнение — <a href="ch-27-date-time.html">глава 27 «Дата и время»</a>: момент,
+          календарная дата и длительность в Python, pandas и SQL; к ней прилагается
+          <a href="appendix-datetime.html">справочник «Дата и время»</a>.
+        </p>
+      </section>
+
+      <div class="pager">
+        <a class="next" href="ch-01-python-collections.html"><span class="dir">Начать чтение</span><span class="ttl">01 · Карта коллекций</span></a>
+      </div>
+
+    </div>
+  </main>
+</div>
+<script src="assets/toc.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,473 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>19 · Порядок выполнения: как база читает запрос — Ассоциативный гайд</title>
+<meta name="description" content="Логический порядок выполнения SQL: FROM, WHERE, GROUP BY, HAVING, SELECT, DISTINCT, ORDER BY, LIMIT — и почему алиасы не видны в WHERE.">
+<link rel="stylesheet" href="assets/style.css">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#fbf8f2" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#14131a" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="assets/icons/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="assets/icons/icon-180.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Гайд Py/SQL">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+</head>
+<body data-slug="ch-19-order-of-execution">
+<div class="app">
+  <aside class="sidebar" id="sidebar"></aside>
+  <main>
+    <div class="wrap">
+
+      <header class="chapter-head">
+        <div class="eyebrow">
+          <span class="part">Часть IV · SQL</span>
+          <span class="dot"></span>
+          <span>Неделя 6 · день 1</span>
+          <span class="dot"></span>
+          <span>готово</span>
+        </div>
+        <h1>Порядок выполнения: как база читает запрос
+          <span class="sub">Пишем сверху вниз, а выполняется — не так</span>
+        </h1>
+        <p class="lead">
+          SQL выглядит линейным: SELECT, FROM, WHERE, GROUP BY. Но база выполняет части в другом порядке,
+          и именно поэтому одни ошибки кажутся загадочными, а другие — очевидными. Один конвейер объясняет
+          и те, и другие.
+        </p>
+        <div class="meta">
+          <span class="chip">⏱ <b>40 минут</b></span>
+          <span class="chip">🎯 уровень <b>2 — применить</b></span>
+          <span class="chip">🐘 <b>PostgreSQL 14</b></span>
+          <span class="chip">📚 <b>The SQL Language</b></span>
+        </div>
+      </header>
+
+      <details class="glossary">
+        <summary>Словарь главы — если забыли термины</summary>
+        <dl>
+          <dt>логический порядок</dt><dd>FROM → WHERE → GROUP BY → HAVING → SELECT → ORDER BY → LIMIT.</dd>
+          <dt>алиас</dt><dd>Имя колонки из SELECT; появляется поздно, поэтому не виден в WHERE.</dd>
+          <dt>HAVING</dt><dd>Фильтр групп после GROUP BY; WHERE фильтрует строки до.</dd>
+          <dt>DISTINCT</dt><dd>Убрать дубли уже выбранного результата; выполняется после SELECT.</dd>
+          <dt>LIMIT</dt><dd>Отрезать строки в конце; без ORDER BY порядок не гарантирован.</dd>
+        </dl>
+      </details>
+
+
+      <section>
+        <h2><span class="num">01</span>Зачем это backend-разработчику</h2>
+        <ul>
+          <li><strong>Ошибки, которые объясняет порядок:</strong> «почему алиас не виден в WHERE», «почему HAVING не работает без GROUP BY», «почему LIMIT без ORDER BY даёт случайные строки».</li>
+          <li><strong>Понимание, а не заучивание:</strong> вместо «так нельзя» появляется «SELECT ещё не выполнялся».</li>
+          <li><strong>Отладка медленных запросов:</strong> план выполнения (глава 24) читается по тем же этапам.</li>
+          <li><strong>Собеседование:</strong> «в каком порядке выполняется SQL-запрос» — классический вопрос, на котором видно понимание.</li>
+        </ul>
+        <div class="note">
+          <span class="t">База для практики</span>
+          <p>Все запросы этой части выполняются на учебной базе <code class="inl">learning_shop</code>:
+          users, products, orders. Скрипт создания — <a title="Открыть файл с номерами строк" href="snippets/view.html?f=learning_shop.sql"><code class="inl">learning_shop.sql</code></a>,
+          запуск — <code class="inl">bash tools/setup_db.sh</code>.</p>
+        </div>
+      </section>
+
+      <section>
+        <h2><span class="num">02</span>Ассоциация-якорь: сборочный конвейер</h2>
+
+        <div class="anchor">
+          <div class="glyph">🏭</div>
+          <div>
+            <div class="t">Держите эту картинку в голове</div>
+            <p class="kick"><strong>Запрос — это конвейер.</strong> Сначала на ленту попадают детали (FROM),
+            потом брак отбрасывается (WHERE), детали собираются в узлы (GROUP BY), узлы проверяются (HAVING),
+            затем выбирается то, что нужно показать (SELECT), убираются дубли (DISTINCT), всё сортируется
+            (ORDER BY) и только в конце отрезается нужное количество (LIMIT).</p>
+            <p><strong>SELECT стоит в середине конвейера.</strong> Поэтому алиасы, придуманные в SELECT,
+            не существуют на этапе WHERE — их ещё не создали.</p>
+          </div>
+        </div>
+
+        <figure class="art">
+          <div class="frame">
+            <img src="assets/illustrations/19-query-conveyor.webp" width="1168" height="876" loading="lazy" decoding="async" alt="Сборочная линия с несколькими деревянными станциями и готовым ящиком в конце.">
+          </div>
+          <figcaption><b>Рис. 1.</b> Сборочный конвейер запроса: порядок станций важнее порядка слов в SELECT.</figcaption>
+        </figure>
+
+      </section>
+
+      <section>
+        <h2><span class="num">03</span>Ассоциативный ряд: восемь звеньев</h2>
+        <ol class="chain">
+          <li><b>FROM</b><span>источник строк</span></li>
+          <li><b>JOIN</b><span>соединение таблиц</span></li>
+          <li><b>WHERE</b><span>фильтр строк</span></li>
+          <li><b>GROUP BY</b><span>сборка групп</span></li>
+          <li><b>HAVING</b><span>фильтр групп</span></li>
+          <li><b>SELECT</b><span>выбор колонок и алиасы</span></li>
+          <li><b>ORDER BY</b><span>сортировка</span></li>
+          <li><b>LIMIT</b><span>отрезка результата</span></li>
+        </ol>
+      </section>
+
+      <section>
+        <h2><span class="num">04</span>Схема: конвейер запроса</h2>
+
+        <figure>
+          <div class="frame">
+            <img src="assets/maps/query-pipeline.svg" alt="Восемь этапов: FROM, WHERE, GROUP BY, HAVING, SELECT, DISTINCT, ORDER BY, LIMIT.">
+          </div>
+          <figcaption>
+            <b>Рис. 2.</b> Логический порядок. База может выполнять иначе (использовать индекс, менять порядок
+            соединений), но результат обязан совпасть с этим конвейером.
+          </figcaption>
+        </figure>
+      </section>
+
+      <section>
+        <h2><span class="num">05</span>Как это устроено на самом деле</h2>
+        <p>Порядок этапов объясняет три вещи сразу.</p>
+
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Вопрос</th><th>Ответ</th><th>Почему</th></tr></thead>
+            <tbody>
+              <tr><td>Почему алиас не виден в WHERE?</td><td>SELECT ещё не выполнен</td><td>WHERE идёт раньше SELECT</td></tr>
+              <tr><td>Чем HAVING отличается от WHERE?</td><td>WHERE фильтрует строки, HAVING — группы</td><td>WHERE до GROUP BY, HAVING после</td></tr>
+              <tr><td>Почему LIMIT без ORDER BY нестабилен?</td><td>порядок строк не гарантирован</td><td>LIMIT отрезает уже готовый результат</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>Логический и физический порядок</h3>
+        <p>
+          Описанный конвейер — логический: он определяет смысл запроса. Физически база может читать таблицы
+          в другом порядке, использовать индексы и даже переписывать запрос. Но результат всегда должен
+          соответствовать логическому порядку — иначе SQL был бы непредсказуем.
+        </p>
+
+        <h3>DISTINCT стоит после SELECT</h3>
+        <p>
+          <code class="inl">SELECT DISTINCT city</code> убирает дубли уже из выбранных значений — то есть
+          из результата SELECT. Поэтому <code class="inl">DISTINCT</code> и агрегаты решают разные задачи:
+          первый убирает повторяющиеся строки результата, второй сворачивает группы.
+        </p>
+      </section>
+
+      <section>
+        <h2><span class="num">06</span>Лаборатория: запустить и увидеть</h2>
+        <p>
+          Все примеры — на базе <code class="inl">learning_shop</code>. Вывод настоящий: он получен через
+          <code class="inl">psql</code> на PostgreSQL 14.
+        </p>
+
+        <h3>Шаг 1. Алиас в WHERE — ошибка</h3>
+        <div class="code">
+          <div class="bar"><span class="file">19_order_of_execution.sql</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">SELECT price * 1.2 AS price_with_tax
+FROM products
+WHERE price_with_tax &gt; 1000;</pre>
+          <div class="out">ERROR:  column "price_with_tax" does not exist
+LINE 1: ...price * 1.2 AS price_with_tax FROM products WHERE price_with...</div>
+        </div>
+        <p>
+          Алиас создаётся на этапе SELECT, а WHERE выполняется раньше. Приходится повторять выражение
+          или считать в подзапросе.
+        </p>
+
+        <h3>Шаг 2. Алиас в ORDER BY — работает</h3>
+        <div class="code">
+          <div class="bar"><span class="file">19_order_of_execution.sql</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">SELECT name, price * 1.2 AS price_with_tax
+FROM products
+ORDER BY price_with_tax DESC
+LIMIT 3;</pre>
+          <div class="out">  name   | price_with_tax
+---------+----------------
+ Ноутбук |      90000.000
+ Монитор |      26400.000
+ Мышь    |       1800.000</div>
+        </div>
+        <p>
+          ORDER BY выполняется после SELECT, поэтому алиас уже существует. Это не «SQL непоследователен»,
+          а прямое следствие конвейера.
+        </p>
+
+        <h3>Шаг 3. WHERE и HAVING: разные этапы</h3>
+        <div class="code">
+          <div class="bar"><span class="file">19_order_of_execution.sql</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">SELECT category, COUNT(*) AS cnt
+FROM products
+WHERE price &gt; 500
+GROUP BY category
+HAVING COUNT(*) &gt;= 2;</pre>
+          <div class="out">  category   | cnt
+-------------+-----
+ electronics |   3</div>
+        </div>
+        <p>
+          Сначала WHERE выбросил дешёвые товары, потом GROUP BY собрал группы, потом HAVING выбросил
+          группы с одним товаром. Порядок важен: WHERE не знает про группы, HAVING — знает.
+        </p>
+
+        <h3>Шаг 4. Полный конвейер</h3>
+        <div class="code">
+          <div class="bar"><span class="file">19_order_of_execution.sql</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">SELECT category, COUNT(*) AS cnt, MAX(price) AS max_price
+FROM products
+WHERE price &gt; 400
+GROUP BY category
+HAVING COUNT(*) &gt; 1
+ORDER BY cnt DESC
+LIMIT 2;</pre>
+          <div class="out">  category   | cnt | max_price
+-------------+-----+-----------
+ electronics |   3 |  75000.00</div>
+        </div>
+        <p>
+          Шесть этапов в одном запросе. Если что-то не сходится, идите по конвейеру и проверяйте,
+          на каком этапе строка исчезла.
+        </p>
+
+        <h3>Шаг 5. LIMIT без ORDER BY</h3>
+        <div class="code">
+          <div class="bar"><span class="file">19_order_of_execution.sql</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">SELECT name, price FROM products LIMIT 2;</pre>
+          <div class="out">  name   |  price
+---------+----------
+ Ноутбук | 75000.00
+ Мышь    |  1500.00</div>
+        </div>
+        <p>
+          Сейчас вывод выглядит упорядоченным, но гарантии нет: LIMIT отрезает строки в том порядке,
+          в котором их отдал план. Для стабильного результата нужен <code class="inl">ORDER BY</code>.
+        </p>
+      </section>
+
+      <section>
+        <h2><span class="num">07</span>Мост: тот же конвейер в pandas</h2>
+        <p>В pandas цепочка методов читается как тот же конвейер — и это не совпадение.</p>
+        <div class="code">
+          <div class="bar"><span class="file">SQL</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">SELECT category, COUNT(*) AS cnt
+FROM products
+WHERE price &gt; 500
+GROUP BY category
+HAVING COUNT(*) &gt; 1
+ORDER BY cnt DESC
+LIMIT 2;</pre>
+        </div>
+        <div class="code">
+          <div class="bar"><span class="file">pandas</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">(df[df["price"] &gt; 500]                    # WHERE
+   .groupby("category")                   # GROUP BY
+   .agg(cnt=("product_id", "size"))       # COUNT(*) — считаем строки
+   .query("cnt &gt; 1")                      # HAVING
+   .sort_values("cnt", ascending=False)   # ORDER BY
+   .head(2))                              # LIMIT</pre>
+        </div>
+        <p>
+          Порядок методов повторяет порядок этапов SQL. Если в pandas «не тот результат», ищите ошибку
+          в порядке цепочки — ровно как в SQL-запросе.
+        </p>
+      </section>
+
+      <section>
+        <h2><span class="num">08</span>Шесть ошибок, на которых спотыкаются</h2>
+
+        <div class="errors">
+          <div class="err">
+            <div class="h">Алиас в WHERE</div>
+            <p><code class="inl">WHERE total &gt; 100</code> после <code class="inl">SELECT SUM(x) AS total</code> — ошибка: алиас ещё не создан.</p>
+            <div class="fix">Повторить выражение, обернуть в подзапрос/CTE или перенести условие в HAVING.</div>
+          </div>
+          <div class="err">
+            <div class="h">HAVING вместо WHERE</div>
+            <p>Фильтр по колонкам строк в HAVING работает, но фильтрация происходит позже и часто медленнее.</p>
+            <div class="fix">Строки — в WHERE, группы — в HAVING.</div>
+          </div>
+          <div class="err">
+            <div class="h">LIMIT без ORDER BY</div>
+            <p>Результат «случайный» и меняется между запусками.</p>
+            <div class="fix">Сортировка всегда, если важен порядок.</div>
+          </div>
+          <div class="err">
+            <div class="h">DISTINCT как лекарство от дублей</div>
+            <p>Если строки размножились из-за JOIN, DISTINCT скроет симптом, но не причину.</p>
+            <div class="fix">Сначала проверить кардинальность соединения.</div>
+          </div>
+          <div class="err">
+            <div class="h">ORDER BY по номеру колонки</div>
+            <p><code class="inl">ORDER BY 2</code> работает, но при изменении SELECT сортировка тихо сломается.</p>
+            <div class="fix">Сортировать по имени или алиасу.</div>
+          </div>
+          <div class="err">
+            <div class="h">Ожидание, что WHERE увидит агрегат</div>
+            <p><code class="inl">WHERE COUNT(*) &gt; 1</code> невозможно: агрегаты появляются после GROUP BY.</p>
+            <div class="fix">Для условий по агрегатам — HAVING.</div>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h2><span class="num">09</span>Вопросы с собеседования</h2>
+        <div class="qa">
+          <details>
+            <summary>В каком порядке логически выполняется SQL-запрос?</summary>
+            <div class="a">
+              <p>FROM → JOIN → WHERE → GROUP BY → HAVING → SELECT → DISTINCT → ORDER BY → LIMIT. Запись в коде — другая, но смысл определяется этим порядком.</p>
+              <div class="verdict">Резюме: конвейер, а не текст.</div>
+            </div>
+          </details>
+          <details>
+            <summary>Почему алиас из SELECT не виден в WHERE?</summary>
+            <div class="a">
+              <p>WHERE выполняется раньше SELECT, поэтому вычисленное значение и его имя ещё не существуют.</p>
+              <div class="verdict">Резюме: сначала фильтр, потом проекция.</div>
+            </div>
+          </details>
+          <details>
+            <summary>Чем WHERE отличается от HAVING?</summary>
+            <div class="a">
+              <p>WHERE фильтрует строки до группировки, HAVING — группы после. Условия на агрегаты — только в HAVING.</p>
+              <div class="verdict">Резюме: строки против групп.</div>
+            </div>
+          </details>
+          <details>
+            <summary>Почему LIMIT без ORDER BY нестабилен?</summary>
+            <div class="a">
+              <p>Без сортировки порядок строк не определён; LIMIT отрезает то, что успел отдать план.</p>
+              <div class="verdict">Резюме: LIMIT без ORDER BY — лотерея.</div>
+            </div>
+          </details>
+          <details>
+            <summary>Где выполняется DISTINCT?</summary>
+            <div class="a">
+              <p>После SELECT: он убирает дубли из уже выбранных значений результата.</p>
+              <div class="verdict">Резюме: проекция, потом дедупликация.</div>
+            </div>
+          </details>
+          <details>
+            <summary>Может ли база выполнять запрос иначе?</summary>
+            <div class="a">
+              <p>Да, физически — с индексами, другим порядком соединений и переписыванием. Но результат обязан соответствовать логическому порядку.</p>
+              <div class="verdict">Резюме: план свободен, смысл фиксирован.</div>
+            </div>
+          </details>
+          <details>
+            <summary>Почему ORDER BY видит алиас, а WHERE нет?</summary>
+            <div class="a">
+              <p>Потому что ORDER BY идёт после SELECT, а WHERE — до него.</p>
+              <div class="verdict">Резюме: всё решает позиция этапа.</div>
+            </div>
+          </details>
+          <details>
+            <summary>Как отладить запрос, который возвращает не то?</summary>
+            <div class="a">
+              <p>Идти по конвейеру: проверить FROM/JOIN (число строк), WHERE (сколько осталось), GROUP BY (какие группы), HAVING (какие исчезли), SELECT (что именно выбрано).</p>
+              <div class="verdict">Резюме: разбирать по этапам, а не целиком.</div>
+            </div>
+          </details>
+        </div>
+      </section>
+
+      <section>
+        <h2><span class="num">10</span>Три задачи: сначала своя попытка</h2>
+
+        <h3><span style="color:var(--muted);font-family:var(--mono);font-size:.8rem">01</span> Исправьте запрос</h3>
+        <p>Запрос должен вернуть товары с ценой с налогом больше 2000, но падает. Исправьте.</p>
+        <div class="code">
+          <div class="bar"><span class="file">условие</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">SELECT name, price * 1.2 AS price_with_tax
+FROM products
+WHERE price_with_tax &gt; 2000;</pre>
+        </div>
+        <div class="qa">
+          <details>
+            <summary>Показать решение</summary>
+            <div class="a">
+              <div class="code" style="margin-top:0">
+                <div class="bar"><span class="file">решение</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+                <pre data-lang="sql">SELECT name, price * 1.2 AS price_with_tax
+FROM products
+WHERE price * 1.2 &gt; 2000;</pre>
+              </div>
+              <p><strong>Что важно.</strong> Либо повторить выражение, либо обернуть в подзапрос:
+              <code class="inl">SELECT * FROM (SELECT ..., price*1.2 AS tax FROM products) t WHERE tax &gt; 2000</code>.</p>
+            </div>
+          </details>
+        </div>
+
+        <h3><span style="color:var(--muted);font-family:var(--mono);font-size:.8rem">02</span> Топ категорий</h3>
+        <p>Выведите две категории с наибольшим числом товаров дороже 400, но только если товаров больше одного.</p>
+        <div class="qa">
+          <details>
+            <summary>Показать решение</summary>
+            <div class="a">
+              <div class="code" style="margin-top:0">
+                <div class="bar"><span class="file">решение</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+                <pre data-lang="sql">SELECT category, COUNT(*) AS cnt
+FROM products
+WHERE price &gt; 400
+GROUP BY category
+HAVING COUNT(*) &gt; 1
+ORDER BY cnt DESC
+LIMIT 2;</pre>
+              </div>
+            </div>
+          </details>
+        </div>
+
+        <h3><span style="color:var(--muted);font-family:var(--mono);font-size:.8rem">03</span> Объясните поведение</h3>
+        <p>Почему <code class="inl">SELECT DISTINCT category FROM products ORDER BY price LIMIT 1</code> может упасть?</p>
+        <div class="qa">
+          <details>
+            <summary>Показать ответ</summary>
+            <div class="a">
+              <p>При DISTINCT сортировать можно только по выражениям, которые входят в результат (или по агрегатам).
+              <code class="inl">price</code> не выбран, а после дедупликации к какой строке относить цену — неясно.
+              PostgreSQL выдаст ошибку: для SELECT DISTINCT выражения ORDER BY должны присутствовать в списке SELECT.</p>
+              <div class="verdict">Резюме: DISTINCT и ORDER BY должны согласовываться.</div>
+            </div>
+          </details>
+        </div>
+      </section>
+
+      <section>
+        <h2><span class="num">11</span>Чек-лист освоения</h2>
+        <div class="check">
+          <label><input type="checkbox"><span class="box"></span><span class="txt">Назвать логический порядок этапов без подсказок</span></label>
+          <label><input type="checkbox"><span class="box"></span><span class="txt">Объяснить, почему алиас не виден в WHERE, но виден в ORDER BY</span></label>
+          <label><input type="checkbox"><span class="box"></span><span class="txt">Различить WHERE и HAVING по этапам</span></label>
+          <label><input type="checkbox"><span class="box"></span><span class="txt">Показать, почему LIMIT без ORDER BY нестабилен</span></label>
+          <label><input type="checkbox"><span class="box"></span><span class="txt">Перевести конвейер SQL в цепочку pandas</span></label>
+        </div>
+      </section>
+
+      <section>
+        <h2><span class="num">12</span>Куда ведут мостики</h2>
+        <div class="bridges">
+          <a class="bridge" href="ref-sql-select.html"><span class="to">Справочник</span><span>SQL: SELECT и NULL</span><span class="what">→ порядок выполнения, WHERE и алиасы</span></a>
+          <a class="bridge" href="ch-20-select-where-null.html"><span class="to">Глава 20</span><span>SELECT, WHERE и NULL</span><span class="what">→ логика трёх значений</span></a>
+          <a class="bridge" href="ch-21-group-by-having.html"><span class="to">Глава 21</span><span>GROUP BY и HAVING</span><span class="what">→ этапы 4–5 подробно</span></a>
+          <a class="bridge" href="ch-24-indexes-explain.html"><span class="to">Глава 24</span><span>Индексы и EXPLAIN</span><span class="what">→ физический план</span></a>
+          <a class="bridge" href="ch-14-filtering.html"><span class="to">Глава 14</span><span>Фильтрация pandas</span><span class="what">→ WHERE в таблице</span></a>
+          <a class="bridge" href="ch-15-groupby.html"><span class="to">Глава 15</span><span>groupby</span><span class="what">→ та же цепочка методов</span></a>
+        </div>
+      </section>
+
+      <div class="pager">
+        <a class="prev" href="checkpoint-3.html"><span class="dir">← Назад</span><span class="ttl">Проверочная по части III</span></a>
+        <a class="next" href="ch-20-select-where-null.html"><span class="dir">Дальше →</span><span class="ttl">20 · SELECT, WHERE и NULL</span></a>
+      </div>
+
+    </div>
+  </main>
+</div>
+<script src="assets/toc.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>

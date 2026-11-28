@@ -1,0 +1,545 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>04 · set: пропускной пункт без дублей — Ассоциативный гайд</title>
+<meta name="description" content="Множества в Python: уникальность, O(1) проверка входа, операции пересечения и разности, frozenset и типичные ошибки.">
+<link rel="stylesheet" href="assets/style.css">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#fbf8f2" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#14131a" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="assets/icons/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="assets/icons/icon-180.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Гайд Py/SQL">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+</head>
+<body data-slug="ch-04-set">
+<div class="app">
+  <aside class="sidebar" id="sidebar"></aside>
+  <main>
+    <div class="wrap">
+
+      <header class="chapter-head">
+        <div class="eyebrow">
+          <span class="part">Часть I · Фундамент Python</span>
+          <span class="dot"></span>
+          <span>Неделя 1 · день 3</span>
+          <span class="dot"></span>
+          <span>готово</span>
+        </div>
+        <h1>set: пропускной пункт без дублей
+          <span class="sub">Почему «есть ли такой?» — самый быстрый вопрос к данным</span>
+        </h1>
+        <p class="lead">
+          Множество — это фейс-контроль: на входе проверяют, был ли уже такой гость, и второй раз не пускают.
+          Отсюда всё остальное: уникальность без сортировки, проверка входа за одно действие, четыре операции
+          над наборами — и цена в виде потерянного порядка.
+        </p>
+        <div class="meta">
+          <span class="chip">⏱ <b>40 минут</b></span>
+          <span class="chip">🎯 уровень <b>2 — применить</b></span>
+          <span class="chip">🐍 Python <b>3.12</b></span>
+          <span class="chip">📚 <b>Tutorial 5.4</b></span>
+        </div>
+      </header>
+
+      <details class="glossary">
+        <summary>Словарь главы — если забыли термины</summary>
+        <dl>
+          <dt>хеш</dt><dd>Число, которое вычисляется из значения и указывает место в таблице.</dd>
+          <dt>уникальность</dt><dd>Повтор не добавляется: set хранит каждое значение один раз.</dd>
+          <dt>O(1) в среднем</dt><dd>Проверка входа не зависит от размера множества — в среднем.</dd>
+          <dt>frozenset</dt><dd>Неизменяемое множество: можно использовать как ключ словаря.</dd>
+          <dt>&amp;, |, −, ^</dt><dd>Пересечение, объединение, разность и симметричная разность.</dd>
+        </dl>
+      </details>
+
+
+      <section>
+        <h2><span class="num">01</span>Зачем это backend-разработчику</h2>
+        <p>
+          Множество появляется там, где важно не «сколько» и не «в каком порядке», а «есть или нет».
+          Это половина типичных проверок в backend.
+        </p>
+        <ul>
+          <li><strong>Уникальность:</strong> теги, email, ID, посещённые страницы. Дубли часто приходят из данных, и их нужно схлопнуть до записи в базу.</li>
+          <li><strong>Быстрая проверка входа:</strong> «пользователь в чёрном списке?», «роль входит в разрешённые?». Список просматривает всё, множество — прыгает по адресу.</li>
+          <li><strong>Сравнение наборов:</strong> пересечение аудиторий, «что появилось, а что удалилось», «кто был на обоих курсах». В SQL это <code class="inl">INTERSECT</code>, <code class="inl">UNION</code>, <code class="inl">EXCEPT</code>.</li>
+          <li><strong>Собеседование:</strong> «set или list?», «почему нельзя <code class="inl">s[0]</code>?», «зачем <code class="inl">frozenset</code>?» — проверяют, понимаете ли вы хеш-таблицу.</li>
+        </ul>
+        <div class="note">
+          <span class="t">Связь с главой 02</span>
+          <p><code class="inl">set</code> — это <code class="inl">dict</code>, у которого забыли значения: та же хеш-таблица,
+          только хранится лишь ключ. Поэтому «внутри — хеш-таблица» — правильное начало ответа.</p>
+        </div>
+      </section>
+
+      <section>
+        <h2><span class="num">02</span>Ассоциация-якорь: фейс-контроль</h2>
+
+        <div class="anchor">
+          <div class="glyph">🛂</div>
+          <div>
+            <div class="t">Держите эту картинку в голове</div>
+            <p class="kick"><strong>set — это список гостей на входе в клуб.</strong> Охранник не обходит зал
+            в поисках человека: он смотрит в список — «есть уже?» — и решает за одно действие.</p>
+            <p><strong>Список гостей не упорядочен.</strong> Это не журнал с номерами, а алфавитная картотека:
+            важно только «внутри или нет». Второй раз одного и того же человека не записывают — поэтому в множестве
+            не бывает дублей.</p>
+          </div>
+        </div>
+
+        <figure class="art">
+          <div class="frame">
+            <img src="assets/illustrations/04-set-turnstile.webp" width="1168" height="876" loading="lazy" decoding="async" alt="Турникет и очередь из бумажных билетов, один смятый дубль падает в сторону.">
+          </div>
+          <figcaption><b>Рис. 1.</b> Турникет: пропускает по одному, дубль не проходит. set хранит только уникальные элементы.</figcaption>
+        </figure>
+
+
+        <p>
+          Метафора объясняет три свойства, которые часто спрашивают. Во-первых, <strong>проверка входа O(1)</strong>:
+          охранник не перебирает зал. Во-вторых, <strong>дубликатов нет</strong>: повторная запись ничего не делает.
+          В-третьих, <strong>порядка нет</strong>: у картотеки нет понятия «первый гость», поэтому <code class="inl">set</code>
+          нельзя индексировать и нельзя полагаться на порядок вывода.
+        </p>
+      </section>
+
+      <section>
+        <h2><span class="num">03</span>Ассоциативный ряд: восемь звеньев</h2>
+        <ol class="chain">
+          <li><b>hash</b><span>гость получает номерок</span></li>
+          <li><b>уникальность</b><span>второй раз не пускают</span></li>
+          <li><b>нет порядка</b><span>картотека, а не журнал</span></li>
+          <li><b>O(1)</b><span>проверка входа в среднем</span></li>
+          <li><b>&amp; пересечение</b><span>было и там, и там</span></li>
+          <li><b>| объединение</b><span>было хоть где-то</span></li>
+          <li><b>− разность</b><span>только здесь</span></li>
+          <li><b>frozenset</b><span>запечатанная картотека — можно в ключ</span></li>
+        </ol>
+        <p class="small">
+          Сравните с рядом из главы 02: там было восемь звеньев про «ключ → номерок → ячейка». Здесь ядро то же,
+          меняется только то, что значение в ячейке не нужно — и поэтому исчезает порядок вставки.
+        </p>
+      </section>
+
+      <section>
+        <h2><span class="num">04</span>Схема: пересечение, объединение, разность</h2>
+
+        <figure class="wide">
+          <div class="frame">
+            <img class="live-anim" data-live="assets/maps/set-operations-live.svg" data-static="assets/maps/set-operations.svg" src="assets/maps/set-operations-live.svg" alt="Круги Эйлера: пересечение, объединение и разность; симметрическая разность описана в подписи.">
+          </div>
+          <figcaption>
+            <b>Рис. 2.</b> Закрашено то, что вернёт операция. Симметрическая разность <code class="inl">a ^ b</code>
+            («ровно в одном») на рисунке не закрашена отдельно — это объединение минус пересечение.
+          </figcaption>
+        </figure>
+
+        <p>
+          Запомните направление: <code class="inl">a - b</code> — элементы <code class="inl">a</code>,
+          которых нет в <code class="inl">b</code>. Чтобы получить <code class="inl">b</code>, удалите
+          <code class="inl">a - b</code> и добавьте <code class="inl">b - a</code>. Разность несимметрична —
+          на собеседовании это любят уточнять.
+        </p>
+      </section>
+
+      <section>
+        <h2><span class="num">05</span>Как это устроено на самом деле</h2>
+        <p>
+          Внутри — та же хеш-таблица, что у словаря: массив ячеек, хеш ключа, пробирование при коллизиях.
+          Отличие одно: у ячейки нет значения. Поэтому:
+        </p>
+        <ul>
+          <li>элементы должны быть <strong>hashable</strong> — строка, число, tuple из hashable, <code class="inl">frozenset</code>;</li>
+          <li>порядок обхода зависит от хешей и <strong>не гарантирован</strong>; для строк он к тому же рандомизирован между запусками;</li>
+          <li>память дороже списка: под таблицу нужен запас, а не только элементы.</li>
+        </ul>
+
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th></th><th>list</th><th>set</th><th>dict</th></tr></thead>
+            <tbody>
+              <tr><td>Дубликаты</td><td>разрешены</td><td>невозможны</td><td>ключи уникальны</td></tr>
+              <tr><td>Порядок</td><td>порядок вставки</td><td>не гарантирован</td><td>порядок вставки</td></tr>
+              <tr><td>Доступ по индексу</td><td class="mono">lst[0]</td><td>нет</td><td>нет</td></tr>
+              <tr><td>Проверка входа</td><td class="mono">O(n)</td><td class="mono">O(1) в среднем</td><td class="mono">O(1) в среднем</td></tr>
+              <tr><td>Память для 3 чисел</td><td>88 байт</td><td>216 байт</td><td>больше</td></tr>
+              <tr><td>Ключи</td><td>—</td><td>—</td><td>только hashable</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="small">
+          Цифры памяти — <code class="inl">sys.getsizeof</code> на CPython 3.12. Разница в 2–3 раза — нормальная цена
+          за O(1): таблица резервирует пустые ячейки, чтобы не переполняться.
+        </p>
+      </section>
+
+      <section>
+        <h2><span class="num">06</span>Лаборатория: запустить и увидеть</h2>
+        <p>
+          Фрагменты файла <a title="Открыть файл с номерами строк" href="snippets/view.html?f=04_set_lab.py"><code class="inl">04_set_lab.py</code></a>.
+          Числа зависят от машины, порядок элементов множества — от запуска.
+        </p>
+
+        <h3>Шаг 1. Дубликаты и порядок</h3>
+        <div class="code">
+          <div class="bar"><span class="file">04_set_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">tags = ["sql", "python", "sql", "pandas", "python"]
+print(set(tags))
+print(list(dict.fromkeys(tags)))   # порядок сохранён
+print(set([3, 1, 2]))              # порядок вставки не сохраняется</pre>
+          <div class="out">{'sql', 'python', 'pandas'}
+['sql', 'python', 'pandas']
+{1, 2, 3}</div>
+        </div>
+        <p>
+          Обратите внимание: в первом случае порядок случайно совпал с исходным, во втором — нет.
+          Это и есть «не гарантирован»: сегодня так, завтра иначе. Если порядок важен — <code class="inl">dict.fromkeys</code>.
+        </p>
+
+        <h3>Шаг 2. Проверка входа: список против множества</h3>
+        <div class="code">
+          <div class="bar"><span class="file">04_set_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">users = [f"user{i}" for i in range(200_000)]
+user_set = set(users)
+
+"user199999" in users       # список: просмотр элементов, O(n)
+"user199999" in user_set    # множество: хеш и ячейка, O(1)</pre>
+          <div class="out">list: 0.76 ms
+set:  1.04 µs</div>
+        </div>
+
+        <h3>Шаг 3. Четыре операции</h3>
+        <div class="code">
+          <div class="bar"><span class="file">04_set_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">a = {"python", "sql", "pandas"}
+b = {"python", "airflow", "dbt"}
+
+print(sorted(a &amp; b))   # было и там, и там
+print(sorted(a | b))   # было хоть где-то
+print(sorted(a - b))   # только у a
+print(sorted(a ^ b))   # ровно в одном</pre>
+          <div class="out">['python']
+['airflow', 'dbt', 'pandas', 'python', 'sql']
+['pandas', 'sql']
+['airflow', 'dbt', 'pandas', 'sql']</div>
+        </div>
+
+        <h3>Шаг 4. Пересечение «в лоб» и через set</h3>
+        <div class="code">
+          <div class="bar"><span class="file">04_set_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">left = [f"id{i}" for i in range(2_000)]
+right = [f"id{i}" for i in range(1_000, 3_000)]
+
+naive = [x for x in left if x in right]   # O(n·m)
+fast = set(left) &amp; set(right)             # O(n + m)</pre>
+          <div class="out">список: 7.79 ms, найдено 1000
+set:    0.15 ms, найдено 1000</div>
+        </div>
+        <p>
+          Разница в 50 раз на двух тысячах элементов. На 100 000 это уже секунды против миллисекунд — и
+          типичная причина «тормозит endpoint».
+        </p>
+
+        <h3>Шаг 5. frozenset как ключ</h3>
+        <div class="code">
+          <div class="bar"><span class="file">04_set_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">permissions = {
+    frozenset({"read", "write"}): "editor",
+    frozenset({"read"}): "viewer",
+}
+print(permissions[frozenset({"write", "read"})])</pre>
+          <div class="out">editor</div>
+        </div>
+        <p>
+          Обычное множество изменяемо, поэтому ключом быть не может. <code class="inl">frozenset</code> — его
+          неизменяемый брат: тот же набор, но «запечатанный», и его можно класть в ключи и в другие множества.
+        </p>
+      </section>
+
+      <section>
+        <h2><span class="num">07</span>Мост: та же идея в pandas, SQL и NumPy</h2>
+
+        <h3>pandas: уникальные значения и isin</h3>
+        <div class="code">
+          <div class="bar"><span class="file">мост в pandas</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">import pandas as pd
+
+df = pd.DataFrame({"user": ["Anna", "Ivan", "Anna"], "amount": [1200, 800, 500]})
+
+df["user"].unique()                  # как set, но возвращает массив
+df["user"].isin({"Anna", "Petr"})    # как `in set` для каждой строки
+df["user"].value_counts()            # как Counter из главы 06
+
+# операции над индексами — те же множества
+idx1 = pd.Index(["Anna", "Ivan"])
+idx2 = pd.Index(["Ivan", "Olga"])
+idx1.intersection(idx2); idx1.union(idx2); idx1.difference(idx2)</pre>
+        </div>
+        <p>
+          <code class="inl">isin</code> принимает и список, и множество: pandas сама строит по нему
+          хеш-таблицу. Передавать set не обязательно, но полезно понимать, почему проверка не превращается
+          в квадратичную.
+        </p>
+
+        <h3>SQL: IN, EXISTS и операции над результатами</h3>
+        <div class="code">
+          <div class="bar"><span class="file">мост в SQL</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">SELECT * FROM users WHERE id IN (1, 2, 3);          -- проверка входа
+
+SELECT * FROM a INTERSECT SELECT * FROM b;          -- пересечение
+SELECT * FROM a UNION     SELECT * FROM b;          -- объединение без дублей
+SELECT * FROM a EXCEPT    SELECT * FROM b;          -- разность
+
+UNION ALL                                            -- без удаления дублей: дешевле</pre>
+        </div>
+        <p>
+          <code class="inl">UNION</code> неявно делает <code class="inl">DISTINCT</code> — то есть строит множество
+          и платит за это. Если дубликаты допустимы, <code class="inl">UNION ALL</code> заметно быстрее.
+        </p>
+
+        <h3>Python: ключи словаря — тоже множество</h3>
+        <div class="code">
+          <div class="bar"><span class="file">мост в dict</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">d1 = {"a": 1, "b": 2}
+d2 = {"b": 3, "c": 4}
+
+d1.keys() &amp; d2.keys()   # {'b'} — общие ключи
+d1.keys() | d2.keys()   # {'a', 'b', 'c'}</pre>
+        </div>
+        <p>
+          <code class="inl">keys()</code> возвращает представление, которое поддерживает операции множеств.
+          Это удобно для сравнения конфигов и поиска расхождений между двумя словарями.
+        </p>
+      </section>
+
+      <section>
+        <h2><span class="num">08</span>Шесть ошибок, на которых спотыкаются</h2>
+
+        <div class="errors">
+          <div class="err">
+            <div class="h">list(set(...)) как способ убрать дубли</div>
+            <p>Порядок теряется: список соберётся в порядке обхода хеш-таблицы, а не в порядке появления.</p>
+            <div class="fix">Нужен порядок — <code class="inl">list(dict.fromkeys(items))</code>.</div>
+          </div>
+
+          <div class="err">
+            <div class="h">s[0] у множества</div>
+            <p>Индексов нет: множество не упорядочено. <code class="inl">TypeError: 'set' object is not subscriptable</code>.</p>
+            <div class="fix">Нужен первый элемент — <code class="inl">next(iter(s))</code>; нужен порядок — список.</div>
+          </div>
+
+          <div class="err">
+            <div class="h">{} — это не пустое множество</div>
+            <p><code class="inl">{}</code> создаёт пустой словарь. Пустое множество — только <code class="inl">set()</code>.</p>
+            <div class="fix">Проверка типа: <code class="inl">type({}) is dict</code>, <code class="inl">type(set()) is set</code>.</div>
+          </div>
+
+          <div class="err">
+            <div class="h">Список внутри множества</div>
+            <p><code class="inl">{["a"]}</code> — <code class="inl">TypeError: unhashable type: 'list'</code>. Множество принимает только hashable.</p>
+            <div class="fix">Кортеж вместо списка: <code class="inl">{("a",)}</code> — если содержимое неизменяемо.</div>
+          </div>
+
+          <div class="err">
+            <div class="h">Изменение множества во время итерации</div>
+            <p><code class="inl">for x in s: s.add(...)</code> → <code class="inl">RuntimeError: Set changed size during iteration</code>.</p>
+            <div class="fix">Собирайте изменения отдельно или итерируйтесь по копии: <code class="inl">for x in list(s)</code>.</div>
+          </div>
+
+          <div class="err">
+            <div class="h">Ставка на стабильный порядок в выводе</div>
+            <p>Порядок обхода зависит от хешей, а для строк рандомизирован между запусками. Тест, который сравнивает <code class="inl">list(s)</code> с ожидаемым списком, будет падать через раз.</p>
+            <div class="fix">Сравнивайте множества как множества: <code class="inl">assert set(result) == {"a", "b"}</code>.</div>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h2><span class="num">09</span>Вопросы с собеседования</h2>
+        <div class="qa">
+          <details>
+            <summary>Чем set отличается от list?</summary>
+            <div class="a">
+              <p>Список хранит элементы по порядку и позволяет дубликаты; множество хранит только уникальные и не гарантирует порядок. Внутри множества — хеш-таблица, поэтому проверка входа в среднем O(1) против O(n) у списка. Цена — больше памяти и отсутствие индексов.</p>
+              <div class="verdict">Резюме: список — про порядок, множество — про «есть или нет».</div>
+            </div>
+          </details>
+          <details>
+            <summary>Чем set отличается от dict?</summary>
+            <div class="a">
+              <p>Внутри — одна и та же хеш-таблица. У словаря есть значения и сохраняется порядок вставки, у множества только ключи и порядок не гарантирован. <code class="inl">set</code> — это словарь, у которого значение не нужно.</p>
+              <div class="verdict">Резюме: set = dict без значений и без обещания порядка.</div>
+            </div>
+          </details>
+          <details>
+            <summary>Почему порядок элементов не гарантирован?</summary>
+            <div class="a">
+              <p>Элементы лежат в ячейках, вычисленных из хеша. Обход идёт по ячейкам, а не по порядку добавления. Для строк хеш рандомизирован между запусками (защита от подбора коллизий), поэтому даже между двумя запусками порядок может отличаться.</p>
+              <div class="verdict">Резюме: порядок — следствие хешей, а не истории вставки.</div>
+            </div>
+          </details>
+          <details>
+            <summary>Что можно класть в set?</summary>
+            <div class="a">
+              <p>Только hashable: числа, строки, tuple из hashable, <code class="inl">frozenset</code>. Списки, словари и обычные множества — нельзя.</p>
+              <div class="verdict">Резюме: то же правило, что для ключей словаря.</div>
+            </div>
+          </details>
+          <details>
+            <summary>Что такое frozenset и зачем он нужен?</summary>
+            <div class="a">
+              <p>Неизменяемое множество. Оно hashable, поэтому может быть ключом словаря или элементом другого множества. Нужен, когда набор значений — это идентификатор: например, набор прав доступа как ключ кэша.</p>
+              <div class="verdict">Резюме: запечатанная картотека, которую можно повесить на вешалку dict.</div>
+            </div>
+          </details>
+          <details>
+            <summary>Как быстро найти общие элементы двух списков?</summary>
+            <div class="a">
+              <p><code class="inl">set(a) &amp; set(b)</code> — O(n + m) в среднем. Вариант «вложенный цикл со списком» — O(n·m). На двух тысячах элементов разница в десятки раз, на сотнях тысяч — в тысячи.</p>
+              <div class="verdict">Резюме: сначала множество, потом операции.</div>
+            </div>
+          </details>
+          <details>
+            <summary>Когда set проигрывает списку?</summary>
+            <div class="a">
+              <p>Когда коллекция маленькая (выигрыш незаметен), когда нужен порядок или индекс, когда важна память, когда нужно часто обходить все элементы подряд. Хеширование и запас ячеек — не бесплатные.</p>
+              <div class="verdict">Резюме: O(1) — это про поиск, а не про всё подряд.</div>
+            </div>
+          </details>
+          <details>
+            <summary>Как удалить дубликаты, сохранив порядок?</summary>
+            <div class="a">
+              <p><code class="inl">list(dict.fromkeys(items))</code>: словарь помнит порядок вставки, а повторный ключ не создаёт новую запись. Если порядок не важен — <code class="inl">list(set(items))</code>.</p>
+              <div class="verdict">Резюме: порядок сохраняет словарь, а не множество.</div>
+            </div>
+          </details>
+        </div>
+      </section>
+
+      <section>
+        <h2><span class="num">10</span>Три задачи: сначала своя попытка</h2>
+
+        <h3><span style="color:var(--muted);font-family:var(--mono);font-size:.8rem">01</span> Общие теги</h3>
+        <p>Даны теги двух пользователей. Найдите общие, а также те, что есть только у первого.</p>
+        <div class="code">
+          <div class="bar"><span class="file">условие</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">u1 = {"python", "sql", "pandas", "airflow"}
+u2 = {"python", "dbt", "sql"}</pre>
+        </div>
+        <div class="qa">
+          <details>
+            <summary>Показать решение и разбор</summary>
+            <div class="a">
+              <div class="code" style="margin-top:0">
+                <div class="bar"><span class="file">решение</span><span class="lang">python</span><button class="copy">копировать</button></div>
+                <pre data-lang="python">common = u1 &amp; u2
+only_u1 = u1 - u2
+
+print(sorted(common))    # ['python', 'sql']
+print(sorted(only_u1))   # ['airflow', 'pandas']
+print(u1.isdisjoint(u2)) # False — пересечение не пусто</pre>
+                <div class="out">['python', 'sql']
+['airflow', 'pandas']
+False</div>
+              </div>
+              <p><strong>Что важно.</strong> Порядок вывода множества не гарантирован, поэтому для печати — <code class="inl">sorted()</code>.
+              В pandas это <code class="inl">index.intersection</code>, в SQL — <code class="inl">INTERSECT</code>.</p>
+            </div>
+          </details>
+        </div>
+
+        <h3><span style="color:var(--muted);font-family:var(--mono);font-size:.8rem">02</span> Элементы, встречающиеся ровно один раз</h3>
+        <p>
+          Дан список. Верните элементы, которые встречаются ровно один раз, сохранив порядок первого появления.
+        </p>
+        <div class="code">
+          <div class="bar"><span class="file">условие</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">items = ["a", "b", "a", "c", "b", "d"]
+# ожидается: ['c', 'd']</pre>
+        </div>
+        <div class="qa">
+          <details>
+            <summary>Показать решение и разбор</summary>
+            <div class="a">
+              <div class="code" style="margin-top:0">
+                <div class="bar"><span class="file">решение</span><span class="lang">python</span><button class="copy">копировать</button></div>
+                <pre data-lang="python">from collections import Counter
+
+counts = Counter(items)
+result = [x for x in dict.fromkeys(items) if counts[x] == 1]
+print(result)   # ['c', 'd']</pre>
+                <div class="out">['c', 'd']</div>
+              </div>
+              <p><strong>Что важно.</strong> Здесь работают сразу три главы: <code class="inl">Counter</code> считает,
+              <code class="inl">dict.fromkeys</code> убирает дубли с сохранением порядка, comprehension фильтрует.
+              Чистое решение через множество было бы возможно, но порядок пришлось бы восстанавливать отдельно.</p>
+            </div>
+          </details>
+        </div>
+
+        <h3><span style="color:var(--muted);font-family:var(--mono);font-size:.8rem">03</span> Нормализация email</h3>
+        <p>
+          Приведите адреса к нижнему регистру, обрежьте пробелы и удалите дубли, сохранив порядок.
+        </p>
+        <div class="qa">
+          <details>
+            <summary>Показать решение и разбор</summary>
+            <div class="a">
+              <div class="code" style="margin-top:0">
+                <div class="bar"><span class="file">решение</span><span class="lang">python</span><button class="copy">копировать</button></div>
+                <pre data-lang="python">raw = [" Anna@Mail.ru ", "ivan@mail.ru", "anna@mail.ru", "IVAN@mail.ru "]
+
+clean = [e.strip().lower() for e in raw]
+unique = list(dict.fromkeys(clean))
+
+print(unique)   # ['anna@mail.ru', 'ivan@mail.ru']</pre>
+                <div class="out">['anna@mail.ru', 'ivan@mail.ru']</div>
+              </div>
+              <p><strong>Что важно.</strong> Нормализация идёт до дедупликации: иначе <code class="inl">" Anna@Mail.ru "</code>
+              и <code class="inl">"anna@mail.ru"</code> останутся разными. А <code class="inl">set</code> здесь не подходит —
+              он потеряет порядок, который обычно нужен для стабильного вывода.</p>
+            </div>
+          </details>
+        </div>
+      </section>
+
+      <section>
+        <h2><span class="num">11</span>Чек-лист освоения</h2>
+        <div class="check">
+          <label><input type="checkbox"><span class="box"></span><span class="txt">Объяснить, почему set быстрее list в проверке входа</span></label>
+          <label><input type="checkbox"><span class="box"></span><span class="txt">Назвать четыре операции и разницу между a − b и b − a</span></label>
+          <label><input type="checkbox"><span class="box"></span><span class="txt">Сказать, почему порядок не гарантирован и как сохранить его при дедупликации</span></label>
+          <label><input type="checkbox"><span class="box"></span><span class="txt">Объяснить, зачем frozenset и где он нужен</span></label>
+          <label><input type="checkbox"><span class="box"></span><span class="txt">Показать, где та же операция живёт в pandas и SQL</span></label>
+        </div>
+      </section>
+
+      <section>
+        <h2><span class="num">12</span>Куда ведут мостики</h2>
+        <div class="bridges">
+          <a class="bridge" href="ref-set.html"><span class="to">Справочник</span><span>set: все методы, операции и frozenset</span><span class="what">→ полная таблица с ценой</span></a>
+          <a class="bridge" href="ch-02-dict.html"><span class="to">Глава 02</span><span>dict: шкаф с номерками</span><span class="what">→ та же хеш-таблица, но со значениями</span></a>
+          <a class="bridge" href="ch-03-list-tuple.html"><span class="to">Глава 03</span><span>list и tuple</span><span class="what">→ почему tuple годится в set</span></a>
+          <a class="bridge" href="ch-05-comprehensions.html"><span class="to">Глава 05</span><span>Comprehensions и генераторы</span><span class="what">→ set comprehension и ленивые потоки</span></a>
+          <a class="bridge" href="ch-06-collections.html"><span class="to">Глава 06</span><span>Counter, defaultdict, deque</span><span class="what">→ Counter как словарь частот</span></a>
+          <a class="bridge" href="ch-14-filtering.html"><span class="to">Глава 14</span><span>Фильтрация в pandas</span><span class="what">→ isin на множестве разрешений</span></a>
+        </div>
+      </section>
+
+      <div class="pager">
+        <a class="prev" href="ch-03-list-tuple.html"><span class="dir">← Назад</span><span class="ttl">03 · list и tuple</span></a>
+        <a class="next" href="ch-05-comprehensions.html"><span class="dir">Дальше →</span><span class="ttl">05 · comprehensions и генераторы</span></a>
+      </div>
+
+    </div>
+  </main>
+</div>
+<script src="assets/toc.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>

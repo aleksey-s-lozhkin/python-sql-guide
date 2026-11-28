@@ -1,0 +1,691 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Справочник NumPy · индексация и маски: трафарет поверх сетки — Ассоциативный гайд</title>
+<meta name="description" content="Справочник по индексации numpy 2.3.5: срезы и view, булевы маски, fancy indexing, np.take/clip/nonzero и np.where — что копия и что view, с реальным выводом.">
+<link rel="stylesheet" href="assets/style.css">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#fbf8f2" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#14131a" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="assets/icons/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="assets/icons/icon-180.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Гайд Py/SQL">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+</head>
+<body data-slug="ref-np-indexing">
+<div class="app">
+  <aside class="sidebar" id="sidebar"></aside>
+  <main>
+    <div class="wrap">
+
+      <header class="chapter-head">
+        <div class="eyebrow">
+          <span class="part">Справочник · NumPy</span>
+          <span class="dot"></span>
+          <span>страница 2 из 5</span>
+          <span class="dot"></span>
+          <span>готово</span>
+        </div>
+        <h1>Индексация и маски: трафарет поверх сетки
+          <span class="sub">Срезы, булевы маски, fancy-indexing и np.where — что view, а что копия</span>
+        </h1>
+        <p class="lead">
+          Достать из сетки нужные клетки можно тремя способами: рамкой (срез), трафаретом (маска) и
+          списком номеров (fancy). Они по-разному ведут себя в памяти и возвращают разную форму.
+          Здесь — полная шпаргалка: что вернёт операция, что изменится в исходнике и где ловушка
+          синтаксиса.
+        </p>
+        <div class="meta">
+          <span class="chip">⏱ <b>12 минут</b></span>
+          <span class="chip">🎯 уровень <b>2</b></span>
+          <span class="chip">🧮 <b>numpy 2.3.5</b></span>
+          <span class="chip">📚 <b>глава 08</b></span>
+        </div>
+      </header>
+
+      <p class="small">
+        Справочник NumPy: <a href="appendix-numpy.html">вся карта</a> ·
+        <a href="ref-np-ndarray.html">01 · ndarray</a> ·
+        <b>02 · индексация</b> · <a href="ref-np-axis.html">03 · axis</a> ·
+        <a href="ref-np-broadcasting.html">04 · broadcasting</a> ·
+        <a href="ref-np-views.html">05 · view/copy</a>
+      </p>
+
+      <div class="tldr">
+        <div class="t">Самое главное</div>
+        <ul>
+          <li><b>Базовая индексация</b> — числа, срезы, <code class="inl">:</code> — возвращает
+              <b>view</b>: окно в те же данные. Изменили срез — изменился исходный массив.</li>
+          <li><b>Продвинутая</b> — маска, список индексов, <code class="inl">np.take</code> — возвращает
+              <b>копию</b>: новые данные в новой памяти, исходник цел.</li>
+          <li>Условия соединяются только <code class="inl">&amp;</code>, <code class="inl">|</code>,
+              <code class="inl">~</code> и всегда в скобках; <code class="inl">np.where</code> не
+              фильтрует, а выбирает значение для каждой клетки.</li>
+        </ul>
+      </div>
+
+      <!-- ══════════════════ 01. Что это ══════════════════ -->
+      <section>
+        <h2><span class="num">01</span>Что это и как устроено</h2>
+        <p>
+          Индексация отвечает на вопрос «какие клетки сетки нужны». В NumPy два принципиально разных
+          механизма. <em>Базовый</em> — числа, срезы и <code class="inl">:</code> — считает новую
+          форму и новые <code class="inl">strides</code> по старым данным, поэтому возвращает view.
+          <em>Продвинутый</em> — булева маска или список индексов — собирает выбранные элементы в
+          новый буфер, то есть возвращает копию.
+        </p>
+        <p>
+          Маска — это массив <code class="inl">bool</code> той же формы, что исходник, или одномерный
+          по длине оси. Внутри неё ровно то же сравнение, что вернуло
+          <code class="inl">ages &gt; 25</code>: <code class="inl">True</code> — клетка попала под
+          прорезь. Результат фильтра всегда одномерный: форма при отборе по значениям теряется.
+        </p>
+        <p>
+          Fancy-indexing — выбор по номерам: <code class="inl">arr[[0, 2]]</code> берёт элементы
+          0 и 2, а <code class="inl">grid[[0, 2], [1, 0]]</code> — пары координат
+          <code class="inl">(0, 1)</code> и <code class="inl">(2, 0)</code>. Это тоже копия, поэтому
+          менять результат безопасно для исходника.
+        </p>
+
+        <div class="anchor">
+          <div class="glyph">🪟</div>
+          <div>
+            <div class="t">Держите эту картинку в голове</div>
+            <p class="kick"><strong>Маска — это трафарет с прорезями.</strong> Вы накрываете им сетку
+            данных: видно только то, что попало под прорези. Трафарет либо той же формы, что сетка,
+            либо одномерный по длине оси — иначе он просто не ляжет.</p>
+            <p><strong>Срез — это рамка.</strong> Она показывает прямоугольную область («строки 1–2,
+            столбцы 2–3»), не спрашивая про значения. Рамка и трафарет — разные инструменты, и путать
+            их — типичная ошибка. Метафору целиком разбирает
+            <a href="ch-08-indexing.html">глава 08</a>, а цену view и copy —
+            <a href="ch-11-views-copies.html">глава 11</a>.</p>
+          </div>
+        </div>
+        <p class="small">
+          <code class="inl">NaN</code> не равен сам себе, поэтому <code class="inl">values &gt; 2</code>
+          не отличит пропуск от маленького числа: для пропусков есть
+          <code class="inl">np.isnan</code>. А <code class="inl">and</code>/<code class="inl">or</code>
+          работают с одним значением истинности и на массивах падают — нужны
+          <code class="inl">&amp;</code>, <code class="inl">|</code>, <code class="inl">~</code>.
+        </p>
+      </section>
+
+      <!-- ══════════════════ 02. Когда брать ══════════════════ -->
+      <section>
+        <h2><span class="num">02</span>Когда что брать</h2>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Задача</th><th>Чем</th><th>Что помнить</th></tr></thead>
+            <tbody>
+              <tr><td>Взять прямоугольный кусок: строки, столбцы</td><td>срез <code class="inl">arr[a:b, c:d]</code></td><td>view, исходник общий</td></tr>
+              <tr><td>Отфильтровать по условию</td><td>маска <code class="inl">arr[arr &gt; 0]</code></td><td>копия, форма 1D</td></tr>
+              <tr><td>Выбрать строки по списку id</td><td><code class="inl">arr[[0, 2]]</code>, <code class="inl">np.take</code></td><td>копия</td></tr>
+              <tr><td>Заменить значения по условию</td><td><code class="inl">arr[mask] = 0</code></td><td>это запись — исходник меняется</td></tr>
+              <tr><td>Выбрать одно из двух по условию</td><td><code class="inl">np.where(cond, a, b)</code></td><td>новый массив той же формы</td></tr>
+              <tr><td>Ограничить значения сверху и снизу</td><td><code class="inl">np.clip(arr, lo, hi)</code></td><td>новый массив</td></tr>
+              <tr><td>Найти позиции подходящих элементов</td><td><code class="inl">np.nonzero</code>, <code class="inl">argwhere</code></td><td>индексы, а не значения</td></tr>
+              <tr><td>Работать с пропусками в данных</td><td>нет</td><td><code class="inl">np.isnan</code> или pandas</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="small">
+          Карта выбора структур — в <a href="ch-01-python-collections.html">главе 01</a>;
+          про серии и маски в таблицах — <a href="appendix-pandas.html">справочник pandas</a>.
+        </p>
+      </section>
+
+      <!-- ══════════════════ 03. Как взять кусок ══════════════════ -->
+      <section>
+        <h2><span class="num">03</span>Как взять кусок</h2>
+        <div class="code">
+          <div class="bar"><span class="file">ref_np_indexing_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">import numpy as np
+
+ages = np.array([22, 31, 25, 40, 19])
+grid = np.array([[1, 2, 3], [4, 5, 6]])
+print(ages[1:4])
+print(ages[ages &gt; 25])
+print(ages[[0, 2]])
+print(grid[0, 1])</pre>
+          <div class="out">[31 25 40]
+[31 40]
+[22 25]
+2</div>
+        </div>
+        <p>
+          Три способа — три разных результата по смыслу: срез <code class="inl">ages[1:4]</code>
+          берёт диапазон, маска <code class="inl">ages[ages &gt; 25]</code> — по значению,
+          список <code class="inl">ages[[0, 2]]</code> — по номерам. Для двумерного это же работает
+          с координатами: <code class="inl">grid[0, 1]</code> — клетка строки 0, столбца 1.
+        </p>
+        <div class="note">
+          <span class="t">Рамка и трафарет в одной записи</span>
+          <p>В одном индексе можно смешивать: <code class="inl">grid[1:, [0, 2]]</code> — срез по
+          строкам плюс список столбцов. Но если в индексе есть маска или список, NumPy уже не может
+          вернуть view: результат — копия.</p>
+        </div>
+      </section>
+
+      <!-- ══════════════════ 04. Все операции ══════════════════ -->
+      <section>
+        <h2><span class="num">04</span>Все операции</h2>
+        <p>
+          Четыре таблицы по назначению. «Форма результата» — что вернёт операция, «Примечание» — view
+          это или копия и что будет с исходником. Подробный разбор памяти — на
+          <a href="ref-np-views.html">странице 05</a>.
+        </p>
+
+        <h3>Базовые индексы и срезы</h3>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Запись</th><th>Что делает</th><th>Форма результата</th><th>Примечание</th></tr></thead>
+            <tbody>
+              <tr><td class="mono">arr[i]</td><td>элемент по индексу; отрицательный — с конца</td><td>скаляр (1D) / строка (2D)</td><td>view для строки</td></tr>
+              <tr><td class="mono">arr[a:b]</td><td>срез: a включается, b — нет</td><td>1D / 2D</td><td>view</td></tr>
+              <tr><td class="mono">arr[a:b:step]</td><td>срез с шагом, в том числе отрицательным</td><td>1D / 2D</td><td>view</td></tr>
+              <tr><td class="mono">arr[::-1]</td><td>разворачивает порядок</td><td>тот же ndim</td><td>view</td></tr>
+              <tr><td class="mono">arr[i, j]</td><td>координата в двумерном массиве</td><td>скаляр</td><td>копия не нужна: число</td></tr>
+              <tr><td class="mono">arr[:, j]</td><td>все строки одного столбца</td><td>1D</td><td>view</td></tr>
+              <tr><td class="mono">arr[i:j, k:l]</td><td>прямоугольная подматрица</td><td>2D</td><td>view</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>Маски и where</h3>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Запись</th><th>Что делает</th><th>Форма результата</th><th>Примечание</th></tr></thead>
+            <tbody>
+              <tr><td class="mono">arr &gt; 25</td><td>сравнивает каждую клетку с числом</td><td>ndarray bool той же формы</td><td>это ещё не выбор</td></tr>
+              <tr><td class="mono">(c1) &amp; (c2), (c1) | (c2), ~c</td><td>логика над bool-массивами</td><td>ndarray bool</td><td>скобки обязательны; <code class="inl">and</code>/<code class="inl">or</code> не работают</td></tr>
+              <tr><td class="mono">arr[mask]</td><td>оставляет только True</td><td>1D</td><td>копия; форма теряется</td></tr>
+              <tr><td class="mono">arr[mask] = 0</td><td>пишет по маске</td><td>None</td><td>исходник меняется</td></tr>
+              <tr><td class="mono">np.where(cond, a, b)</td><td>выбирает a или b для каждой клетки</td><td>ndarray той же формы</td><td>новый массив</td></tr>
+              <tr><td class="mono">np.where(cond)</td><td>индексы True</td><td>tuple из массивов</td><td>полезно для координат</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>Fancy-indexing и выборки</h3>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Запись</th><th>Что делает</th><th>Форма результата</th><th>Примечание</th></tr></thead>
+            <tbody>
+              <tr><td class="mono">arr[[0, 2]]</td><td>элементы по списку номеров</td><td>1D</td><td>копия</td></tr>
+              <tr><td class="mono">grid[[1, 0]]</td><td>строки в заданном порядке</td><td>2D</td><td>копия</td></tr>
+              <tr><td class="mono">grid[[0, 1], [2, 0]]</td><td>пары координат: (0,2) и (1,0)</td><td>1D</td><td>копия</td></tr>
+              <tr><td class="mono">np.take(arr, idx)</td><td>то же, что список индексов, но функцией</td><td>по форме idx</td><td>копия</td></tr>
+              <tr><td class="mono">np.clip(arr, lo, hi)</td><td>обрезает значения до границ</td><td>как arr</td><td>новый массив</td></tr>
+              <tr><td class="mono">np.nonzero(mask)</td><td>индексы True</td><td>tuple из массивов</td><td>для 1D — один массив</td></tr>
+              <tr><td class="mono">np.argwhere(mask)</td><td>индексы True столбцом координат</td><td>2D: (n, ndim)</td><td>удобно печатать</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>View или копия</h3>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Операция</th><th>Что происходит с памятью</th><th>Меняет исходник?</th></tr></thead>
+            <tbody>
+              <tr><td class="mono">срез, число, :</td><td>view на тот же буфер</td><td>да, если писать в окно</td></tr>
+              <tr><td class="mono">маска, список, take</td><td>копия в новый буфер</td><td>нет</td></tr>
+              <tr><td class="mono">where, clip, astype</td><td>новый массив</td><td>нет</td></tr>
+              <tr><td class="mono">arr[...] = значение</td><td>запись на месте</td><td>да</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ══════════════════ 05. Разбор ══════════════════ -->
+      <section>
+        <h2><span class="num">05</span>Разбор по группам</h2>
+        <p>
+          Все примеры страницы — в файле
+          <a href="snippets/view.html?f=ref_np_indexing_lab.py"><code class="inl">ref_np_indexing_lab.py</code></a>
+          (нужен numpy 2.3.5).
+        </p>
+
+        <h3>Срезы: рамка по осям</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_np_indexing_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">ages = np.array([22, 31, 25, 40, 19])
+print(ages[1:4])
+print(ages[-2:])
+print(ages[::-1])
+print(ages[::2])
+
+grid = np.array([[1, 2, 3], [4, 5, 6]])
+print(grid[0])
+print(grid[:, 1])
+print(grid[1:, ::2])
+
+window = ages[1:4]
+window[0] = 99
+print(ages)</pre>
+          <div class="out">[31 25 40]
+[40 19]
+[19 40 25 31 22]
+[22 25 19]
+[1 2 3]
+[2 5]
+[[4 6]]
+[22 99 25 40 19]</div>
+        </div>
+        <p>
+          Формула та же, что у списка: <code class="inl">[start:stop:step]</code>, где
+          <code class="inl">stop</code> не включается. <code class="inl">grid[0]</code> — строка
+          (view), <code class="inl">grid[:, 1]</code> — столбец (тоже view), а
+          <code class="inl">grid[1:, ::2]</code> — подматрица из последней строки и чётных столбцов.
+          Запись <code class="inl">window[0] = 99</code> изменила <code class="inl">ages</code>:
+          срез — это окно, а не копия.
+        </p>
+
+        <h3>Маски и np.where</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_np_indexing_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">ages = np.array([22, 31, 25, 40, 19])
+mask = ages &gt; 25
+print(mask, mask.dtype)
+print(ages[mask])
+
+salaries = np.array([50000, 90000, 70000, 120000, 45000])
+both = (ages &gt; 25) &amp; (salaries &gt; 60000)
+print(both)
+print(ages[both])
+
+print(ages[(ages &lt; 25) | (ages &gt; 35)])
+print(ages[~(ages &gt; 25)])
+
+print(np.where(ages &gt; 25, "adult", "young"))
+print(np.where(ages &gt; 25, 1, 0))
+print(np.where(ages &gt; 25))
+
+low = np.array([1, 2, 3, 4, 5])
+high = np.array([10, 20, 30, 40, 50])
+print(np.where(ages &gt; 25, high, low))</pre>
+          <div class="out">[False  True False  True False] bool
+[31 40]
+[False  True False  True False]
+[31 40]
+[22 40 19]
+[22 25 19]
+['young' 'adult' 'young' 'adult' 'young']
+[0 1 0 1 0]
+(array([1, 3]),)
+[ 1 20  3 40  5]</div>
+        </div>
+        <p>
+          Сравнение возвращает новый массив <code class="inl">bool</code> той же формы — сам по себе он
+          ничего не фильтрует. Отбор даёт одномерный массив: <code class="inl">ages[mask]</code> теряет
+          исходный порядок осей, но сохраняет порядок элементов. Условия соединяются
+          <code class="inl">&amp;</code>, <code class="inl">|</code> и <code class="inl">~</code>,
+          и каждое условие — в скобках: у <code class="inl">&amp;</code> приоритет выше сравнения.
+          <code class="inl">np.where</code> — не фильтр, а выбор: форма результата та же, что у условия.
+        </p>
+
+        <h3>Fancy-indexing, take, clip, nonzero</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_np_indexing_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">ages = np.array([22, 31, 25, 40, 19])
+picked = ages[[0, 2, 4]]
+print(picked)
+
+picked[0] = 99
+print(ages)
+print(picked)
+
+grid = np.array([[1, 2, 3], [4, 5, 6]])
+print(grid[[1, 0]])
+print(grid[[0, 1], [2, 0]])
+
+print(np.take(ages, [4, 0]))
+print(np.clip(ages, 25, 35))
+print(np.nonzero(ages &gt; 25))
+print(np.argwhere(ages &gt; 25))</pre>
+          <div class="out">[22 25 19]
+[22 31 25 40 19]
+[99 25 19]
+[[4 5 6]
+ [1 2 3]]
+[3 4]
+[19 22]
+[25 31 25 35 25]
+(array([1, 3]),)
+[[1]
+ [3]]</div>
+        </div>
+        <p>
+          Список номеров даёт копию: <code class="inl">picked[0] = 99</code> не тронул
+          <code class="inl">ages</code>. Для матриц <code class="inl">grid[[1, 0]]</code> переставляет
+          строки, а <code class="inl">grid[[0, 1], [2, 0]]</code> берёт пары координат — клетки
+          <code class="inl">(0, 2)</code> и <code class="inl">(1, 0)</code>, то есть
+          <code class="inl">[3, 4]</code>. <code class="inl">np.take</code> делает то же функцией,
+          <code class="inl">np.clip</code> обрезает значения до границ, а
+          <code class="inl">nonzero</code>/<code class="inl">argwhere</code> возвращают индексы, а не
+          значения.
+        </p>
+
+        <h3>Ошибки индексации</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_np_indexing_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">ages = np.array([22, 31, 25, 40, 19])
+try:
+    ages[np.array([True, False])]
+except IndexError as e:
+    print(type(e).__name__, str(e).split(";")[0])
+
+try:
+    (ages &gt; 25) and (ages &lt; 35)
+except ValueError as e:
+    print(type(e).__name__, str(e).split(".")[0])
+
+print(ages[[]], ages[[]].shape)
+ages[[]] = 999
+print(ages)</pre>
+          <div class="out">IndexError boolean index did not match indexed array along axis 0
+ValueError The truth value of an array with more than one element is ambiguous
+[] (0,)
+[22 31 25 40 19]</div>
+        </div>
+        <p>
+          Маска обязана совпасть по длине с осью: два флага на пять элементов — ошибка. Оператор
+          <code class="inl">and</code> требует одного значения истинности, а у массива их пять —
+          отсюда <code class="inl">ValueError</code> и правило про <code class="inl">&amp;</code>.
+          Пустой список индексов — не ошибка: результат пустой, а присваивание по нему ничего не
+          делает.
+        </p>
+      </section>
+
+      <!-- ══════════════════ 06. Сценарии ══════════════════ -->
+      <section>
+        <h2><span class="num">06</span>Три сценария из практики</h2>
+
+        <h3>Заказы дороже 1000</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_np_indexing_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">users = np.array(["Anna", "Olga", "Ivan", "Anna", "Olga"])
+amounts = np.array([1200, 800, 1500, 500, 300])
+mask = amounts &gt; 1000
+print(users[mask])
+print(amounts[mask].sum())
+print(np.where(mask, amounts, 0))</pre>
+          <div class="out">['Anna' 'Ivan']
+2700
+[1200    0 1500    0    0]</div>
+        </div>
+        <p>
+          Одна маска применяется и к именам, и к суммам — они выровнены по одной оси. Сумма отобранных
+          заказов — <code class="inl">2700</code>, а <code class="inl">np.where</code> оставляет форму
+          исходного массива, заменяя ненужное нулём.
+        </p>
+
+        <h3>Два условия: возраст и зарплата</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_np_indexing_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">ages = np.array([22, 31, 25, 40, 19])
+salaries = np.array([50000, 90000, 70000, 120000, 45000])
+mask = (ages &gt; 25) &amp; (salaries &gt; 60000)
+print(mask)
+print(ages[mask], salaries[mask])</pre>
+          <div class="out">[False  True False  True False]
+[31 40] [ 90000 120000]</div>
+        </div>
+        <p>
+          «И» — это <code class="inl">&amp;</code>, и оба условия в скобках. Такой же фильтр в pandas —
+          <code class="inl">df[(df.age &gt; 25) &amp; (df.salary &gt; 60000)]</code>, в SQL —
+          <code class="inl">WHERE age &gt; 25 AND salary &gt; 60000</code>.
+        </p>
+
+        <h3>Категории через where</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_np_indexing_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">scores = np.array([68, 92, 81, 55])
+labels = np.where(scores &gt;= 80, "high", "low")
+print(labels)
+print(np.where(scores &gt;= 80, scores, 0))</pre>
+          <div class="out">['low' 'high' 'high' 'low']
+[ 0 92 81  0]</div>
+        </div>
+        <p>
+          Когда нужен не отбор, а категория для каждой клетки, берут <code class="inl">np.where</code>:
+          он сохраняет форму и возвращает новый массив. Это прямой аналог
+          <code class="inl">CASE WHEN</code> в SQL.
+        </p>
+      </section>
+
+      <!-- ══════════════════ 07. Ошибки ══════════════════ -->
+      <section>
+        <h2><span class="num">07</span>Пять ошибок, на которых спотыкаются</h2>
+        <div class="errors">
+          <div class="err">
+            <div class="h">Маска не той формы</div>
+            <p><code class="inl">ages[np.array([True, False])]</code> для пяти элементов бросает
+            <code class="inl">IndexError: boolean index did not match indexed array along axis 0</code>:
+            флагов должно быть столько же, сколько клеток по оси.</p>
+            <div class="fix">Стройте маску из самого массива: <code class="inl">mask = ages &gt; 25</code>.
+            Для двумерного — та же форма, что у массива, иначе фильтруйте по строкам отдельно.</div>
+          </div>
+
+          <div class="err">
+            <div class="h">and вместо &amp;</div>
+            <p><code class="inl">(ages &gt; 25) and (ages &lt; 35)</code> бросает
+            <code class="inl">ValueError: The truth value of an array with more than one element is ambiguous</code>:
+            Python пытается свести массив к одному <code class="inl">True</code>/<code class="inl">False</code>.</p>
+            <div class="fix"><code class="inl">(ages &gt; 25) &amp; (ages &lt; 35)</code> — и обязательно
+            в скобках: у <code class="inl">&amp;</code> приоритет выше, чем у <code class="inl">&gt;</code>.</div>
+          </div>
+
+          <div class="err">
+            <div class="h">Ждать view от fancy-indexing</div>
+            <p><code class="inl">arr[[0, 2]]</code> — копия, а не окно. Изменение результата исходник не
+            трогает; это не ошибка Python, а неверная модель памяти.</p>
+            <div class="fix">Нужно писать в исходник — используйте срез или
+            <code class="inl">arr[mask] = ...</code>. Проверять связь помогает
+            <code class="inl">np.shares_memory</code> (страница 05).</div>
+          </div>
+
+          <div class="err">
+            <div class="h">Сюрприз пустого индекса</div>
+            <p><code class="inl">ages[[]]</code> не падает: это пустой результат формы
+            <code class="inl">(0,)</code>, а <code class="inl">ages[[]] = 999</code> ничего не меняет.
+            На первый взгляд — «ошибка должна быть».</p>
+            <div class="fix">Проверяйте длину результата (<code class="inl">.size == 0</code>) и не
+            полагайтесь на исключение как на сигнал «ничего не выбрано».</div>
+          </div>
+
+          <div class="err">
+            <div class="h">Забыть, что срез — view</div>
+            <p><code class="inl">window = ages[1:4]; window[0] = 99</code> меняет
+            <code class="inl">ages</code>: срез не копирует данные. Особенно опасно при передаче
+            «куска» в функцию, которая пишет в массив.</p>
+            <div class="fix">Нужна независимость — <code class="inl">ages[1:4].copy()</code>. Проверка —
+            <code class="inl">np.shares_memory</code>.</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ══════════════════ 08. Мини-проверка ══════════════════ -->
+      <section>
+        <h2><span class="num">08</span>Мини-проверка</h2>
+        <p>Пять вопросов и две задачи. Сначала своя попытка — потом спойлер.</p>
+
+        <div class="qa">
+          <details>
+            <summary>Чем срез отличается от маски?</summary>
+            <div class="a">
+              <p>Срез задаёт прямоугольную область по номерам осей и возвращает view: данные общие.
+              Маска задаёт набор клеток по значению, может дать произвольный набор элементов и
+              возвращает копию — форма при этом становится одномерной.</p>
+              <div class="verdict">Резюме: рамка говорит «где», трафарет — «какие».</div>
+            </div>
+          </details>
+        </div>
+
+        <div class="qa">
+          <details>
+            <summary>Почему (ages &gt; 25) &amp; (ages &lt; 35) в скобках?</summary>
+            <div class="a">
+              <p>У <code class="inl">&amp;</code> приоритет выше, чем у сравнения: без скобок выражение
+              прочитается как <code class="inl">ages &gt; (25 &amp; (ages &lt; 35))</code>. А
+              <code class="inl">and</code> не подходит вовсе: он сворачивает массив к одному значению
+              истинности и падает с <code class="inl">ValueError</code>.</p>
+              <div class="verdict">Резюме: массивная логика — только &amp;, |, ~ и в скобках.</div>
+            </div>
+          </details>
+        </div>
+
+        <div class="qa">
+          <details>
+            <summary>Чем fancy-indexing отличается от среза по памяти?</summary>
+            <div class="a">
+              <p>Срез — view: новый заголовок на тот же буфер. Список индексов и
+              <code class="inl">np.take</code> — копия: NumPy собирает выбранные элементы в новый
+              массив, потому что они могут идти в произвольном порядке.</p>
+              <div class="verdict">Резюме: срез смотрит, список — копирует.</div>
+            </div>
+          </details>
+        </div>
+
+        <div class="qa">
+          <details>
+            <summary>Чем np.where(cond, a, b) отличается от arr[cond]?</summary>
+            <div class="a">
+              <p><code class="inl">arr[cond]</code> отбрасывает элементы и меняет форму — остаётся
+              одномерный набор подходящих. <code class="inl">np.where(cond, a, b)</code> сохраняет
+              форму и для каждой клетки выбирает <code class="inl">a</code> или
+              <code class="inl">b</code>: это замена значения, а не фильтр.</p>
+              <div class="verdict">Резюме: маска выкидывает, where заменяет.</div>
+            </div>
+          </details>
+        </div>
+
+        <div class="qa">
+          <details>
+            <summary>Почему arr[[]] не ошибка?</summary>
+            <div class="a">
+              <p>Пустой список индексов — законный fancy-index: выбрано ноль элементов, результат
+              формы <code class="inl">(0,)</code>. Присваивание по пустому индексу просто не находит,
+              куда писать, и ничего не меняет.</p>
+              <div class="verdict">Резюме: пустой выбор — не ошибка, проверяйте .size.</div>
+            </div>
+          </details>
+        </div>
+
+        <h3><span style="color:var(--muted);font-family:var(--mono);font-size:.8rem">01</span> Чётные числа</h3>
+        <p>Оставьте из массива только чётные числа и посчитайте их сумму.</p>
+        <div class="code">
+          <div class="bar"><span class="file">условие</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">nums = np.array([3, 8, 12, 5, 7, 10])
+# ожидается: [ 8 12 10] 30</pre>
+        </div>
+        <div class="qa">
+          <details>
+            <summary>Показать решение и разбор</summary>
+            <div class="a">
+              <div class="code" style="margin-top:0">
+                <div class="bar"><span class="file">решение</span><span class="lang">python</span><button class="copy">копировать</button></div>
+                <pre data-lang="python">mask = nums % 2 == 0
+print(nums[mask], nums[mask].sum())</pre>
+                <div class="out">[ 8 12 10] 30</div>
+              </div>
+              <p><strong>Что важно.</strong> <code class="inl">nums % 2 == 0</code> — маска той же
+              формы; индексация ею даёт копию только с чётными, <code class="inl">sum()</code>
+              считает итог. Исходный массив не меняется.</p>
+            </div>
+          </details>
+        </div>
+
+        <h3><span style="color:var(--muted);font-family:var(--mono);font-size:.8rem">02</span> Порог через where</h3>
+        <p>Пометьте температуру как «hot», если она не ниже 20, иначе «cold» — не меняя форму массива.</p>
+        <div class="code">
+          <div class="bar"><span class="file">условие</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">temps = np.array([12, 25, 8, 30])
+# ожидается: ['cold' 'hot' 'cold' 'hot']</pre>
+        </div>
+        <div class="qa">
+          <details>
+            <summary>Показать решение и разбор</summary>
+            <div class="a">
+              <div class="code" style="margin-top:0">
+                <div class="bar"><span class="file">решение</span><span class="lang">python</span><button class="copy">копировать</button></div>
+                <pre data-lang="python">print(np.where(temps &gt;= 20, "hot", "cold"))</pre>
+                <div class="out">['cold' 'hot' 'cold' 'hot']</div>
+              </div>
+              <p><strong>Что важно.</strong> <code class="inl">np.where</code> возвращает массив той же
+              длины, что и условие, — форма сохранена. Это аналог
+              <code class="inl">CASE WHEN ... THEN ... ELSE ... END</code>.</p>
+            </div>
+          </details>
+        </div>
+      </section>
+
+      <!-- ══════════════════ 09. Мостик ══════════════════ -->
+      <section>
+        <h2><span class="num">09</span>Мостик: та же идея в pandas и SQL</h2>
+
+        <h3>pandas: маска и loc</h3>
+        <div class="code">
+          <div class="bar"><span class="file">мост в pandas</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">import pandas as pd
+
+df = pd.DataFrame({"user": ["Anna", "Olga", "Ivan"],
+                   "amount": [1200, 800, 1500]})
+df[df["amount"] &gt; 1000]                   # та же маска
+df.loc[df["amount"] &gt; 1000, "user"]       # маска + колонка
+df.loc[[0, 2]]                            # fancy по позициям
+df["amount"].where(df["amount"] &gt; 1000, 0)  # np.where</pre>
+        </div>
+        <p>
+          В pandas маска — такая же серия значений <code class="inl">bool</code>, а
+          <code class="inl">.loc</code> принимает её вместе с колонками. Отличие в том, что у таблицы
+          есть подписи строк, поэтому фильтр сохраняет исходный индекс, а не просто позиции.
+          Подробнее — <a href="ch-14-filtering.html">глава 14</a> и
+          <a href="ch-13-loc-iloc.html">глава 13</a>.
+        </p>
+
+        <h3>SQL: WHERE и CASE WHEN</h3>
+        <div class="code">
+          <div class="bar"><span class="file">мост в SQL</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">-- маска: amounts &gt; 1000
+SELECT * FROM orders WHERE amount &gt; 1000;
+
+-- два условия: (amount &gt; 1000) &amp; (user IN ('Anna', 'Olga'))
+SELECT * FROM orders
+WHERE amount &gt; 1000 AND user IN ('Anna', 'Olga');
+
+-- where как категория: CASE WHEN
+SELECT id,
+       CASE WHEN amount &gt; 1000 THEN 'big' ELSE 'small' END AS size
+FROM orders;</pre>
+        </div>
+        <p>
+          <code class="inl">WHERE</code> — это маска, <code class="inl">AND</code> — это
+          <code class="inl">&amp;</code> (только без скобок, потому что сравниваются скаляры строки), а
+          <code class="inl">CASE WHEN</code> повторяет <code class="inl">np.where</code>. Разница в
+          том, что SQL фильтрует строки таблицы, а NumPy — клетки массива.
+        </p>
+
+        <div class="bridges">
+          <a class="bridge" href="ch-08-indexing.html"><span class="to">Глава 08</span><span>Индексация: трафарет поверх сетки</span><span class="what">→ маски, срезы и ловушки синтаксиса</span></a>
+          <a class="bridge" href="ch-11-views-copies.html"><span class="to">Глава 11</span><span>view и copy: кто на что смотрит</span><span class="what">→ почему срез — окно, а список — копия</span></a>
+          <a class="bridge" href="ch-14-filtering.html"><span class="to">Глава 14</span><span>Фильтрация в pandas</span><span class="what">→ та же маска в таблице</span></a>
+          <a class="bridge" href="ref-np-ndarray.html"><span class="to">Справочник</span><span>01 · ndarray: сетка вместо списка</span><span class="what">→ форма, dtype и память</span></a>
+        </div>
+      </section>
+
+      <div class="pager">
+        <a class="prev" href="ref-np-ndarray.html"><span class="dir">← Назад</span><span class="ttl">ndarray: сетка вместо списка</span></a>
+        <a class="next" href="ref-np-axis.html"><span class="dir">Дальше → axis</span><span class="ttl">axis: вдоль какой стены</span></a>
+      </div>
+
+    </div>
+  </main>
+</div>
+<script src="assets/toc.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,84 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 440" role="img" aria-labelledby="t3 d3">
+  <title id="t3">View — окно в тот же буфер, copy — отдельная память</title>
+  <desc id="d3">Срез массива разделяет память с исходным массивом, копия живёт отдельно.</desc>
+  <defs>
+    <marker id="a3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#8a7f73"/>
+    </marker>
+    <style>
+      .lbl { font: 700 11px system-ui, -apple-system, "Segoe UI", sans-serif; fill: #8a7f73; letter-spacing: .12em; }
+      .v { font: 600 16px ui-monospace, "SF Mono", Menlo, monospace; fill: #1d1b26; }
+      .s { font: 400 12.5px system-ui, -apple-system, "Segoe UI", sans-serif; fill: #4a4458; }
+      .n { font: 400 12px system-ui, -apple-system, "Segoe UI", sans-serif; fill: #7a7285; }
+      .tag { font: 700 12.5px ui-monospace, "SF Mono", Menlo, monospace; fill: #c2410c; }
+    
+      .vc-view { fill: #c2410c; opacity: 0; animation: vc-view 8s ease-in-out infinite; }
+      .vc-copy { fill: #2f6b4f; opacity: 0; animation: vc-copy 8s ease-in-out infinite; }
+      @keyframes vc-view {
+        0%, 8% { opacity: 0; }
+        16% { opacity: .16; }
+        34% { opacity: .16; }
+        44%, 100% { opacity: 0; }
+      }
+      @keyframes vc-copy {
+        0%, 40% { opacity: 0; }
+        48% { opacity: .16; }
+        64% { opacity: .16; }
+        74%, 100% { opacity: 0; }
+      }
+        </style>
+  </defs>
+
+  <!-- view -->
+  <text class="lbl" x="40" y="34">VIEW: ОДИН БУФЕР НА ДВОИХ</text>
+  <g stroke="#b9cfe6">
+    <rect x="50" y="60" width="84" height="64" fill="#eef4fb"/><rect x="134" y="60" width="84" height="64" fill="#eef4fb"/>
+    <rect x="218" y="60" width="84" height="64" fill="#eef4fb"/><rect x="302" y="60" width="84" height="64" fill="#eef4fb"/>
+    <rect x="386" y="60" width="84" height="64" fill="#eef4fb"/>
+  </g>
+  <g class="v" text-anchor="middle">
+    <text x="92" y="99">0</text><text x="176" y="99">1</text><text x="260" y="99">2</text><text x="344" y="99">3</text><text x="428" y="99">4</text>
+  </g>
+  <text class="n" x="50" y="50">base</text>
+
+  <path d="M134,124 L134,146 L386,146 L386,124" fill="none" stroke="#c2410c" stroke-width="1.6"/>
+  <text class="tag" x="196" y="168">view = base[1:4]</text>
+  <text class="s" x="196" y="190">та же память: запись в view видна в base</text>
+  <text class="n" x="196" y="212">strides смещены, но буфер один</text>
+
+  <line x1="500" y1="40" x2="500" y2="330" stroke="#e6dfd3" stroke-dasharray="4 5"/>
+
+  <!-- copy -->
+  <text class="lbl" x="530" y="34">COPY: ДВА БУФЕРА</text>
+  <g stroke="#b9cfe6">
+    <rect x="540" y="60" width="70" height="58" fill="#eef4fb"/><rect x="610" y="60" width="70" height="58" fill="#eef4fb"/>
+    <rect x="680" y="60" width="70" height="58" fill="#eef4fb"/><rect x="750" y="60" width="70" height="58" fill="#eef4fb"/>
+    <rect x="820" y="60" width="70" height="58" fill="#eef4fb"/>
+  </g>
+  <g class="v" text-anchor="middle">
+    <text x="575" y="95">0</text><text x="645" y="95">1</text><text x="715" y="95">2</text><text x="785" y="95">3</text><text x="855" y="95">4</text>
+  </g>
+  <text class="n" x="540" y="50">base</text>
+
+  <g stroke="#9cc0a8">
+    <rect x="540" y="210" width="70" height="58" fill="#e9f2ec"/><rect x="610" y="210" width="70" height="58" fill="#e9f2ec"/>
+    <rect x="680" y="210" width="70" height="58" fill="#e9f2ec"/><rect x="750" y="210" width="70" height="58" fill="#e9f2ec"/>
+    <rect x="820" y="210" width="70" height="58" fill="#e9f2ec"/>
+  </g>
+  <g class="v" text-anchor="middle">
+    <text x="575" y="245">0</text><text x="645" y="245">1</text><text x="715" y="245">2</text><text x="785" y="245">3</text><text x="855" y="245">4</text>
+  </g>
+  <text class="n" x="540" y="200">copy</text>
+
+  <path d="M530,150 C570,170 610,186 620,204" fill="none" stroke="#8a7f73" stroke-width="1.6" marker-end="url(#a3)"/>
+  <text class="s" x="640" y="172">base.copy(): новая память</text>
+  <text class="n" x="640" y="194">правка копии не видна в base</text>
+
+  <rect x="40" y="352" width="900" height="64" rx="12" fill="#f4f1ea" stroke="#e0d9cd"/>
+  <text class="s" x="60" y="378">Срез, reshape, транспонирование — обычно view. Маска, список индексов, .copy() — копия.</text>
+  <text class="s" x="60" y="400">Проверка: np.shares_memory(a, b). Явная независимость: a.copy().</text>
+
+  <!-- правка: в view уходит в base, в copy остаётся копией -->
+  <rect class="vc-view" x="134" y="60" width="252" height="64" rx="4"/>
+  <rect class="vc-copy" x="610" y="210" width="210" height="58" rx="4"/>
+        </svg>

@@ -1,0 +1,455 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>18 · Даты, строки и форма таблицы — Ассоциативный гайд</title>
+<meta name="description" content="pandas: to_datetime, .dt, .str, pivot, melt, explode — как переводить таблицу между длинной и широкой формой.">
+<link rel="stylesheet" href="assets/style.css">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#fbf8f2" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#14131a" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="assets/icons/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="assets/icons/icon-180.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Гайд Py/SQL">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+</head>
+<body data-slug="ch-18-dates-reshape">
+<div class="app">
+  <aside class="sidebar" id="sidebar"></aside>
+  <main>
+    <div class="wrap">
+
+      <header class="chapter-head">
+        <div class="eyebrow">
+          <span class="part">Часть III · pandas</span>
+          <span class="dot"></span>
+          <span>Неделя 5 · дни 3–5</span>
+          <span class="dot"></span>
+          <span>готово</span>
+        </div>
+        <h1>Даты, строки и форма таблицы
+          <span class="sub">Одна и та же информация может быть длинной или широкой — и это не мелочь</span>
+        </h1>
+        <p class="lead">
+          Последняя глава pandas — про три вещи, без которых отчёт не собрать: превратить дату
+          из строки в дату, привести текст к нормальному виду и переложить таблицу так, чтобы
+          с ней было удобно работать.
+        </p>
+        <div class="meta">
+          <span class="chip">⏱ <b>40 минут</b></span>
+          <span class="chip">🎯 уровень <b>2 — применить</b></span>
+          <span class="chip">🐼 <b>pandas 3.0</b></span>
+          <span class="chip">📚 <b>Time series, Reshaping</b></span>
+        </div>
+      </header>
+
+      <details class="glossary">
+        <summary>Словарь главы — если забыли термины</summary>
+        <dl>
+          <dt>datetime64</dt><dd>Тип даты-времени в pandas; после него работают <code>.dt</code> и разности.</dd>
+          <dt>.dt</dt><dd>Аксессор частей даты: <code>.dt.year</code>, <code>.dt.month</code>, <code>.dt.day</code>.</dd>
+          <dt>to_period</dt><dd>Привести дату к периоду (месяц, квартал) — удобно для группировки.</dd>
+          <dt>pivot</dt><dd>Длинная таблица → широкая: значения колонки становятся колонками.</dd>
+          <dt>melt</dt><dd>Широкая таблица → длинная: колонки становятся строками.</dd>
+          <dt>explode</dt><dd>Развернуть список в ячейке в несколько строк.</dd>
+        </dl>
+      </details>
+
+
+      <section>
+        <h2><span class="num">01</span>Зачем это backend-разработчику</h2>
+        <ul>
+          <li><strong>Даты — половина отчётов:</strong> «выручка по месяцам», «активность по дням», «сколько дней прошло с заказа».</li>
+          <li><strong>Строки приходят грязными:</strong> лишние пробелы, разный регистр, «город Москва» против «Москва».</li>
+          <li><strong>Форма таблицы определяет удобство:</strong> одно и то же можно хранить широко (по кварталам в колонках) или длинно (строки-факты).</li>
+          <li><strong>Собеседование:</strong> «как извлечь месяц из даты», «чем pivot отличается от pivot_table», «что делает explode».</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2><span class="num">02</span>Ассоциация-якорь: гармошка</h2>
+
+        <div class="anchor">
+          <div class="glyph">🪗</div>
+          <div>
+            <div class="t">Держите эту картинку в голове</div>
+            <p class="kick"><strong>Таблица — это гармошка.</strong> Растянутая (широкая форма) — много колонок,
+            мало строк, удобно смотреть глазами. Сложенная (длинная форма) — мало колонок, много строк,
+            удобно фильтровать, группировать и рисовать графики.</p>
+            <p><strong>melt складывает гармошку, pivot растягивает.</strong> explode — отдельный трюк:
+            разворачивает список внутри одной ячейки в несколько строк.</p>
+          </div>
+        </div>
+
+        <figure class="art">
+          <div class="frame">
+            <img src="assets/illustrations/18-reshape-accordion.webp" width="1168" height="876" loading="lazy" decoding="async" alt="Бумажная гармошка между широким листом и длинной узкой полосой.">
+          </div>
+          <figcaption><b>Рис. 1.</b> Гармошка wide ↔ long: одна и та же таблица в двух формах.</figcaption>
+        </figure>
+
+      </section>
+
+      <section>
+        <h2><span class="num">03</span>Ассоциативный ряд: восемь звеньев</h2>
+        <ol class="chain">
+          <li><b>to_datetime</b><span>строка → дата</span></li>
+          <li><b>.dt</b><span>год, месяц, день, день недели</span></li>
+          <li><b>to_period</b><span>месяц как группа</span></li>
+          <li><b>.str</b><span>lower, strip, contains</span></li>
+          <li><b>pivot</b><span>длинная → широкая</span></li>
+          <li><b>melt</b><span>широкая → длинная</span></li>
+          <li><b>pivot_table</b><span>pivot с агрегацией</span></li>
+          <li><b>explode</b><span>список → строки</span></li>
+        </ol>
+      </section>
+
+      <section>
+        <h2><span class="num">04</span>Схема: длинная и широкая формы</h2>
+
+        <figure>
+          <div class="frame">
+            <img src="assets/maps/reshape-wide-long.svg" alt="Широкая таблица с кварталами в колонках, длинная таблица с колонкой quarter, стрелки melt и pivot.">
+          </div>
+          <figcaption>
+            <b>Рис. 2.</b> Один и тот же факт в двух формах. <code class="inl">melt</code> переводит в длинную,
+            <code class="inl">pivot</code> — обратно. <code class="inl">explode</code> разворачивает список в строки.
+          </figcaption>
+        </figure>
+      </section>
+
+      <section>
+        <h2><span class="num">05</span>Как это устроено на самом деле</h2>
+
+        <h3>Даты: datetime64, а не строки</h3>
+        <p>
+          <code class="inl">pd.to_datetime</code> разбирает строки и приводит колонку к типу
+          <code class="inl">datetime64</code>. После этого работают сравнения, разности и доступ
+          через <code class="inl">.dt</code>. Если оставить даты строками, сортировка будет лексикографической —
+          и «2024-10-01» окажется меньше «2024-2-01».
+        </p>
+
+        <h3>Строки: аксессор .str</h3>
+        <p>
+          <code class="inl">df["col"].str.lower()</code>, <code class="inl">.strip()</code>,
+          <code class="inl">.contains()</code>, <code class="inl">.replace()</code> работают векторно и корректно
+          обрабатывают пропуски (с <code class="inl">na=False</code> там, где нужно).
+        </p>
+
+        <h3>Длинная форма — это форма фактов</h3>
+        <p>
+          В длинной таблице одна строка — один факт: «anna, Q1, 100». В широкой — одна строка — объект,
+          а факты разложены по колонкам. Для <code class="inl">groupby</code>, фильтрации и графиков удобнее
+          длинная; для чтения глазами — широкая.
+        </p>
+
+        <h3>pivot против pivot_table</h3>
+        <p>
+          <code class="inl">pivot</code> требует, чтобы пара (index, columns) была уникальной — иначе ошибка.
+          <code class="inl">pivot_table</code> умеет агрегировать повторы через <code class="inl">aggfunc</code>.
+          Если в данных возможны дубли, берите вторую.
+        </p>
+      </section>
+
+      <section>
+        <h2><span class="num">06</span>Лаборатория: запустить и увидеть</h2>
+        <p>
+          Фрагменты файла <a title="Открыть файл с номерами строк" href="snippets/view.html?f=18_dates_reshape_lab.py"><code class="inl">18_dates_reshape_lab.py</code></a>.
+        </p>
+
+        <h3>Шаг 1. Строка становится датой</h3>
+        <div class="code">
+          <div class="bar"><span class="file">18_dates_reshape_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">orders["date"] = pd.to_datetime(orders["date"])
+print(orders["date"].dtype)
+print(orders["date"].dt.year.tolist(), orders["date"].dt.month.tolist())</pre>
+          <div class="out">datetime64[us]
+[2024, 2024, 2024, 2024] [1, 2, 2, 3]</div>
+        </div>
+
+        <h3>Шаг 2. Месяц как группа</h3>
+        <div class="code">
+          <div class="bar"><span class="file">18_dates_reshape_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">orders["month"] = orders["date"].dt.to_period("M")
+print(orders.groupby("month")["amount"].sum())</pre>
+          <div class="out">month
+2024-01    1200
+2024-02    1300
+2024-03    2100
+Freq: M, Name: amount, dtype: int64</div>
+        </div>
+
+        <h3>Шаг 3. Строки: нормализация</h3>
+        <div class="code">
+          <div class="bar"><span class="file">18_dates_reshape_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">print(users["email"].str.strip().str.lower().tolist())
+print(users["email"].str.contains("@", na=False).tolist())</pre>
+          <div class="out">['anna@mail.ru', 'ivan@mail.ru', nan]
+[True, True, False]</div>
+        </div>
+
+        <h3>Шаг 4. pivot: длинная → широкая</h3>
+        <div class="code">
+          <div class="bar"><span class="file">18_dates_reshape_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">wide = long.pivot(index="user", columns="quarter", values="amount")
+print(wide)</pre>
+          <div class="out">quarter   Q1   Q2
+user
+anna     100  200
+ivan     300  400</div>
+        </div>
+
+        <h3>Шаг 5. melt: обратно</h3>
+        <div class="code">
+          <div class="bar"><span class="file">18_dates_reshape_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">back = wide.reset_index().melt(id_vars="user", var_name="quarter", value_name="amount")
+print(back)</pre>
+          <div class="out">   user quarter  amount
+0  anna      Q1     100
+1  ivan      Q1     300
+2  anna      Q2     200
+3  ivan      Q2     400</div>
+        </div>
+
+        <h3>Шаг 6. explode: список → строки</h3>
+        <div class="code">
+          <div class="bar"><span class="file">18_dates_reshape_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">print(baskets.explode("items"))</pre>
+          <div class="out">   order_id  items
+0         1  apple
+0         1   pear
+1         2  bread</div>
+        </div>
+
+        <h3>Шаг 7. pivot_table, когда в ячейке несколько значений</h3>
+        <div class="code">
+          <div class="bar"><span class="file">18_dates_reshape_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">print(multi.pivot_table(index="user", columns="quarter", values="amount", aggfunc="sum"))</pre>
+          <div class="out">quarter     Q1     Q2
+user
+anna     150.0    NaN
+ivan       NaN  300.0</div>
+        </div>
+      </section>
+
+      <section>
+        <h2><span class="num">07</span>Мост: даты, строки и reshape в SQL</h2>
+
+        <h3>Даты в SQL</h3>
+        <div class="code">
+          <div class="bar"><span class="file">мост в SQL</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">SELECT DATE_TRUNC('month', o.created_at)::date AS month,
+       SUM(o.quantity * p.price) AS revenue
+FROM orders o JOIN products p ON p.id = o.product_id
+GROUP BY 1 ORDER BY 1;
+
+SELECT EXTRACT(YEAR FROM created_at), EXTRACT(MONTH FROM created_at)
+FROM orders;</pre>
+        </div>
+
+        <h3>Строки в SQL</h3>
+        <div class="code">
+          <div class="bar"><span class="file">мост в SQL</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">SELECT LOWER(TRIM(email)) FROM users;
+SELECT * FROM users WHERE LOWER(city) LIKE '%москва%';</pre>
+        </div>
+
+        <h3>Pivot в SQL делают иначе</h3>
+        <p>
+          В SQL нет <code class="inl">pivot</code>: таблица всегда «длинная». Широкий отчёт собирают
+          через <code class="inl">CASE WHEN</code> и агрегаты или на стороне приложения. Поэтому привычка
+          «сначала длинная форма, потом pivot» переносится в оба мира.
+        </p>
+      </section>
+
+      <section>
+        <h2><span class="num">08</span>Шесть ошибок, на которых спотыкаются</h2>
+
+        <div class="errors">
+          <div class="err">
+            <div class="h">Даты остаются строками</div>
+            <p>Сортировка лексикографическая, арифметика невозможна, <code class="inl">.dt</code> падает.</p>
+            <div class="fix"><code class="inl">pd.to_datetime(col, errors="coerce")</code> и проверка пропусков.</div>
+          </div>
+          <div class="err">
+            <div class="h">Формат даты угадан неверно</div>
+            <p>«01/02/2024» — это 1 февраля или 2 января? Без <code class="inl">format</code> pandas может угадать не так.</p>
+            <div class="fix">Указывать <code class="inl">format="%d/%m/%Y"</code> явно.</div>
+          </div>
+          <div class="err">
+            <div class="h">.dt на строковой колонке</div>
+            <p><code class="inl">AttributeError: Can only use .dt accessor with datetimelike values</code>.</p>
+            <div class="fix">Сначала <code class="inl">to_datetime</code>.</div>
+          </div>
+          <div class="err">
+            <div class="h">pivot на неуникальной паре</div>
+            <p><code class="inl">ValueError: Index contains duplicate entries, cannot reshape</code>.</p>
+            <div class="fix">Сначала агрегировать или использовать <code class="inl">pivot_table</code>.</div>
+          </div>
+          <div class="err">
+            <div class="h">melt теряет порядок и типы</div>
+            <p>После melt колонка значений может получить общий тип, а строки — новый индекс.</p>
+            <div class="fix">Проверять <code class="inl">dtypes</code>; при необходимости <code class="inl">astype</code> и <code class="inl">reset_index</code>.</div>
+          </div>
+          <div class="err">
+            <div class="h">explode на огромных списках</div>
+            <p>Число строк растёт как сумма длин списков — можно неожиданно получить миллионы строк.</p>
+            <div class="fix">Считать ожидаемый размер заранее; при необходимости агрегировать до explode.</div>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h2><span class="num">09</span>Вопросы с собеседования</h2>
+        <div class="qa">
+          <details>
+            <summary>Как превратить строку в дату?</summary>
+            <div class="a">
+              <p><code class="inl">pd.to_datetime(col, format=...)</code>. После этого доступны сравнения, разности и <code class="inl">.dt</code>.</p>
+              <div class="verdict">Резюме: дата — это тип, а не текст.</div>
+            </div>
+          </details>
+          <details>
+            <summary>Как извлечь месяц или год?</summary>
+            <div class="a">
+              <p><code class="inl">df["date"].dt.month</code>, <code class="inl">.dt.year</code>, <code class="inl">.dt.to_period("M")</code> для группировки по месяцам.</p>
+              <div class="verdict">Резюме: аксессор dt для всех частей.</div>
+            </div>
+          </details>
+          <details>
+            <summary>Что делает <code class="inl">.str</code>?</summary>
+            <div class="a">
+              <p>Применяет строковые операции ко всей колонке: <code class="inl">lower</code>, <code class="inl">strip</code>, <code class="inl">contains</code>, <code class="inl">replace</code>, <code class="inl">split</code>.</p>
+              <div class="verdict">Резюме: векторизация для текста.</div>
+            </div>
+          </details>
+          <details>
+            <summary>Чем pivot отличается от pivot_table?</summary>
+            <div class="a">
+              <p><code class="inl">pivot</code> требует уникальных пар и раскладывает значения; <code class="inl">pivot_table</code> агрегирует повторы через <code class="inl">aggfunc</code>.</p>
+              <div class="verdict">Резюме: без агрегации — pivot, с повторами — pivot_table.</div>
+            </div>
+          </details>
+          <details>
+            <summary>Что делает melt?</summary>
+            <div class="a">
+              <p>«Складывает» широкую таблицу в длинную: колонки становятся значениями в колонке-переменной.</p>
+              <div class="verdict">Резюме: pivot наоборот.</div>
+            </div>
+          </details>
+          <details>
+            <summary>Зачем explode?</summary>
+            <div class="a">
+              <p>Разворачивает список в ячейке в несколько строк. Удобно для «заказ → товары», где товары хранятся списком.</p>
+              <div class="verdict">Резюме: список становится строками.</div>
+            </div>
+          </details>
+          <details>
+            <summary>Почему длинная форма удобнее для анализа?</summary>
+            <div class="a">
+              <p>Потому что в ней одна строка — один факт: её можно фильтровать, группировать и рисовать без перебора колонок. Широкая форма удобна для отчёта человеку.</p>
+              <div class="verdict">Резюме: данные — длинно, отчёт — широко.</div>
+            </div>
+          </details>
+          <details>
+            <summary>Как в SQL сделать то же, что pivot?</summary>
+            <div class="a">
+              <p>Через <code class="inl">CASE WHEN</code> плюс агрегат, либо на стороне приложения. В SQL таблица всегда длинная.</p>
+              <div class="verdict">Резюме: pivot — задача presentation-слоя.</div>
+            </div>
+          </details>
+        </div>
+      </section>
+
+      <section>
+        <h2><span class="num">10</span>Три задачи: сначала своя попытка</h2>
+
+        <h3><span style="color:var(--muted);font-family:var(--mono);font-size:.8rem">01</span> Выручка по месяцам</h3>
+        <p>Из заказов с датой получите сумму по месяцам.</p>
+        <div class="qa">
+          <details>
+            <summary>Показать решение</summary>
+            <div class="a">
+              <div class="code" style="margin-top:0">
+                <div class="bar"><span class="file">решение</span><span class="lang">python</span><button class="copy">копировать</button></div>
+                <pre data-lang="python">orders["date"] = pd.to_datetime(orders["date"])
+monthly = orders.groupby(orders["date"].dt.to_period("M"))["amount"].sum()
+print(monthly)</pre>
+              </div>
+              <p><strong>Что важно.</strong> Период, а не просто месяц-число: январь 2024 и январь 2025 — разные группы.</p>
+            </div>
+          </details>
+        </div>
+
+        <h3><span style="color:var(--muted);font-family:var(--mono);font-size:.8rem">02</span> Нормализация города</h3>
+        <p>Приведите города к нижнему регистру без пробелов и посчитайте количество по каждому.</p>
+        <div class="qa">
+          <details>
+            <summary>Показать решение</summary>
+            <div class="a">
+              <div class="code" style="margin-top:0">
+                <div class="bar"><span class="file">решение</span><span class="lang">python</span><button class="copy">копировать</button></div>
+                <pre data-lang="python">df["city"] = df["city"].str.strip().str.lower()
+print(df["city"].value_counts())</pre>
+              </div>
+            </div>
+          </details>
+        </div>
+
+        <h3><span style="color:var(--muted);font-family:var(--mono);font-size:.8rem">03</span> Кварталы в колонки</h3>
+        <p>Из длинной таблицы (user, quarter, amount) сделайте широкую с колонками Q1 и Q2.</p>
+        <div class="qa">
+          <details>
+            <summary>Показать решение</summary>
+            <div class="a">
+              <div class="code" style="margin-top:0">
+                <div class="bar"><span class="file">решение</span><span class="lang">python</span><button class="copy">копировать</button></div>
+                <pre data-lang="python">wide = long.pivot(index="user", columns="quarter", values="amount")
+print(wide)</pre>
+              </div>
+              <p><strong>Что важно.</strong> Если пар (user, quarter) несколько — нужен <code class="inl">pivot_table</code>.</p>
+            </div>
+          </details>
+        </div>
+      </section>
+
+      <section>
+        <h2><span class="num">11</span>Чек-лист освоения</h2>
+        <div class="check">
+          <label><input type="checkbox"><span class="box"></span><span class="txt">Превратить строки в даты и извлечь месяц/год</span></label>
+          <label><input type="checkbox"><span class="box"></span><span class="txt">Сгруппировать по месяцам через to_period</span></label>
+          <label><input type="checkbox"><span class="box"></span><span class="txt">Нормализовать текст через .str</span></label>
+          <label><input type="checkbox"><span class="box"></span><span class="txt">Перевести таблицу melt и pivot в обе стороны</span></label>
+          <label><input type="checkbox"><span class="box"></span><span class="txt">Объяснить, когда нужен pivot_table, а не pivot</span></label>
+        </div>
+      </section>
+
+      <section>
+        <h2><span class="num">12</span>Куда ведут мостики</h2>
+        <div class="bridges">
+          <a class="bridge" href="ch-27-date-time.html"><span class="to">Дополнение</span><span>глава 27: дата и время</span><span class="what">→ момент, календарь и длительность</span></a>
+          <a class="bridge" href="appendix-datetime.html"><span class="to">Справочник</span><span>«Дата и время»: Python, NumPy, pandas, SQL</span><span class="what">→ операции и ловушки</span></a>
+          <a class="bridge" href="ref-pd-reshape.html"><span class="to">Справочник</span><span>pandas: reshape, даты, строки</span><span class="what">→ pivot_table, melt, .dt, .str</span></a>
+          <a class="bridge" href="ch-17-missing.html"><span class="to">Глава 17</span><span>Пропуски</span><span class="what">→ пропуски в датах</span></a>
+          <a class="bridge" href="ch-15-groupby.html"><span class="to">Глава 15</span><span>groupby</span><span class="what">→ группы по периодам</span></a>
+          <a class="bridge" href="checkpoint-3.html"><span class="to">Проверочная</span><span>Контрольная по части III</span><span class="what">→ проверить таблицы целиком</span></a>
+          <a class="bridge" href="ch-22-subqueries-cte.html"><span class="to">Глава 22</span><span>CTE</span><span class="what">→ даты и строки в SQL</span></a>
+          <a class="bridge" href="ch-26-project.html"><span class="to">Глава 26</span><span>Проект</span><span class="what">→ отчёт из нескольких таблиц</span></a>
+        </div>
+      </section>
+
+      <div class="pager">
+        <a class="prev" href="ch-17-missing.html"><span class="dir">← Назад</span><span class="ttl">17 · пропуски</span></a>
+        <a class="next" href="checkpoint-3.html"><span class="dir">Проверка →</span><span class="ttl">Проверочная работа по части III</span></a>
+      </div>
+
+    </div>
+  </main>
+</div>
+<script src="assets/toc.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>

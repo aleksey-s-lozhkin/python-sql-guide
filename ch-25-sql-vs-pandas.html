@@ -1,0 +1,424 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>25 · SQL или pandas: что где делать — Ассоциативный гайд</title>
+<meta name="description" content="Где считать в SQL, а где в pandas: объём данных, индексы, пересылка, гибридный подход и антипаттерны.">
+<link rel="stylesheet" href="assets/style.css">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#fbf8f2" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#14131a" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="assets/icons/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="assets/icons/icon-180.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Гайд Py/SQL">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+</head>
+<body data-slug="ch-25-sql-vs-pandas">
+<div class="app">
+  <aside class="sidebar" id="sidebar"></aside>
+  <main>
+    <div class="wrap">
+
+      <header class="chapter-head">
+        <div class="eyebrow">
+          <span class="part">Часть V · Интеграция</span>
+          <span class="dot"></span>
+          <span>Неделя 8 · день 1</span>
+          <span class="dot"></span>
+          <span>готово</span>
+        </div>
+        <h1>SQL или pandas: что где делать
+          <span class="sub">Два инструмента для одной задачи — но с разной ценой</span>
+        </h1>
+        <p class="lead">
+          Мы умеем и то, и другое. Остался главный инженерный вопрос: где считать. Ответ почти всегда
+          начинается со слов «зависит от объёма и от того, что будет дальше» — и дальше уже конкретика.
+        </p>
+        <div class="meta">
+          <span class="chip">⏱ <b>35 минут</b></span>
+          <span class="chip">🎯 уровень <b>3 — понимать</b></span>
+          <span class="chip">🧠 <b>архитектура</b></span>
+          <span class="chip">📚 <b>интеграция</b></span>
+        </div>
+      </header>
+
+      <details class="glossary">
+        <summary>Словарь главы — если забыли термины</summary>
+        <dl>
+          <dt>гибрид</dt><dd>SQL фильтрует и агрегирует, pandas дооформляет небольшой результат.</dd>
+          <dt>N+1</dt><dd>N запросов вместо одного — цикл по объектам с запросом на каждый.</dd>
+          <dt>выгрузка</dt><dd>Передача строк из базы в память приложения; цена — объём и время.</dd>
+          <dt>агрегат в БД</dt><dd>GROUP BY на стороне базы: наружу уходит несколько строк, а не миллионы.</dd>
+        </dl>
+      </details>
+
+
+      <section>
+        <h2><span class="num">01</span>Зачем это backend-разработчику</h2>
+        <ul>
+          <li><strong>Производительность:</strong> выгрузить миллион строк в приложение, чтобы посчитать пять чисел, — дорого.</li>
+          <li><strong>Память:</strong> DataFrame на миллионы строк может уронить процесс.</li>
+          <li><strong>Читаемость:</strong> агрегат в SQL — одна строка запроса; то же в pandas — цепочка методов.</li>
+          <li><strong>Собеседование:</strong> «где считать агрегаты», «почему не выгружаете всё в pandas», «как избежать N+1».</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2><span class="num">02</span>Ассоциация-якорь: склад и верстак</h2>
+
+        <div class="anchor">
+          <div class="glyph">🏭</div>
+          <div>
+            <div class="t">Держите эту картинку в голове</div>
+            <p class="kick"><strong>База — склад.</strong> Там хранятся данные, есть индексы и погрузчики
+            (агрегаты, соединения). Забирать на верстак (в pandas) нужно только то, что реально понадобится.</p>
+            <p><strong>pandas — верстак.</strong> На нём удобно вырезать, склеивать, экспериментировать
+            и рисовать. Но тащить на верстак весь склад — плохая идея.</p>
+          </div>
+        </div>
+
+        <figure class="art">
+          <div class="frame">
+            <img src="assets/illustrations/25-sql-vs-pandas.webp" width="1168" height="876" loading="lazy" decoding="async" alt="Склад с высокими стеллажами и столярный верстак с инструментами по соседству.">
+          </div>
+          <figcaption><b>Рис. 1.</b> Склад и верстак: SQL — склад, pandas — верстак; выбор зависит от задачи.</figcaption>
+        </figure>
+
+      </section>
+
+      <section>
+        <h2><span class="num">03</span>Ассоциативный ряд: восемь звеньев</h2>
+        <ol class="chain">
+          <li><b>фильтр в SQL</b><span>WHERE до выгрузки</span></li>
+          <li><b>агрегат в SQL</b><span>GROUP BY в базе</span></li>
+          <li><b>соединение в SQL</b><span>JOIN в базе</span></li>
+          <li><b>мало строк</b><span>только нужное в память</span></li>
+          <li><b>исследование</b><span>pandas для гипотез</span></li>
+          <li><b>сложные преобразования</b><span>melt/pivot/str/dt</span></li>
+          <li><b>визуализация</b><span>графики и отчёты</span></li>
+          <li><b>запись обратно</b><span>результат в базу</span></li>
+        </ol>
+      </section>
+
+      <section>
+        <h2><span class="num">04</span>Схема: где что считать</h2>
+
+        <figure>
+          <div class="frame">
+            <img src="assets/maps/sql-vs-pandas.svg" alt="База данных с индексами и pandas с DataFrame; стрелка «5 строк вместо 100 000».">
+          </div>
+          <figcaption>
+            <b>Рис. 2.</b> Один и тот же вопрос: в базе — 20.8 мс и 5 строк по сети; в pandas — выгрузка
+            100 000 строк (1.1 МБ) и 43 мс на всё.
+          </figcaption>
+        </figure>
+      </section>
+
+      <section>
+        <h2><span class="num">05</span>Как это устроено на самом деле</h2>
+
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Ситуация</th><th>Лучше</th><th>Почему</th></tr></thead>
+            <tbody>
+              <tr><td>большие данные, нужен агрегат</td><td>SQL</td><td>данные не покидают базу</td></tr>
+              <tr><td>нужны индексы и конкурентный доступ</td><td>SQL</td><td>база оптимизирует план</td></tr>
+              <tr><td>отчёт по расписанию</td><td>SQL</td><td>стабильно и без памяти приложения</td></tr>
+              <tr><td>исследование, много гипотез</td><td>pandas</td><td>быстрые итерации без миграций</td></tr>
+              <tr><td>сложные преобразования формы</td><td>pandas</td><td>melt/pivot/explode гибче</td></tr>
+              <tr><td>маленькая выгрузка, графики</td><td>pandas</td><td>удобно и наглядно</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>Гибрид — норма</h3>
+        <p>
+          Типичный путь: база фильтрует и агрегирует → в pandas приходит небольшой результат →
+          приложение строит отчёт. Плохо, когда всё наоборот: приложение тащит сырые строки, чтобы
+          посчитать <code class="inl">SUM</code>, который база сделала бы за миллисекунды.
+        </p>
+
+        <h3>N+1 — отдельная болезнь</h3>
+        <p>
+          Цикл «для каждого пользователя — отдельный запрос» превращается в сотни обращений к базе.
+          Решение — один запрос с JOIN/GROUP BY или одна выгрузка нужных id и один запрос по ним.
+        </p>
+      </section>
+
+      <section>
+        <h2><span class="num">06</span>Лаборатория: честный замер</h2>
+        <p>
+          Фрагменты файлов
+          <a title="Открыть файл с номерами строк" href="snippets/view.html?f=25_benchmark.sql"><code class="inl">25_benchmark.sql</code></a> и
+          <a title="Открыть файл с номерами строк" href="snippets/view.html?f=25_benchmark.py"><code class="inl">25_benchmark.py</code></a>.
+          Одна и та же задача на <code class="inl">orders_big</code> (100 000 строк, PostgreSQL 14)
+          и в pandas 3.0 на этой машине. Замер — ориентир, а не абсолют.
+        </p>
+
+        <h3>Вариант 1: считает SQL</h3>
+        <div class="code">
+          <div class="bar"><span class="file">25_benchmark.sql</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">SELECT user_id, SUM(quantity * price) AS revenue
+FROM orders_big o
+JOIN products p ON p.id = o.product_id
+GROUP BY user_id
+ORDER BY user_id;</pre>
+          <div class="out"> user_id |   revenue
+---------+--------------
+       1 | 420169550.00
+       2 | 420202650.00
+       3 | 420130350.00
+       4 | 420127800.00
+       5 | 420169100.00
+
+Time: 20.819 ms</div>
+        </div>
+
+        <h3>Вариант 2: выгрузить всё и посчитать в pandas</h3>
+        <p>Сначала выгружаем строки в CSV — это и есть цена «забрать всё на верстак»:</p>
+        <div class="code">
+          <div class="bar"><span class="file">экспорт</span><span class="lang">shell</span><button class="copy">копировать</button></div>
+          <pre>psql -d learning_shop -c "\copy (
+  SELECT o.user_id, o.quantity, p.price
+  FROM orders_big o JOIN products p ON p.id = o.product_id
+) TO '/tmp/big_orders.csv' CSV HEADER"</pre>
+        </div>
+        <div class="code">
+          <div class="bar"><span class="file">25_benchmark.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">df = pd.read_csv("/tmp/big_orders.csv")        # 100 000 строк, 1.1 МБ
+df["revenue"] = df["quantity"] * df["price"]
+result = df.groupby("user_id")["revenue"].sum()</pre>
+          <div class="out">rows: 100000
+read_csv: 9.4 ms
+groupby:  4.0 ms
+total:    13.4 ms
+
+(плюс экспорт из базы: ~30 ms, файл 1.1 МБ)</div>
+        </div>
+
+        <h3>Что показывают цифры</h3>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Путь</th><th>Время</th><th>Что пересекло границу</th></tr></thead>
+            <tbody>
+              <tr><td>SQL-агрегат</td><td><b>20.8 мс</b></td><td>5 строк</td></tr>
+              <tr><td>Экспорт + pandas</td><td><b>~43 мс</b></td><td>100 000 строк, 1.1 МБ</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>
+          На 100 000 строк разница примерно вдвое — не катастрофа. Но она растёт линейно с объёмом,
+          а память pandas — тоже. На 10 миллионах строк вопрос «где считать» перестаёт быть вкусовым.
+        </p>
+        <p>
+          И наоборот: если данных мало и их нужно много раз резать по-разному, pandas выигрывает по
+          скорости итераций. Поэтому в реальности выбирают по объёму и по числу вопросов к данным.
+        </p>
+      </section>
+
+      <section>
+        <h2><span class="num">07</span>Мост: одно и то же в двух мирах</h2>
+        <div class="code">
+          <div class="bar"><span class="file">SQL</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">SELECT p.category, SUM(o.quantity * p.price) AS revenue
+FROM orders o JOIN products p ON p.id = o.product_id
+GROUP BY p.category
+ORDER BY revenue DESC;</pre>
+        </div>
+        <div class="code">
+          <div class="bar"><span class="file">pandas</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">merged = orders.merge(products, left_on="product_id", right_on="id")
+merged["revenue"] = merged["quantity"] * merged["price"]
+merged.groupby("category")["revenue"].sum().sort_values(ascending=False)</pre>
+        </div>
+        <p>
+          Оба варианта правильные. Выбор — по объёму, частоте и тому, где удобнее поддерживать код.
+        </p>
+      </section>
+
+      <section>
+        <h2><span class="num">08</span>Шесть ошибок, на которых спотыкаются</h2>
+
+        <div class="errors">
+          <div class="err">
+            <div class="h">SELECT * и всё в память</div>
+            <p>Выгружается больше, чем нужно, — медленно и дорого по памяти.</p>
+            <div class="fix">Выбирать колонки, фильтровать в SQL, агрегировать до выгрузки.</div>
+          </div>
+          <div class="err">
+            <div class="h">N+1 запросов</div>
+            <p>Цикл по объектам с отдельным запросом на каждый.</p>
+            <div class="fix">Один JOIN/GROUP BY или пакетный запрос по списку id.</div>
+          </div>
+          <div class="err">
+            <div class="h">Агрегат в Python над миллионами строк</div>
+            <p>То, что база делает с индексом, pandas делает в памяти.</p>
+            <div class="fix">GROUP BY в SQL, в pandas — только небольшая сводка.</div>
+          </div>
+          <div class="err">
+            <div class="h">pandas вместо отчёта по расписанию</div>
+            <p>Скрипт держит всё в памяти и падает при росте данных.</p>
+            <div class="fix">Отчёт строит база, приложение забирает результат.</div>
+          </div>
+          <div class="err">
+            <div class="h">SQL ради каждой мелочи</div>
+            <p>Десятки запросов на простые преобразования, которые pandas делает за один шаг.</p>
+            <div class="fix">Сначала выгрузить нужное, потом преобразовывать в pandas.</div>
+          </div>
+          <div class="err">
+            <div class="h">Забыть про NULL при переносе</div>
+            <p>SQL и pandas по-разному трактуют NULL в groupby и сравнениях.</p>
+            <div class="fix">Сверять число строк и суммы после каждого переноса.</div>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h2><span class="num">09</span>Вопросы с собеседования</h2>
+        <div class="qa">
+          <details>
+            <summary>Где считать агрегаты — в SQL или pandas?</summary>
+            <div class="a">
+              <p>По умолчанию в SQL: меньше данных покидает базу. В pandas — если данные уже загружены и нужны быстрые итерации.</p>
+              <div class="verdict">Резюме: ближе к данным считать, ближе к человеку — показывать.</div>
+            </div>
+          </details>
+          <details>
+            <summary>Почему не стоит выгружать всё в pandas?</summary>
+            <div class="a">
+              <p>Пересылка и память растут линейно с объёмом; миллионы строк могут уронить процесс. База умеет фильтровать и агрегировать дешевле.</p>
+              <div class="verdict">Резюме: не тащить склад на верстак.</div>
+            </div>
+          </details>
+          <details>
+            <summary>Что такое N+1?</summary>
+            <div class="a">
+              <p>Ситуация, когда для N объектов делается N дополнительных запросов. Решается JOIN или пакетным запросом.</p>
+              <div class="verdict">Резюме: один запрос вместо цикла.</div>
+            </div>
+          </details>
+          <details>
+            <summary>Когда pandas лучше SQL?</summary>
+            <div class="a">
+              <p>Исследование, сложные преобразования формы, визуализация, данные из разных источников (CSV, API), быстрые гипотезы.</p>
+              <div class="verdict">Резюме: гибкость важнее скорости на малых объёмах.</div>
+            </div>
+          </details>
+          <details>
+            <summary>Когда SQL лучше pandas?</summary>
+            <div class="a">
+              <p>Большие данные, конкурентный доступ, отчёты по расписанию, необходимость индексов и транзакций.</p>
+              <div class="verdict">Резюме: там, где данные живут.</div>
+            </div>
+          </details>
+          <details>
+            <summary>Как переносить данные между ними?</summary>
+            <div class="a">
+              <p>Выгрузка результата запроса в DataFrame, запись результата обратно в таблицу; для больших объёмов — пакетами и с фильтром.</p>
+              <div class="verdict">Резюме: граница — маленький результат, а не сырьё.</div>
+            </div>
+          </details>
+          <details>
+            <summary>Как проверить, что перенос не исказил данные?</summary>
+            <div class="a">
+              <p>Сверить число строк, суммы и количество NULL до и после; повторить тот же агрегат в обоих мирах.</p>
+              <div class="verdict">Резюме: контрольные суммы.</div>
+            </div>
+          </details>
+          <details>
+            <summary>Что важнее — скорость или читаемость?</summary>
+            <div class="a">
+              <p>Зависит от контекста: для отчёта по расписанию — скорость; для исследования — читаемость и гибкость.</p>
+              <div class="verdict">Резюме: инженерное решение, а не догма.</div>
+            </div>
+          </details>
+        </div>
+      </section>
+
+      <section>
+        <h2><span class="num">10</span>Три задачи: сначала своя попытка</h2>
+
+        <h3><span style="color:var(--muted);font-family:var(--mono);font-size:.8rem">01</span> Пять чисел</h3>
+        <p>Нужны выручка, число заказов и средний чек по месяцам. Где считать и почему?</p>
+        <div class="qa">
+          <details>
+            <summary>Показать решение</summary>
+            <div class="a">
+              <p><strong>В SQL:</strong> GROUP BY по месяцу, три агрегата, несколько строк результата.</p>
+              <div class="code" style="margin-top:8px">
+                <div class="bar"><span class="file">решение</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+                <pre data-lang="sql">SELECT DATE_TRUNC('month', created_at)::date AS month,
+       COUNT(*) AS orders,
+       SUM(quantity * price) AS revenue,
+       ROUND(AVG(quantity * price), 2) AS avg_check
+FROM orders o JOIN products p ON p.id = o.product_id
+GROUP BY 1 ORDER BY 1;</pre>
+              </div>
+              <p><strong>Почему.</strong> Данные не покидают базу; pandas получил бы миллионы строк ради той же таблицы.</p>
+            </div>
+          </details>
+        </div>
+
+        <h3><span style="color:var(--muted);font-family:var(--mono);font-size:.8rem">02</span> Исследование</h3>
+        <p>Нужно проверить пять гипотез о поведении пользователей. Где считать?</p>
+        <div class="qa">
+          <details>
+            <summary>Показать ответ</summary>
+            <div class="a">
+              <p><strong>В pandas:</strong> один раз выгрузить нужный срез (не всю базу), затем быстро проверять
+              гипотезы без новых запросов. Не забыть про память и размер выгрузки.</p>
+              <div class="verdict">Резюме: гибкость важнее, объём — под контролем.</div>
+            </div>
+          </details>
+        </div>
+
+        <h3><span style="color:var(--muted);font-family:var(--mono);font-size:.8rem">03</span> N+1</h3>
+        <p>Код: <code class="inl">for user in users: orders = get_orders(user.id)</code>. Что не так и как исправить?</p>
+        <div class="qa">
+          <details>
+            <summary>Показать ответ</summary>
+            <div class="a">
+              <p>Это N+1: N запросов вместо одного. Исправление — JOIN/GROUP BY или один запрос
+              <code class="inl">WHERE user_id IN (...)</code> с последующей группировкой в памяти.</p>
+              <div class="verdict">Резюме: один запрос — много строк.</div>
+            </div>
+          </details>
+        </div>
+      </section>
+
+      <section>
+        <h2><span class="num">11</span>Чек-лист освоения</h2>
+        <div class="check">
+          <label><input type="checkbox"><span class="box"></span><span class="txt">Оценить цену выгрузки 100 000 строк</span></label>
+          <label><input type="checkbox"><span class="box"></span><span class="txt">Выбрать место для агрегата и объяснить</span></label>
+          <label><input type="checkbox"><span class="box"></span><span class="txt">Найти и исправить N+1</span></label>
+          <label><input type="checkbox"><span class="box"></span><span class="txt">Сформулировать гибридный сценарий</span></label>
+          <label><input type="checkbox"><span class="box"></span><span class="txt">Проверить перенос контрольными суммами</span></label>
+        </div>
+      </section>
+
+      <section>
+        <h2><span class="num">12</span>Куда ведут мостики</h2>
+        <div class="bridges">
+          <a class="bridge" href="ch-24-indexes-explain.html"><span class="to">Глава 24</span><span>Индексы и EXPLAIN</span><span class="what">→ стоимость запроса</span></a>
+          <a class="bridge" href="ch-26-project.html"><span class="to">Глава 26</span><span>Проект</span><span class="what">→ применить выбор</span></a>
+          <a class="bridge" href="ch-12-series-dataframe.html"><span class="to">Глава 12</span><span>Series и DataFrame</span><span class="what">→ данные на верстаке</span></a>
+          <a class="bridge" href="ch-15-groupby.html"><span class="to">Глава 15</span><span>groupby</span><span class="what">→ агрегат в pandas</span></a>
+        </div>
+      </section>
+
+      <div class="pager">
+        <a class="prev" href="ch-24-indexes-explain.html"><span class="dir">← Назад</span><span class="ttl">24 · индексы и EXPLAIN</span></a>
+        <a class="next" href="ch-26-project.html"><span class="dir">Дальше →</span><span class="ttl">26 · проект: отчёт из нескольких таблиц</span></a>
+      </div>
+
+    </div>
+  </main>
+</div>
+<script src="assets/toc.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>

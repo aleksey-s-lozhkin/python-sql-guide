@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 470" role="img" aria-labelledby="t1 d1">
+  <title id="t1">SQL считает там, где живут данные; pandas исследует то, что уже загружено</title>
+  <desc id="d1">Слева база с индексами и агрегацией, справа pandas с DataFrame; между ними стрелка «только нужные строки».</desc>
+  <defs>
+    <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#8a7f73"/>
+    </marker>
+    <style>
+      .h { font: 700 14px system-ui, -apple-system, "Segoe UI", sans-serif; fill: #1d1b26; }
+      .lbl { font: 700 10px system-ui, -apple-system, "Segoe UI", sans-serif; fill: #8a7f73; letter-spacing: .1em; }
+      .s { font: 400 12.5px system-ui, -apple-system, "Segoe UI", sans-serif; fill: #4a4458; }
+      .n { font: 400 12px system-ui, -apple-system, "Segoe UI", sans-serif; fill: #7a7285; }
+      .v { font: 500 12px ui-monospace, "SF Mono", Menlo, monospace; fill: #1d1b26; }
+      .r { font: 700 12px ui-monospace, "SF Mono", Menlo, monospace; fill: #a23b3b; }
+      .g { font: 700 12px ui-monospace, "SF Mono", Menlo, monospace; fill: #2f6b4f; }
+    </style>
+  </defs>
+
+  <text class="lbl" x="40" y="34">БАЗА ДАННЫХ</text>
+  <text class="lbl" x="640" y="34">PYTHON / PANDAS</text>
+
+  <!-- DB -->
+  <rect x="40" y="52" width="380" height="220" rx="14" fill="#fff" stroke="#b9cfe6"/>
+  <ellipse cx="230" cy="86" rx="90" ry="14" fill="#eef4fb" stroke="#b9cfe6"/>
+  <path d="M140,86 L140,150 A90,14 0 0 0 320,150 L320,86" fill="none" stroke="#b9cfe6"/>
+  <ellipse cx="230" cy="150" rx="90" ry="14" fill="#eef4fb" stroke="#b9cfe6"/>
+  <text class="h" x="196" y="118">данные</text>
+  <text class="n" x="176" y="138">индексы, объём</text>
+
+  <text class="s" x="70" y="196">Фильтрация, соединения, агрегаты —</text>
+  <text class="s" x="70" y="218">рядом с данными, без пересылки.</text>
+  <text class="g" x="70" y="248" style="font-size:11.5px">100 000 строк → 5 строк · 20.8 мс</text>
+
+  <!-- pandas -->
+  <rect x="640" y="52" width="300" height="220" rx="14" fill="#fff" stroke="#9cc0a8"/>
+  <rect x="660" y="74" width="260" height="34" fill="#e9f2ec" stroke="#9cc0a8"/>
+  <text class="v" x="676" y="96">DataFrame</text>
+  <rect x="660" y="116" width="260" height="28" fill="#fff" stroke="#d8d1c6"/>
+  <text class="v" x="676" y="135">groupby · merge · pivot</text>
+  <rect x="660" y="152" width="260" height="28" fill="#fff" stroke="#d8d1c6"/>
+  <text class="v" x="676" y="171">isna · str · dt</text>
+  <rect x="660" y="188" width="260" height="28" fill="#fff" stroke="#d8d1c6"/>
+  <text class="v" x="676" y="207">to_csv · plot</text>
+  <text class="n" x="660" y="240">Гибкие преобразования и анализ</text>
+  <text class="n" x="660" y="260">уже загруженных данных</text>
+
+  <!-- arrow -->
+  <path d="M430,170 L624,170" fill="none" stroke="#8a7f73" stroke-width="2" marker-end="url(#ar)"/>
+  <text class="s" x="444" y="150">5 строк</text>
+  <text class="n" x="444" y="132">вместо 100 000</text>
+  <text class="n" x="444" y="194">1.1 МБ против 5 строк</text>
+
+  <!-- comparison -->
+  <rect x="40" y="300" width="900" height="76" rx="10" fill="#f4f1ea" stroke="#e0d9cd"/>
+  <text class="s" x="60" y="326">Ответ «пять чисел»: SQL посчитал за 20.8 мс и вернул 5 строк; вариант «выгрузить всё и посчитать в pandas» —</text>
+  <text class="s" x="60" y="350">экспорт 30 мс + чтение 9 мс + groupby 4 мс ≈ 43 мс и 100 000 строк в памяти (1.1 МБ).</text>
+
+  <rect x="40" y="392" width="900" height="64" rx="10" fill="#fff" stroke="#d8d1c6"/>
+  <text class="n" x="60" y="416">Исследование данных: один раз выгрузить и много раз резать в pandas — удобно и оправданно.</text>
+  <text class="n" x="60" y="438">Отчёт по расписанию: пусть считает база, приложение получает готовый результат.</text>
+</svg>

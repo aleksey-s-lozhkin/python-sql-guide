@@ -1,0 +1,754 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Справочник · tuple: опечатанный контейнер — Ассоциативный гайд</title>
+<meta name="description" content="Справочник по tuple: неизменяемость, hashable, методы count и index, операторы, срезы, распаковка, namedtuple и dataclass(frozen=True) — с реальным выводом.">
+<link rel="stylesheet" href="assets/style.css">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#fbf8f2" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#14131a" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="assets/icons/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="assets/icons/icon-180.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Гайд Py/SQL">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+</head>
+<body data-slug="ref-tuple">
+<div class="app">
+  <aside class="sidebar" id="sidebar"></aside>
+  <main>
+    <div class="wrap">
+
+      <header class="chapter-head">
+        <div class="eyebrow">
+          <span class="part">Справочник · Python-коллекции</span>
+          <span class="dot"></span>
+          <span>тип 3 из 9</span>
+          <span class="dot"></span>
+          <span>готово</span>
+        </div>
+        <h1>tuple: опечатанный контейнер
+          <span class="sub">Неизменяемая запись, ключ словаря и возврат нескольких значений</span>
+        </h1>
+        <p class="lead">
+          <code class="inl">tuple</code> — это последовательность, которую нельзя изменить после создания.
+          Здесь собрано, что из этого следует: всего два метода, зато полный набор операторов, срезов и
+          распаковки, стабильный хеш для ключей — и границы, за которыми нужен список или dataclass.
+        </p>
+        <div class="meta">
+          <span class="chip">⏱ <b>12 минут</b></span>
+          <span class="chip">🎯 уровень <b>1–2</b></span>
+          <span class="chip">🐍 Python <b>3.12</b></span>
+          <span class="chip">📚 <b>глава 03</b></span>
+        </div>
+      </header>
+
+      <p class="small">
+        Типы справочника: <a href="appendix-types.html">вся карта</a> ·
+        <a href="ref-str.html">str</a> · <a href="ref-list.html">list</a> ·
+        <b>tuple</b> · <a href="ref-dict.html">dict</a> ·
+        <a href="ref-set.html">set</a> · <a href="ref-frozenset.html">frozenset</a> ·
+        <a href="ref-counter.html">Counter</a> · <a href="ref-defaultdict.html">defaultdict</a> ·
+        <a href="ref-deque.html">deque</a>
+      </p>
+
+      <div class="tldr">
+        <div class="t">Самое главное</div>
+        <ul>
+          <li><code class="inl">tuple</code> — неизменяемая запись: элемент нельзя заменить, длину нельзя
+              изменить. Зато он компактнее списка и <b>hashable</b>, если hashable все элементы.</li>
+          <li>Методов всего два — <code class="inl">count</code> и <code class="inl">index</code>. Всё
+              остальное — операторы <code class="inl">+</code>, <code class="inl">*</code>,
+              <code class="inl">in</code>, <code class="inl">len</code>, срезы и распаковка.</li>
+          <li>Годится в ключ <code class="inl">dict</code> и в <code class="inl">set</code>. Если данные
+              будут меняться — берите <code class="inl">list</code> или
+              <code class="inl">dataclass</code>, а не «кортеж, который придётся пересобирать».</li>
+        </ul>
+      </div>
+
+      <!-- ══════════════════ 01. Что это ══════════════════ -->
+      <section>
+        <h2><span class="num">01</span>Что это и как устроено</h2>
+        <p>
+          Кортеж хранит <em>упорядоченный набор объектов</em>, зафиксированный при создании. Порядок — часть
+          данных: <code class="inl">(1, 2)</code> и <code class="inl">(2, 1)</code> — разные кортежи,
+          а доступ по индексу — O(1).
+        </p>
+        <p>
+          Внутри CPython — тот же массив указателей, что у списка, но без запаса на рост и без методов,
+          меняющих длину. Размер известен при создании, поэтому кортеж компактнее (64 байта против 88
+          для трёх чисел) и быстрее создаётся. Главное следствие неизменяемости — <b>hashable</b>:
+          если все элементы тоже hashable, у кортежа есть стабильный хеш, и его можно использовать
+          как ключ словаря или элемент множества.
+        </p>
+        <p class="small">
+          Неизменяемость неглубокая: ссылки заменить нельзя, а вложенный список менять можно — и тогда
+          кортеж перестаёт быть hashable. Подробный разбор — в
+          <a href="ch-03-list-tuple.html">главе 03</a>.
+        </p>
+
+        <div class="anchor">
+          <div class="glyph">📦</div>
+          <div>
+            <div class="t">Держите эту картинку в голове</div>
+            <p class="kick"><strong>Опечатанный контейнер.</strong> Груз загрузили один раз и запечатали:
+            внутрь не заглянуть и груз не заменить. Зато контейнер можно проштамповать номерком —
+            посчитать хеш — и отдать сразу нескольким получателям, не делая копий.</p>
+            <p>Отсюда четыре следствия: доступ по индексу за O(1), вставки и удаления нет вовсе,
+            хеш стабилен, а роль в программе — запись, ключ и возврат нескольких значений.
+            Метафору целиком разбирает <a href="ch-03-list-tuple.html">глава 03</a>.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ══════════════════ 02. Когда брать ══════════════════ -->
+      <section>
+        <h2><span class="num">02</span>Когда брать, а когда нет</h2>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Задача</th><th>tuple?</th><th>Что взять вместо</th></tr></thead>
+            <tbody>
+              <tr><td>Фиксированная запись: координата, строка БД, пара полей</td><td><b>да</b></td><td>—</td></tr>
+              <tr><td>Составной ключ словаря или элемент множества</td><td><b>да</b></td><td>—</td></tr>
+              <tr><td>Вернуть из функции несколько значений</td><td><b>да</b></td><td><code class="inl">namedtuple</code>, если по именам понятнее</td></tr>
+              <tr><td>Нужен порядок, индексы и срезы, но без изменений</td><td><b>да</b></td><td>—</td></tr>
+              <tr><td>Содержимое будет меняться: append, удаление, замена</td><td>нет</td><td><code class="inl">list</code></td></tr>
+              <tr><td>Запись с полями, именами и поведением</td><td>как основа</td><td><code class="inl">namedtuple</code> или <code class="inl">dataclass(frozen=True)</code></td></tr>
+              <tr><td>Много однотипных чисел и векторные операции</td><td>нет</td><td><code class="inl">numpy.ndarray</code></td></tr>
+              <tr><td>Данные пришли массивом и будут редактироваться</td><td>нет</td><td><code class="inl">list</code></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="small">
+          Выбор структуры — в <a href="ch-01-python-collections.html">карте коллекций</a>;
+          здесь — методы и цена.
+        </p>
+      </section>
+
+      <!-- ══════════════════ 03. Как создать ══════════════════ -->
+      <section>
+        <h2><span class="num">03</span>Как создать</h2>
+        <div class="code">
+          <div class="bar"><span class="file">ref_tuple_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">point = (10, 20)                 # литерал
+single = (42,)                   # запятая обязательна
+empty = ()
+from_list = tuple([1, 2, 3])     # из итерируемого
+nested = ((10, 20), (30, 40))    # вложенные tuple
+name = ("Anna", 1200)
+print(point)
+print(single)
+print(empty)
+print(from_list)
+print(nested)
+print(name)</pre>
+          <div class="out">(10, 20)
+(42,)
+()
+(1, 2, 3)
+((10, 20), (30, 40))
+('Anna', 1200)</div>
+        </div>
+        <p>
+          Пустой кортеж — <code class="inl">()</code>, кортеж из одного элемента —
+          <code class="inl">(42,)</code>. Из любого итерируемого собирает
+          <code class="inl">tuple(...)</code> — так же, как <code class="inl">list(...)</code>,
+          только результат неизменяем.
+        </p>
+        <div class="note">
+          <span class="t">Запятая важнее скобок</span>
+          <p><code class="inl">(1)</code> — это просто число в скобках,
+          <code class="inl">(1,)</code> — кортеж. Пустой кортеж — <code class="inl">()</code>,
+          его же даёт <code class="inl">tuple()</code>.</p>
+        </div>
+        <div class="code">
+          <div class="bar"><span class="file">ref_tuple_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">not_tuple = (1)                  # это int в скобках
+one = (1,)                       # tuple из одного элемента
+print(type(not_tuple).__name__, type(one).__name__, len(one))</pre>
+          <div class="out">int tuple 1</div>
+        </div>
+      </section>
+
+      <!-- ══════════════════ 04. Все методы ══════════════════ -->
+      <section>
+        <h2><span class="num">04</span>Все методы и операции</h2>
+        <p>
+          У кортежа всего два собственных метода — <code class="inl">count</code> и
+          <code class="inl">index</code>. Остальное — операторы и встроенные функции.
+          «Цена» — средняя сложность в CPython, где <code class="inl">n</code> — длина кортежа.
+        </p>
+
+        <h3>Методы</h3>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Метод</th><th>Что делает</th><th>Возвращает</th><th>Цена</th></tr></thead>
+            <tbody>
+              <tr><td class="mono">t.count(x)</td><td>сколько раз встречается x</td><td>int (0, если нет)</td><td>O(n)</td></tr>
+              <tr><td class="mono">t.index(x)</td><td>позиция <b>первого</b> вхождения x</td><td>int; <code class="inl">ValueError</code>, если нет</td><td>O(n)</td></tr>
+              <tr><td class="mono">t.index(x, start)</td><td>поиск начиная с позиции start</td><td>int</td><td>O(n)</td></tr>
+              <tr><td class="mono">t.index(x, start, stop)</td><td>поиск в срезе <code class="inl">[start:stop)</code></td><td>int</td><td>O(n)</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>Чтение и поиск</h3>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Запись</th><th>Что делает</th><th>Возвращает</th><th>Цена</th></tr></thead>
+            <tbody>
+              <tr><td class="mono">t[i]</td><td>элемент по индексу; отрицательный — с конца</td><td>элемент</td><td>O(1)</td></tr>
+              <tr><td class="mono">t[i:j:k]</td><td>срез; результат — тоже tuple</td><td>tuple</td><td>O(k)</td></tr>
+              <tr><td class="mono">len(t)</td><td>длина</td><td>int</td><td>O(1)</td></tr>
+              <tr><td class="mono">x in t</td><td>проверка входа перебором</td><td>bool</td><td>O(n)</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>Операторы</h3>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Запись</th><th>Что делает</th><th>Возвращает</th><th>Цена</th></tr></thead>
+            <tbody>
+              <tr><td class="mono">t1 + t2</td><td>склеивает в новый tuple</td><td>новый tuple</td><td>O(len(t1) + len(t2))</td></tr>
+              <tr><td class="mono">t * n</td><td>повторяет элементы (ссылки)</td><td>новый tuple</td><td>O(len(t) · n)</td></tr>
+              <tr><td class="mono">t += other</td><td>создаёт новый tuple, имя перепривязывается</td><td>новый tuple</td><td>O(len(t) + len(other))</td></tr>
+              <tr><td class="mono">t1 == t2</td><td>поэлементное сравнение</td><td>bool</td><td>O(n) в худшем</td></tr>
+              <tr><td class="mono">t1 &lt; t2</td><td>лексикографическое сравнение</td><td>bool</td><td>O(n) в худшем</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>Хеширование</h3>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Запись</th><th>Что делает</th><th>Возвращает</th><th>Цена</th></tr></thead>
+            <tbody>
+              <tr><td class="mono">hash(t)</td><td>хеш по элементам; нужен, чтобы быть ключом</td><td>int</td><td>O(n)</td></tr>
+              <tr><td class="mono">d[t]</td><td>доступ по tuple-ключу</td><td>значение</td><td>O(1)*</td></tr>
+              <tr><td class="mono">t in set</td><td>проверка входа для hashable tuple</td><td>bool</td><td>O(1)*</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="small">* в среднем: при плохом хеше возможна деградация до O(n), но для tuple это исключение.</p>
+
+        <div class="note">
+          <span class="t">Почему нет append и remove</span>
+          <p>Неизменяемость — это контракт, а не забытая функция: любая «изменяющая» операция над
+          кортежем возвращает новый кортеж. Поэтому <code class="inl">+</code>, <code class="inl">*</code>
+          и <code class="inl">+=</code> здесь — создание, а не мутация.</p>
+        </div>
+      </section>
+
+      <!-- ══════════════════ 05. Разбор ══════════════════ -->
+      <section>
+        <h2><span class="num">05</span>Разбор по группам</h2>
+        <p>
+          Все примеры страницы — в файле
+          <a href="snippets/view.html?f=ref_tuple_lab.py"><code class="inl">ref_tuple_lab.py</code></a>:
+          его можно запустить и менять строки.
+        </p>
+
+        <h3>count и index: два метода</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_tuple_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">orders = ("Anna", "Ivan", "Anna", "Olga")
+print(orders.count("Anna"))
+print(orders.index("Ivan"))
+print(orders.index("Anna"))      # первое вхождение, а не второе</pre>
+          <div class="out">2
+1
+0</div>
+        </div>
+        <p>
+          <code class="inl">index</code> всегда отдаёт <b>первую</b> позицию. Второе вхождение ищут
+          с указанием старта: <code class="inl">orders.index("Anna", 1)</code>. Если элемента нет,
+          <code class="inl">count</code> вернёт 0, а <code class="inl">index</code> бросит
+          <code class="inl">ValueError</code>.
+        </p>
+
+        <h3>Операторы +, *, in</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_tuple_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">a = (1, 2)
+print(a + (3,))                  # новый tuple
+print(a * 3)                     # повторение ссылок
+print(len(a), 2 in a)            # in — перебор, O(n)
+print(a == (1, 2), a &lt; (1, 3))   # сравнение по элементам</pre>
+          <div class="out">(1, 2, 3)
+(1, 2, 1, 2, 1, 2)
+2 True
+True True</div>
+        </div>
+        <p>
+          <code class="inl">+</code> и <code class="inl">*</code> создают новые кортежи. Сравнение
+          идёт по элементам слева направо, как в словаре: первый различившийся элемент решает.
+          Сравнивать кортежи с разными типами внутри (например, число и строку) нельзя — будет
+          <code class="inl">TypeError</code>.
+        </p>
+
+        <h3>Срезы</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_tuple_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">point = (10, 20, 30, 40, 50)
+print(point[0], point[-1])
+print(point[1:4])                # срез tuple — тоже tuple
+print(point[::2])
+print(point[::-1])</pre>
+          <div class="out">10 50
+(20, 30, 40)
+(10, 30, 50)
+(50, 40, 30, 20, 10)</div>
+        </div>
+        <p>
+          Формула та же, что у списка: <code class="inl">t[start:stop:step]</code>, где
+          <code class="inl">start</code> включается, <code class="inl">stop</code> — нет. Отличие
+          одно: результат — кортеж, а не список.
+        </p>
+
+        <h3>Распаковка</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_tuple_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">record = ("Anna", 1200, "2024-05-01")
+name, amount, day = record
+print(name, amount, day)
+
+first, *middle, last = (1, 2, 3, 4, 5)
+print(first, middle, last)
+
+print(*record, sep=" | ")        # распаковка в аргументы print</pre>
+          <div class="out">Anna 1200 2024-05-01
+1 [2, 3, 4] 5
+Anna | 1200 | 2024-05-01</div>
+        </div>
+        <p>
+          Число переменных должно совпадать с числом элементов — если не поставить звёздочку.
+          <code class="inl">*middle</code> собирает всё лишнее в <b>список</b>, даже если исходник —
+          кортеж. Та же звёздочка распаковывает кортеж в аргументы вызова.
+        </p>
+
+        <h3>hash и ключ словаря</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_tuple_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">point = (10, 20)
+grid = {point: "start"}
+print(grid[(10, 20)])
+print(point in grid)
+print(len({(1, 2), (1, 2), (3, 4)}))
+
+box = (1, [2, 3])                # tuple с изменяемым элементом
+try:
+    {box}
+except TypeError as e:
+    print(type(e).__name__)</pre>
+          <div class="out">start
+True
+2
+TypeError</div>
+        </div>
+        <p>
+          Два одинаковых кортежа — один и тот же ключ: <code class="inl">(1, 2)</code> и
+          <code class="inl">(1, 2)</code> сравниваются по значению. Но как только внутри появляется
+          изменяемый объект, хеш посчитать нельзя — и кортеж перестаёт быть ключом.
+        </p>
+
+        <h3>namedtuple: запись с полями</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_tuple_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">from collections import namedtuple
+
+Point = namedtuple("Point", "x y")
+p = Point(10, 20)
+print(p)
+print(p.x, p.y)
+print(p._replace(x=99))          # новый объект, исходный не меняется
+print(p)</pre>
+          <div class="out">Point(x=10, y=20)
+10 20
+Point(x=99, y=20)
+Point(x=10, y=20)</div>
+        </div>
+        <p>
+          <code class="inl">namedtuple</code> — подкласс tuple с именами полей: работает индексация,
+          распаковка и хеширование, но появляется <code class="inl">p.x</code> и читаемый
+          <code class="inl">repr</code>. <code class="inl">_replace</code> возвращает <em>новый</em>
+          объект — как и положено неизменяемой записи.
+        </p>
+
+        <h3>dataclass(frozen=True): альтернатива</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_tuple_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">from dataclasses import dataclass, FrozenInstanceError
+
+@dataclass(frozen=True)
+class Order:
+    user: str
+    amount: int
+
+o = Order("Anna", 1200)
+print(o)
+print(o.user)
+try:
+    o.amount = 500               # поля заморожены
+except FrozenInstanceError as e:
+    print(type(e).__name__)</pre>
+          <div class="out">Order(user='Anna', amount=1200)
+Anna
+FrozenInstanceError</div>
+        </div>
+        <p>
+          Когда у записи есть имена, типы и методы, <code class="inl">dataclass(frozen=True)</code>
+          читается лучше безымянного кортежа — и остаётся hashable. Если заморозка не нужна,
+          <code class="inl">frozen=False</code> даёт изменяемую запись, которой не страшны
+          «пересборки» кортежа.
+        </p>
+
+        <h3>t += (x,): новый объект, а не мутация</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_tuple_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">def add_item(record, item):
+    record += (item,)            # для tuple это новый объект и новая привязка
+    return record
+
+original = ("Anna",)
+updated = add_item(original, "Olga")
+print(original)
+print(updated)</pre>
+          <div class="out">('Anna',)
+('Anna', 'Olga')</div>
+        </div>
+        <p>
+          Внутри функции <code class="inl">+=</code> перепривязал локальное имя, но исходный кортеж
+          вызывающего не изменился: кортеж неизменяем. Со списком тот же код менял бы данные
+          снаружи — поэтому «добавить элемент» к записи означает «вернуть новую запись».
+        </p>
+
+        <h3>t * 2 с вложенным списком</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_tuple_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">row = ([1],)
+doubled = row * 2
+doubled[0].append(2)             # обе позиции смотрят на один список
+print(doubled)
+print(row)</pre>
+          <div class="out">([1, 2], [1, 2])
+([1, 2],)</div>
+        </div>
+        <p>
+          Умножение повторяет <em>ссылки</em>, а не создаёт новые объекты. Внутри обеих позиций —
+          один и тот же список, поэтому он изменился в двух местах сразу. Кортеж защищает только
+          саму структуру, но не содержимое вложенных изменяемых объектов.
+        </p>
+      </section>
+
+      <!-- ══════════════════ 06. Сценарии ══════════════════ -->
+      <section>
+        <h2><span class="num">06</span>Три сценария из практики</h2>
+
+        <h3>Запись заказа и распаковка</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_tuple_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">order = ("Anna", 1200, "2024-05-01", "paid", "gift")
+user, amount, day, *flags = order
+print(user, amount, day)
+print(flags)</pre>
+          <div class="out">Anna 1200 2024-05-01
+['paid', 'gift']</div>
+        </div>
+        <p>
+          Строка из БД или ответ сервиса часто приходит кортежем фиксированной структуры. Распаковка
+          даёт имена полям без словаря, а звёздочка забирает необязательный хвост. Если полей много
+          и они повторяются в коде — пора в <code class="inl">namedtuple</code>.
+        </p>
+
+        <h3>Составной ключ: (пользователь, день)</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_tuple_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">orders = [
+    ("Anna", "2024-05-01", 1200),
+    ("Anna", "2024-05-01", 500),
+    ("Olga", "2024-05-01", 1500),
+    ("Ivan", "2024-05-02", 800),
+]
+totals = {}
+for user, day, amount in orders:
+    key = (user, day)            # составной ключ
+    totals[key] = totals.get(key, 0) + amount
+
+for key in sorted(totals):
+    print(key, totals[key])</pre>
+          <div class="out">('Anna', '2024-05-01') 1700
+('Ivan', '2024-05-02') 800
+('Olga', '2024-05-01') 1500</div>
+        </div>
+        <p>
+          Два поля вместо склейки строк вроде <code class="inl">"Anna|2024-05-01"</code>: не нужен
+          разделитель, который может встретиться в данных, и сортировка идёт по полям по очереди.
+          В pandas это <code class="inl">MultiIndex</code>, в SQL — составной
+          <code class="inl">PRIMARY KEY</code> или <code class="inl">GROUP BY</code> по двум колонкам.
+        </p>
+
+        <h3>Возврат нескольких значений</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_tuple_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">def order_stats(amounts):
+    return min(amounts), max(amounts), sum(amounts)
+
+low, high, total = order_stats([1200, 800, 1500])
+print(low, high, total)
+
+orders = [("Anna", 1200), ("Olga", 1500), ("Ivan", 800)]
+first, *other = orders
+print(first)
+print(other)</pre>
+          <div class="out">800 1500 3500
+('Anna', 1200)
+[('Olga', 1500), ('Ivan', 800)]</div>
+        </div>
+        <p>
+          <code class="inl">return a, b, c</code> — это возврат одного кортежа. Поэтому функция
+          «верни статистику» не требует словаря, а вызывающий код читается как присваивание.
+          Список заказов при этом распаковывается звёздочкой: первый элемент отдельно, остальные —
+          списком.
+        </p>
+      </section>
+
+      <!-- ══════════════════ 07. Ошибки ══════════════════ -->
+      <section>
+        <h2><span class="num">07</span>Пять ошибок, на которых спотыкаются</h2>
+        <div class="errors">
+          <div class="err">
+            <div class="h">Путать (1) и (1,)</div>
+            <p><code class="inl">(1)</code> — это число в скобках, а не кортеж: тип <code class="inl">int</code>, и распаковка не сработает. Кортеж из одного элемента всегда с запятой.</p>
+            <div class="fix">Один элемент — <code class="inl">(1,)</code>; пустой — <code class="inl">()</code>; проверка — <code class="inl">type(x).__name__</code>.</div>
+          </div>
+
+          <div class="err">
+            <div class="h">tuple с изменяемым элементом в ключах</div>
+            <p><code class="inl">{("anna", ["IT"]): 1200}</code> падает с <code class="inl">TypeError: unhashable type: 'list'</code>: хеш кортежа считается по элементам, а у списка хеша нет.</p>
+            <div class="fix">Внутри ключа — только hashable: строки, числа, tuple, <code class="inl">frozenset</code>. Для изменяемых полей — сериализация в строку или dataclass.</div>
+          </div>
+
+          <div class="err">
+            <div class="h">tuple для данных, которые будут меняться</div>
+            <p>Каждое «изменение» превращается в пересборку: <code class="inl">t = t[:i] + (x,) + t[i+1:]</code> — O(n) и новый объект. Код становится длиннее, а выигрыша нет.</p>
+            <div class="fix">Если содержимое меняется — <code class="inl">list</code>; если меняется запись с полями — <code class="inl">dataclass</code> (frozen или обычный).</div>
+          </div>
+
+          <div class="err">
+            <div class="h">Ждать от t += (x,) мутации</div>
+            <p>У кортежа <code class="inl">+=</code> создаёт новый объект и перепривязывает имя. Внутри функции исходный кортеж вызывающего не изменится — в отличие от списка.</p>
+            <div class="fix">Возвращайте результат: <code class="inl">return record + (item,)</code>, и присваивайте его вызывающему коду.</div>
+          </div>
+
+          <div class="err">
+            <div class="h">t * 2 с вложенным списком</div>
+            <p>Повторение копирует ссылки: <code class="inl">([1],) * 2</code> даёт две позиции, указывающие на один список. Изменили одну — изменились обе.</p>
+            <div class="fix">Не кладите изменяемые объекты в tuple; для независимых копий — сборка comprehension'ом или <code class="inl">copy.deepcopy</code>.</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ══════════════════ 08. Мини-проверка ══════════════════ -->
+      <section>
+        <h2><span class="num">08</span>Мини-проверка</h2>
+        <p>Пять вопросов и две задачи. Сначала своя попытка — потом спойлер.</p>
+
+        <div class="qa">
+          <details>
+            <summary>Чем tuple отличается от list, если не считать скобок?</summary>
+            <div class="a">
+              <p><strong>Тезис:</strong> list изменяем, tuple — нет.</p>
+              <p><strong>Механика:</strong> кортеж выделяется ровно под свои элементы и не умеет менять
+              длину; из неизменяемости растут компактность, скорость создания и hashable. Список держит
+              запас на рост и умеет вставки-удаления, но ключом быть не может.</p>
+              <p><strong>Ограничение:</strong> неизменяемость неглубокая — вложенный список внутри
+              кортежа менять можно, и тогда кортеж теряет хеш.</p>
+              <div class="verdict">Резюме: разница в изменяемости, а не в синтаксисе.</div>
+            </div>
+          </details>
+        </div>
+
+        <div class="qa">
+          <details>
+            <summary>Почему tuple можно положить в ключ dict, а list — нет?</summary>
+            <div class="a">
+              <p>Ключ обязан быть hashable: нужен стабильный хеш, который не поедет после вставки.
+              У кортежа хеш вычисляется по элементам и не меняется, пока не меняются элементы.
+              Список можно изменить после создания, поэтому хеша у него нет.</p>
+              <p><strong>Ограничение:</strong> хеш кортежа считается по элементам — значит, все они
+              тоже должны быть hashable.</p>
+              <div class="verdict">Резюме: hashable = неизменяемый по всему дереву.</div>
+            </div>
+          </details>
+        </div>
+
+        <div class="qa">
+          <details>
+            <summary>Что вернут count и index, если элемента несколько или его нет?</summary>
+            <div class="a">
+              <p><code class="inl">count(x)</code> считает все вхождения и возвращает 0, если элемента
+              нет. <code class="inl">index(x)</code> возвращает позицию <b>первого</b> вхождения,
+              а если элемента нет — бросает <code class="inl">ValueError</code>. У
+              <code class="inl">index</code> есть необязательные <code class="inl">start</code> и
+              <code class="inl">stop</code>, чтобы искать не с начала.</p>
+              <div class="verdict">Резюме: count — «сколько», index — «где первый».</div>
+            </div>
+          </details>
+        </div>
+
+        <div class="qa">
+          <details>
+            <summary>Зачем namedtuple и dataclass, если есть обычный tuple?</summary>
+            <div class="a">
+              <p><code class="inl">namedtuple</code> даёт те же гарантии неизменяемости, но с именами
+              полей: <code class="inl">order.user</code> вместо <code class="inl">order[0]</code>,
+              читаемый <code class="inl">repr</code> и метод <code class="inl">_replace</code>.
+              <code class="inl">dataclass(frozen=True)</code> добавляет типы, методы и возможность
+              развития класса, оставаясь hashable.</p>
+              <p><strong>Ограничение:</strong> оба чуть тяжелее голого кортежа; для «просто двух
+              чисел подряд» это лишняя церемония.</p>
+              <div class="verdict">Резюме: tuple — минимум, namedtuple — имена, dataclass — поведение.</div>
+            </div>
+          </details>
+        </div>
+
+        <div class="qa">
+          <details>
+            <summary>Как распаковать кортеж, если элементов больше, чем переменных?</summary>
+            <div class="a">
+              <p>Звёздочкой: <code class="inl">first, *rest = t</code> или
+              <code class="inl">first, *middle, last = t</code>. Переменная со звёздочкой получает
+              список, даже если исходник — кортеж; внутри одной распаковки звёздочка может быть только
+              одна.</p>
+              <div class="verdict">Резюме: без звёздочки число переменных обязано совпадать.</div>
+            </div>
+          </details>
+        </div>
+
+        <h3><span style="color:var(--muted);font-family:var(--mono);font-size:.8rem">01</span> Уникальные пары</h3>
+        <p>Дан список пар «пользователь — отдел». Уберите повторы, сохранив порядок первого появления.</p>
+        <div class="code">
+          <div class="bar"><span class="file">условие</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">pairs = [("Anna", "IT"), ("Ivan", "Sales"), ("Anna", "IT"), ("Olga", "IT")]
+# ожидается: [('Anna', 'IT'), ('Ivan', 'Sales'), ('Olga', 'IT')]</pre>
+        </div>
+        <div class="qa">
+          <details>
+            <summary>Показать решение и разбор</summary>
+            <div class="a">
+              <div class="code" style="margin-top:0">
+                <div class="bar"><span class="file">решение</span><span class="lang">python</span><button class="copy">копировать</button></div>
+                <pre data-lang="python">pairs = [("Anna", "IT"), ("Ivan", "Sales"), ("Anna", "IT"), ("Olga", "IT")]
+unique = list(dict.fromkeys(pairs))
+print(unique)</pre>
+                <div class="out">[('Anna', 'IT'), ('Ivan', 'Sales'), ('Olga', 'IT')]</div>
+              </div>
+              <p><strong>Что важно.</strong> Кортеж — hashable ключ, поэтому <code class="inl">dict.fromkeys</code>
+              работает с парами как со значениями. Словарь помнит порядок вставки, а повтор ключа
+              ничего не добавляет. С <code class="inl">set(pairs)</code> было бы короче, но порядок
+              потерялся бы.</p>
+            </div>
+          </details>
+        </div>
+
+        <h3><span style="color:var(--muted);font-family:var(--mono);font-size:.8rem">02</span> namedtuple из строки</h3>
+        <p>Строка из БД пришла кортежем. Соберите из неё запись с полями <code class="inl">user</code> и <code class="inl">amount</code>.</p>
+        <div class="code">
+          <div class="bar"><span class="file">условие</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">row = ("Anna", 1200)
+# ожидается: Order(user='Anna', amount=1200)</pre>
+        </div>
+        <div class="qa">
+          <details>
+            <summary>Показать решение и разбор</summary>
+            <div class="a">
+              <div class="code" style="margin-top:0">
+                <div class="bar"><span class="file">решение</span><span class="lang">python</span><button class="copy">копировать</button></div>
+                <pre data-lang="python">from collections import namedtuple
+
+Order = namedtuple("Order", "user amount")
+row = ("Anna", 1200)
+order = Order(*row)
+print(order)
+print(order._asdict())</pre>
+                <div class="out">Order(user='Anna', amount=1200)
+{'user': 'Anna', 'amount': 1200}</div>
+              </div>
+              <p><strong>Что важно.</strong> Звёздочка распаковывает строку в аргументы конструктора;
+              порядок полей в <code class="inl">Order</code> должен совпадать с порядком в строке.
+              <code class="inl">_asdict()</code> возвращает обычный dict — удобно для JSON и логов.</p>
+            </div>
+          </details>
+        </div>
+      </section>
+
+      <!-- ══════════════════ 09. Мостик ══════════════════ -->
+      <section>
+        <h2><span class="num">09</span>Мостик: та же идея в pandas и SQL</h2>
+
+        <h3>pandas: строки-записи и MultiIndex</h3>
+        <div class="code">
+          <div class="bar"><span class="file">мост в pandas</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">import pandas as pd
+
+df = pd.DataFrame({"user": ["Anna", "Olga"], "amount": [1200, 1500]})
+rows = list(df.itertuples(index=False))   # строки как namedtuple
+
+idx = pd.MultiIndex.from_tuples(
+    [("Anna", "2024-05-01"), ("Olga", "2024-05-01")],
+    names=["user", "day"],
+)</pre>
+        </div>
+        <p>
+          <code class="inl">itertuples</code> отдаёт строки именно как <code class="inl">namedtuple</code> —
+          с полями-колонками и без потери скорости. А <code class="inl">MultiIndex</code> — это тот самый
+          составной ключ из кортежей, только с именами уровней и поддержкой <code class="inl">loc</code>.
+        </p>
+
+        <h3>SQL: составной ключ и сравнение строк</h3>
+        <div class="code">
+          <div class="bar"><span class="file">мост в SQL</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">-- составной ключ: tuple из двух полей
+CREATE TABLE order_days (
+    user_id    int,
+    order_date date,
+    PRIMARY KEY (user_id, order_date)
+);
+
+-- сравнение «записи» целиком, как t1 &lt; t2
+WHERE (city, age) &gt; ('Москва', 30)
+
+-- группировка по tuple-ключу
+GROUP BY user_id, order_date</pre>
+        </div>
+        <p>
+          Строка таблицы — тоже фиксированная запись, которую идентифицирует ключ, а не позиция.
+          Составной <code class="inl">PRIMARY KEY</code> и <code class="inl">GROUP BY</code> по двум
+          колонкам — прямой родственник кортежа-ключа. Сравнение <code class="inl">(city, age) &gt; (...)</code>
+          работает как лексикографическое сравнение tuple.
+        </p>
+
+        <div class="bridges">
+          <a class="bridge" href="ch-03-list-tuple.html"><span class="to">Глава 03</span><span>list и tuple: поезд и опечатанный контейнер</span><span class="what">→ изменяемость, копии и hashable</span></a>
+          <a class="bridge" href="ch-02-dict.html"><span class="to">Глава 02</span><span>dict: шкаф с номерками</span><span class="what">→ почему ключ обязан быть неизменяемым</span></a>
+          <a class="bridge" href="ch-15-groupby.html"><span class="to">Глава 15</span><span>groupby: группы по нескольким столбцам</span><span class="what">→ MultiIndex из tuple-ключей</span></a>
+          <a class="bridge" href="ref-dict.html"><span class="to">Справочник</span><span>dict: шкаф с номерками</span><span class="what">→ следующий тип: доступ по ключу</span></a>
+        </div>
+      </section>
+
+      <div class="pager">
+        <a class="prev" href="ref-list.html"><span class="dir">← Назад</span><span class="ttl">list: поезд с вагонами</span></a>
+        <a class="next" href="ref-dict.html"><span class="dir">Дальше →</span><span class="ttl">dict: шкаф с номерками</span></a>
+      </div>
+
+    </div>
+  </main>
+</div>
+<script src="assets/toc.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>

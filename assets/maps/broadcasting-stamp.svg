@@ -1,0 +1,62 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 440" role="img" aria-labelledby="t2 d2">
+  <title id="t2">Broadcasting: столбец (3,1) и строка (1,4) растягиваются до матрицы (3,4)</title>
+  <desc id="d2">Меньшие массивы выравниваются справа, единицы растягиваются, результат принимает форму по максимуму размеров.</desc>
+  <defs>
+    <marker id="a2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#8a7f73"/>
+    </marker>
+    <style>
+      .lbl { font: 700 11px system-ui, -apple-system, "Segoe UI", sans-serif; fill: #8a7f73; letter-spacing: .12em; }
+      .v { font: 600 15px ui-monospace, "SF Mono", Menlo, monospace; fill: #1d1b26; }
+      .s { font: 400 12.5px system-ui, -apple-system, "Segoe UI", sans-serif; fill: #4a4458; }
+      .n { font: 400 12px system-ui, -apple-system, "Segoe UI", sans-serif; fill: #7a7285; }
+      .sh { font: 700 13px ui-monospace, "SF Mono", Menlo, monospace; fill: #c2410c; }
+    </style>
+  </defs>
+
+  <text class="lbl" x="40" y="34">СТОЛБЕЦ (3, 1)</text>
+  <rect x="60" y="72" width="70" height="46" rx="8" fill="#eef4fb" stroke="#b9cfe6"/>
+  <text class="v" x="86" y="101">10</text>
+  <rect x="60" y="122" width="70" height="46" rx="8" fill="#eef4fb" stroke="#b9cfe6"/>
+  <text class="v" x="86" y="151">20</text>
+  <rect x="60" y="172" width="70" height="46" rx="8" fill="#eef4fb" stroke="#b9cfe6"/>
+  <text class="v" x="86" y="201">30</text>
+
+  <text class="sh" x="230" y="148" style="font-size:22px">⊕</text>
+
+  <text class="lbl" x="290" y="34">СТРОКА (1, 4)</text>
+  <rect x="290" y="72" width="70" height="46" rx="8" fill="#e9f2ec" stroke="#9cc0a8"/>
+  <text class="v" x="314" y="101">1</text>
+  <rect x="364" y="72" width="70" height="46" rx="8" fill="#e9f2ec" stroke="#9cc0a8"/>
+  <text class="v" x="388" y="101">2</text>
+  <rect x="438" y="72" width="70" height="46" rx="8" fill="#e9f2ec" stroke="#9cc0a8"/>
+  <text class="v" x="462" y="101">3</text>
+  <rect x="512" y="72" width="70" height="46" rx="8" fill="#e9f2ec" stroke="#9cc0a8"/>
+  <text class="v" x="536" y="101">4</text>
+
+  <path d="M600,110 C640,110 650,140 672,160" fill="none" stroke="#8a7f73" stroke-width="1.8" marker-end="url(#a2)"/>
+
+  <text class="lbl" x="660" y="34">РЕЗУЛЬТАТ (3, 4)</text>
+  <g stroke="#d8d1c6">
+    <rect x="660" y="76" width="66" height="44" fill="#fff"/><rect x="726" y="76" width="66" height="44" fill="#fff"/>
+    <rect x="792" y="76" width="66" height="44" fill="#fff"/><rect x="858" y="76" width="66" height="44" fill="#fff"/>
+    <rect x="660" y="120" width="66" height="44" fill="#fff"/><rect x="726" y="120" width="66" height="44" fill="#fff"/>
+    <rect x="792" y="120" width="66" height="44" fill="#fff"/><rect x="858" y="120" width="66" height="44" fill="#fff"/>
+    <rect x="660" y="164" width="66" height="44" fill="#fff"/><rect x="726" y="164" width="66" height="44" fill="#fff"/>
+    <rect x="792" y="164" width="66" height="44" fill="#fff"/><rect x="858" y="164" width="66" height="44" fill="#fff"/>
+  </g>
+  <g class="v" text-anchor="middle">
+    <text x="693" y="103">11</text><text x="759" y="103">12</text><text x="825" y="103">13</text><text x="891" y="103">14</text>
+    <text x="693" y="147">21</text><text x="759" y="147">22</text><text x="825" y="147">23</text><text x="891" y="147">24</text>
+    <text x="693" y="191">31</text><text x="759" y="191">32</text><text x="825" y="191">33</text><text x="891" y="191">34</text>
+  </g>
+
+  <!-- пояснения -->
+  <text class="n" x="660" y="230">каждая клетка = строка + столбец</text>
+  <text class="s" x="60" y="290">столбец (3, 1) повторяется вдоль строк,</text>
+  <text class="s" x="60" y="312">строка (1, 4) — вдоль столбцов.</text>
+
+  <rect x="40" y="360" width="900" height="58" rx="12" fill="#f4f1ea" stroke="#e0d9cd"/>
+  <text class="s" x="60" y="384">Правило: формы выравниваются справа; размеры должны совпадать или быть 1.</text>
+  <text class="s" x="60" y="406">Единица растягивается до размера большего массива — данные при этом не копируются.</text>
+</svg>

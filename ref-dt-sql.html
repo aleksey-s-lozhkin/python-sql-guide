@@ -1,0 +1,727 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Справочник «Дата и время» · SQL: date, timestamp, timestamptz и interval — Ассоциативный гайд</title>
+<meta name="description" content="Справочник по дате и времени в PostgreSQL 14: date, timestamp, timestamptz, interval, date_trunc, extract, AT TIME ZONE, границы периода, индексы и epoch — на базе learning_shop.">
+<link rel="stylesheet" href="assets/style.css">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#fbf8f2" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#14131a" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="assets/icons/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="assets/icons/icon-180.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Гайд Py/SQL">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+</head>
+<body data-slug="ref-dt-sql">
+<div class="app">
+  <aside class="sidebar" id="sidebar"></aside>
+  <main>
+    <div class="wrap">
+
+      <header class="chapter-head">
+        <div class="eyebrow">
+          <span class="part">Справочник · дата и время</span>
+          <span class="dot"></span>
+          <span>страница 4 из 4</span>
+          <span class="dot"></span>
+          <span>готово</span>
+        </div>
+        <h1>SQL: date, timestamp, timestamptz и interval
+          <span class="sub">Четыре типа времени, арифметика, зоны и границы периодов — на PostgreSQL 14</span>
+        </h1>
+        <p class="lead">
+          В SQL дата и время — четыре разных типа: календарный день, наивные часы, момент с зоной
+          и длительность. Здесь — литералы, <code class="inl">date_trunc</code>,
+          <code class="inl">AT TIME ZONE</code>, границы периода и индексы: запросы и точный вывод
+          <code class="inl">psql</code> на базе <code class="inl">learning_shop</code>.
+        </p>
+        <div class="meta">
+          <span class="chip">⏱ <b>12 минут</b></span>
+          <span class="chip">🎯 уровень <b>2</b></span>
+          <span class="chip">🐘 PostgreSQL <b>14</b></span>
+          <span class="chip">🗄 <b>learning_shop</b></span>
+        </div>
+      </header>
+
+      <p class="small">
+        Справочник «Дата и время»: <a href="appendix-datetime.html">вся карта</a> ·
+        <a href="ref-dt-python.html">01 · Python</a> · <a href="ref-dt-numpy.html">02 · NumPy</a> ·
+        <a href="ref-dt-pandas.html">03 · pandas</a> · <b>04 · SQL</b>
+      </p>
+
+      <div class="tldr">
+        <div class="t">Самое главное</div>
+        <ul>
+          <li><code class="inl">timestamptz</code> — <b>момент</b>: хранит UTC, показывает в зоне
+              сессии. <code class="inl">timestamp</code> — «наивные» стенные часы без зоны;
+              <code class="inl">date</code> — календарный день, <code class="inl">interval</code> —
+              длительность.</li>
+          <li><code class="inl">date_trunc</code> усекает к началу месяца/дня,
+              <code class="inl">extract</code> берёт часть, <code class="inl">AT TIME ZONE</code>
+              меняет зону (и тип). Для периода — <code class="inl">&gt;= начало AND &lt; конец</code>.</li>
+          <li><code class="inl">BETWEEN</code> включает правую границу; функция или приведение на
+              колонке (<code class="inl">created_at::date</code>) выключают индекс — условие перестаёт
+              быть «по колонке».</li>
+        </ul>
+      </div>
+
+      <!-- ══════════════════ 01. Что это ══════════════════ -->
+      <section>
+        <h2><span class="num">01</span>Что это и как устроено</h2>
+        <p>
+          PostgreSQL разделяет три сущности. <b>Момент</b> — точка на шкале UTC
+          (<code class="inl">timestamptz</code>). <b>Календарная дата</b> — листок «2024-03-15»
+          (<code class="inl">date</code>). <b>Длительность</b> — «3 дня» (<code class="inl">interval</code>).
+          Отдельно живёт <code class="inl">timestamp</code>: дата и время <em>без зоны</em> —
+          стенные часы, про которые неизвестно, в каком городе они висят.
+        </p>
+        <p>
+          <code class="inl">timestamptz</code> внутри хранит UTC и при выводе переводится в зону
+          сессии <code class="inl">TimeZone</code>: момент в Москве печатается как
+          <code class="inl">+03</code>, а после <code class="inl">SET TIME ZONE 'UTC'</code> — как
+          <code class="inl">+00</code>. Значение не изменилось, изменилось представление;
+          <code class="inl">date</code> и <code class="inl">timestamp</code> зоны не хранят.
+        </p>
+
+        <div class="anchor">
+          <div class="glyph">📖</div>
+          <div>
+            <div class="t">Держите эту картинку в голове</div>
+            <p class="kick"><strong>Дата и время — оглавление книги моментов.</strong>
+            <code class="inl">timestamptz</code> — это «издание + страница»: точная точка, которую
+            можно найти в любой библиотеке. <code class="inl">timestamp</code> — запись «страница 12»
+            без названия издания: в другой библиотеке (зоне) это уже другой момент.</p>
+            <p><code class="inl">date</code> — номер главы (день целиком),
+            <code class="inl">interval</code> — «сколько страниц пролистали». Метафору целиком
+            разбирает <a href="ch-27-date-time.html">глава 27</a>.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ══════════════════ 02. Когда брать ══════════════════ -->
+      <section>
+        <h2><span class="num">02</span>Когда какой тип брать</h2>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Что храним</th><th>Тип</th><th>Почему / осторожно</th></tr></thead>
+            <tbody>
+              <tr><td>Момент события: заказ создан, платёж прошёл</td><td class="mono">timestamptz</td><td>хранит UTC, показ в зоне сессии — момент не «плывёт»</td></tr>
+              <tr><td>Календарный день: отчётная дата, день рождения</td><td class="mono">date</td><td>без времени и зоны; арифметика — в днях</td></tr>
+              <tr><td>Время суток: открытие в 09:00</td><td class="mono">time</td><td>без даты; для расписаний, не для моментов</td></tr>
+              <tr><td>Наивное локальное время без зоны</td><td class="mono">timestamp</td><td>годится, если зона известна из контекста; для моментов — нет</td></tr>
+              <tr><td>Длительность: срок доставки, окно</td><td class="mono">interval</td><td>не точка, а сдвиг; месяцы и дни считаются календарно</td></tr>
+              <tr><td>Метка для API и JS</td><td class="mono">timestamptz / epoch</td><td><code class="inl">extract(epoch)</code> — секунды; миллисекунды — ×1000</td></tr>
+              <tr><td>Границы отчёта за период</td><td class="mono">date / timestamptz</td><td>полуинтервал <code class="inl">&gt;= a AND &lt; b</code>, не <code class="inl">BETWEEN</code></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="small">
+          Правило: момент — в UTC со зоной, дата — без зоны. В SQL сервер молча подставит зону сессии.
+        </p>
+      </section>
+
+      <!-- ══════════════════ 03. Синтаксис-шаблон ══════════════════ -->
+      <section>
+        <h2><span class="num">03</span>Синтаксис-шаблон</h2>
+        <p>
+          Литералы времени записываются с явным типом — это надёжнее приведения строки, потому что
+          не зависит от <code class="inl">DateStyle</code>:
+        </p>
+        <div class="code">
+          <div class="bar"><span class="file">ref_dt_sql_lab.sql</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">SELECT DATE '2024-01-01' AS d,
+       TIMESTAMP '2024-01-01 12:30:00' AS naive,
+       TIMESTAMPTZ '2024-01-01 12:30:00+03' AS moment,
+       INTERVAL '1 day 2 hours' AS span;</pre>
+          <div class="out">     d      |        naive        |         moment         |      span      
+------------+---------------------+------------------------+----------------
+ 2024-01-01 | 2024-01-01 12:30:00 | 2024-01-01 09:30:00+00 | 1 day 02:00:00
+(1 row)</div>
+        </div>
+        <p>
+          <code class="inl">moment</code> — <code class="inl">12:30+03</code>, но показан в UTC как
+          <code class="inl">09:30+00</code>: это один момент. <code class="inl">span</code> печатается
+          как <code class="inl">1 day 02:00:00</code>, а не числом. Приведение
+          <code class="inl">'2024-01-01'::date</code> зависит от <code class="inl">DateStyle</code> —
+          в лаборатории она зафиксирована.
+        </p>
+      </section>
+
+      <!-- ══════════════════ 04. Все операции ══════════════════ -->
+      <section>
+        <h2><span class="num">04</span>Все операции</h2>
+        <p>
+          Три таблицы: типы и литералы, функции и арифметика, условия в <code class="inl">WHERE</code>
+          глазами индексов. В «Примечании» — тип результата и ловушка.
+        </p>
+
+        <h3>Типы и литералы</h3>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Конструкция</th><th>Что делает</th><th>Результат</th><th>Примечание</th></tr></thead>
+            <tbody>
+              <tr><td class="mono">DATE '2024-01-01'</td><td>календарная дата</td><td class="mono">date</td><td>день без времени и зоны</td></tr>
+              <tr><td class="mono">TIME '12:30:00'</td><td>время суток</td><td class="mono">time</td><td>без даты; для расписаний</td></tr>
+              <tr><td class="mono">TIMESTAMP '2024-01-01 12:30:00'</td><td>дата и время без зоны</td><td class="mono">timestamp</td><td>«наивные» стенные часы</td></tr>
+              <tr><td class="mono">TIMESTAMPTZ '2024-01-01 12:30:00+03'</td><td>момент с зоной</td><td class="mono">timestamptz</td><td>хранит UTC, показ в зоне сессии</td></tr>
+              <tr><td class="mono">INTERVAL '1 day 2 hours'</td><td>длительность</td><td class="mono">interval</td><td>сдвиг, а не точка; бывает '3 months'</td></tr>
+              <tr><td class="mono">'2024-01-01'::date</td><td>приведение текста</td><td class="mono">date</td><td>зависит от DateStyle</td></tr>
+              <tr><td class="mono">now() / current_date</td><td>текущий момент / дата</td><td class="mono">timestamptz / date</td><td>не для детерминированного вывода</td></tr>
+              <tr><td class="mono">ts AT TIME ZONE 'UTC'</td><td>переводит между зоной и стенным временем</td><td class="mono">timestamp / timestamptz</td><td>тип результата зависит от типа аргумента</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>Функции и арифметика</h3>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Конструкция</th><th>Что делает</th><th>Результат</th><th>Примечание</th></tr></thead>
+            <tbody>
+              <tr><td class="mono">date_trunc('month', t)</td><td>усекает к началу месяца</td><td>тип t</td><td>усечение, не округление</td></tr>
+              <tr><td class="mono">extract('year' FROM t)</td><td>берёт часть даты</td><td class="mono">numeric</td><td>части месяца/дня — тоже числа</td></tr>
+              <tr><td class="mono">age(a, b)</td><td>интервал между моментами</td><td class="mono">interval</td><td>«человеческое» представление: mons, days</td></tr>
+              <tr><td class="mono">t + INTERVAL '1 day'</td><td>сдвигает на длительность</td><td>тип t</td><td>через месяц — календарно, не 30 дней</td></tr>
+              <tr><td class="mono">date - date</td><td>разность дат</td><td class="mono">integer</td><td>число дней</td></tr>
+              <tr><td class="mono">timestamp - timestamp</td><td>разность моментов</td><td class="mono">interval</td><td>дни и время</td></tr>
+              <tr><td class="mono">to_char(t, 'YYYY-MM')</td><td>форматирует в текст</td><td class="mono">text</td><td>для отчёта; не для сравнений</td></tr>
+              <tr><td class="mono">extract(epoch FROM t)</td><td>секунды с 1970-01-01</td><td class="mono">numeric</td><td>миллисекунды — умножить на 1000</td></tr>
+              <tr><td class="mono">BETWEEN a AND b</td><td>проверяет попадание в отрезок</td><td class="mono">boolean</td><td>включает <b>обе</b> границы</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>В WHERE и индексах</h3>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Конструкция</th><th>Что делает</th><th>Результат</th><th>Примечание</th></tr></thead>
+            <tbody>
+              <tr><td class="mono">col &gt;= a AND col &lt; b</td><td>полуинтервал периода</td><td>строки периода</td><td>sargable; btree-индекс работает</td></tr>
+              <tr><td class="mono">col BETWEEN a AND b</td><td>отрезок с обеими границами</td><td>строки периода</td><td>индекс работает, но правая граница включена</td></tr>
+              <tr><td class="mono">col::date = d</td><td>сравнение по приведению</td><td>строки дня</td><td>Seq Scan: условие не по колонке</td></tr>
+              <tr><td class="mono">date_trunc('day', col) = d</td><td>сравнение по функции</td><td>строки дня</td><td>Seq Scan; нужен индекс по выражению</td></tr>
+              <tr><td class="mono">tstz_col = timestamp_lit</td><td>сравнение момента с наивным</td><td class="mono">boolean</td><td>литерал трактуется в зоне сессии</td></tr>
+              <tr><td class="mono">extract(epoch FROM col)</td><td>сравнение по числу секунд</td><td class="mono">numeric</td><td>Seq Scan; годится для API, не для индекса</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ══════════════════ 05. Разбор ══════════════════ -->
+      <section>
+        <h2><span class="num">05</span>Разбор по группам</h2>
+        <p>
+          Все примеры — в файле
+          <a href="snippets/view.html?f=ref_dt_sql_lab.sql"><code class="inl">ref_dt_sql_lab.sql</code></a>;
+          запуск: <code class="inl">psql -d learning_shop -f guide/snippets/ref_dt_sql_lab.sql</code>.
+          Лаборатория только читает; <code class="inl">orders_big</code> создаётся
+          <code class="inl">ref_sql_setup.sql</code>.
+        </p>
+
+        <h3>Четыре типа: pg_typeof</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_dt_sql_lab.sql</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">SELECT pg_typeof(DATE '2024-01-01') AS d,
+       pg_typeof(TIMESTAMP '2024-01-01 12:30:00') AS naive,
+       pg_typeof(TIMESTAMPTZ '2024-01-01 12:30:00+03') AS moment,
+       pg_typeof(INTERVAL '1 day') AS span;</pre>
+          <div class="out">  d   |            naive            |          moment          |   span   
+------+-----------------------------+--------------------------+----------
+ date | timestamp without time zone | timestamp with time zone | interval
+(1 row)</div>
+        </div>
+        <p>
+          <code class="inl">pg_typeof</code> показывает тип:
+          <code class="inl">timestamp without time zone</code> — наивные часы,
+          <code class="inl">timestamp with time zone</code> — момент. «with time zone» не значит,
+          что зона хранится в значении: внутри UTC.
+        </p>
+
+        <h3>date_trunc, extract и to_char</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_dt_sql_lab.sql</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">SELECT id,
+       created_at,
+       date_trunc('month', created_at) AS month_start,
+       extract(year FROM created_at) AS yr,
+       to_char(created_at, 'YYYY-MM-DD') AS day
+FROM orders
+WHERE id &lt;= 3
+ORDER BY id;</pre>
+          <div class="out"> id |     created_at      |     month_start     |  yr  |    day     
+----+---------------------+---------------------+------+------------
+  1 | 2024-01-05 10:00:00 | 2024-01-01 00:00:00 | 2024 | 2024-01-05
+  2 | 2024-01-06 12:30:00 | 2024-01-01 00:00:00 | 2024 | 2024-01-06
+  3 | 2024-01-15 09:15:00 | 2024-01-01 00:00:00 | 2024 | 2024-01-15
+(3 rows)</div>
+        </div>
+        <p>
+          <code class="inl">date_trunc('month', ...)</code> — первое число месяца, а не номер:
+          <code class="inl">2024-01-05</code> → <code class="inl">2024-01-01 00:00:00</code>;
+          <code class="inl">extract(year ...)</code> даёт <code class="inl">2024</code>,
+          <code class="inl">to_char</code> — строку. Для группировки <code class="inl">date_trunc</code>
+          лучше: в нём есть год.
+        </p>
+
+        <h3>Арифметика: interval и разность timestamp</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_dt_sql_lab.sql</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">SELECT id,
+       created_at + INTERVAL '1 day' AS next_day,
+       created_at - TIMESTAMP '2024-01-01 00:00:00' AS since_start
+FROM orders
+WHERE id &lt;= 3
+ORDER BY id;</pre>
+          <div class="out"> id |      next_day       |   since_start    
+----+---------------------+------------------
+  1 | 2024-01-06 10:00:00 | 4 days 10:00:00
+  2 | 2024-01-07 12:30:00 | 5 days 12:30:00
+  3 | 2024-01-16 09:15:00 | 14 days 09:15:00
+(3 rows)</div>
+        </div>
+        <p>
+          <code class="inl">INTERVAL '1 day'</code> не меняет тип. Разность двух timestamp —
+          <code class="inl">interval</code> (<code class="inl">4 days 10:00:00</code>); для целых
+          дней — <code class="inl">date - date</code> (<code class="inl">integer</code>).
+        </p>
+
+        <h3>date - date, age и epoch</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_dt_sql_lab.sql</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">SELECT DATE '2024-03-20' - DATE '2024-01-05' AS days,
+       age(TIMESTAMP '2024-03-20 15:55:00', TIMESTAMP '2024-01-01 00:00:00') AS gap,
+       extract(epoch FROM TIMESTAMP '2024-01-01 00:00:00')::bigint AS epoch_s;</pre>
+          <div class="out"> days |           gap           |  epoch_s   
+------+-------------------------+------------
+   75 | 2 mons 19 days 15:55:00 | 1704067200
+(1 row)</div>
+        </div>
+        <p>
+          <code class="inl">date - date</code> — 75 дней (целое), <code class="inl">age</code> —
+          «2 mons 19 days 15:55:00»: месяцы календарные, 2 месяца ≠ 60 дням.
+          <code class="inl">extract(epoch ...)</code> — секунды; миллисекунды — ×1000.
+        </p>
+
+        <h3>AT TIME ZONE и SET TIME ZONE</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_dt_sql_lab.sql</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">SET TIME ZONE 'Europe/Moscow';
+SELECT TIMESTAMPTZ '2024-01-01 12:30:00+03' AS moment;
+
+SET TIME ZONE 'UTC';
+SELECT TIMESTAMPTZ '2024-01-01 12:30:00+03' AS moment;
+
+SELECT TIMESTAMPTZ '2024-01-01 12:30:00+03' AT TIME ZONE 'Europe/Moscow' AS moscow_wall,
+       TIMESTAMPTZ '2024-01-01 12:30:00+03' AT TIME ZONE 'UTC' AS utc_wall;</pre>
+          <div class="out">SET
+         moment         
+------------------------
+ 2024-01-01 12:30:00+03
+(1 row)
+
+SET
+         moment         
+------------------------
+ 2024-01-01 09:30:00+00
+(1 row)
+
+     moscow_wall     |      utc_wall       
+---------------------+---------------------
+ 2024-01-01 12:30:00 | 2024-01-01 09:30:00
+(1 row)</div>
+        </div>
+        <p>
+          В Москве момент печатается как <code class="inl">12:30:00+03</code>, после
+          <code class="inl">SET TIME ZONE 'UTC'</code> — как <code class="inl">09:30:00+00</code>:
+          смена представления, не значения. <code class="inl">AT TIME ZONE</code> переводит его в
+          <code class="inl">timestamp</code> указанной зоны — <code class="inl">moscow_wall</code>,
+          <code class="inl">utc_wall</code>.
+        </p>
+
+        <h3>Границы периода: полуинтервал против BETWEEN</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_dt_sql_lab.sql</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">SELECT COUNT(*) AS half_open
+FROM orders_big
+WHERE created_at &gt;= TIMESTAMP '2024-02-01'
+  AND created_at &lt;  TIMESTAMP '2024-02-02';
+
+SELECT COUNT(*) AS between_closed
+FROM orders_big
+WHERE created_at BETWEEN TIMESTAMP '2024-02-01' AND TIMESTAMP '2024-02-02';</pre>
+          <div class="out"> half_open 
+-----------
+      1440
+(1 row)
+
+ between_closed 
+----------------
+           1441
+(1 row)</div>
+        </div>
+        <p>
+          Полуинтервал <code class="inl">&gt;= '2024-02-01' AND &lt; '2024-02-02'</code> — 1440 строк,
+          ровно сутки по минутам. <code class="inl">BETWEEN</code> даёт 1441: включает правую границу
+          <code class="inl">'2024-02-02 00:00:00'</code> — «лишняя минута» на стыке периодов.
+        </p>
+
+        <h3>Индекс: диапазон по колонке и ::date</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_dt_sql_lab.sql</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">EXPLAIN (COSTS OFF) SELECT * FROM orders_big
+WHERE created_at &gt;= TIMESTAMP '2024-03-09';
+
+EXPLAIN (COSTS OFF) SELECT * FROM orders_big
+WHERE created_at::date = DATE '2024-03-09';</pre>
+          <div class="out">                                    QUERY PLAN                                    
+----------------------------------------------------------------------------------
+ Index Scan using idx_orders_big_created on orders_big
+   Index Cond: (created_at &gt;= '2024-03-09 00:00:00'::timestamp without time zone)
+(2 rows)
+
+                     QUERY PLAN                      
+-----------------------------------------------------
+ Seq Scan on orders_big
+   Filter: ((created_at)::date = '2024-03-09'::date)
+(2 rows)</div>
+        </div>
+        <p>
+          Сравнение по колонке — <b>Index Scan</b> по <code class="inl">idx_orders_big_created</code>;
+          <code class="inl">created_at::date = ...</code> — <b>Seq Scan</b>: индекс хранит
+          <code class="inl">timestamp</code>, а приведение меняет значение. Лечится диапазоном или
+          индексом по выражению <code class="inl">((created_at::date))</code>.
+        </p>
+      </section>
+
+      <!-- ══════════════════ 06. Сценарии ══════════════════ -->
+      <section>
+        <h2><span class="num">06</span>Три сценария на learning_shop</h2>
+
+        <h3>Месячная выручка</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_dt_sql_lab.sql</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">SELECT date_trunc('month', o.created_at)::date AS month,
+       COUNT(*) AS orders,
+       SUM(o.quantity * p.price) AS revenue
+FROM orders o
+JOIN products p ON p.id = o.product_id
+GROUP BY 1
+ORDER BY 1;</pre>
+          <div class="out">   month    | orders | revenue  
+------------+--------+----------
+ 2024-01-01 |      3 | 78150.00
+ 2024-02-01 |      3 | 25750.00
+ 2024-03-01 |      4 | 98500.00
+(3 rows)</div>
+        </div>
+        <p>
+          <code class="inl">date_trunc('month', ...)::date</code> — первый день месяца,
+          <code class="inl">GROUP BY 1</code> группирует по выражению, <code class="inl">ORDER BY 1</code>
+          фиксирует порядок: тот же <code class="inl">DATE_TRUNC</code>, что и в
+          <a href="ref-sql-group.html">GROUP BY</a>.
+        </p>
+
+        <h3>Последние N дней</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_dt_sql_lab.sql</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">SELECT id, created_at
+FROM orders
+WHERE created_at &gt;= TIMESTAMP '2024-02-15'
+ORDER BY created_at DESC, id
+LIMIT 5;</pre>
+          <div class="out"> id |     created_at      
+----+---------------------
+ 10 | 2024-03-20 15:55:00
+  9 | 2024-03-15 13:10:00
+  8 | 2024-03-07 19:30:00
+  7 | 2024-03-03 08:05:00
+  6 | 2024-02-20 11:20:00
+(5 rows)</div>
+        </div>
+        <p>
+          «Последние» отсчитаны от фиксированной даты, а не от <code class="inl">now()</code>, чтобы
+          вывод не менялся. В рабочем коде здесь стоит
+          <code class="inl">created_at &gt;= now() - INTERVAL '7 days'</code> — но такой результат
+          зависит от момента запуска.
+        </p>
+
+        <h3>Отчёт с TZ-конверсией</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_dt_sql_lab.sql</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">SELECT id,
+       created_at AT TIME ZONE 'UTC' AS as_utc,
+       created_at AT TIME ZONE 'Europe/Moscow' AS as_moscow
+FROM orders
+WHERE id &lt;= 3
+ORDER BY id;</pre>
+          <div class="out"> id |         as_utc         |       as_moscow        
+----+------------------------+------------------------
+  1 | 2024-01-05 10:00:00+00 | 2024-01-05 07:00:00+00
+  2 | 2024-01-06 12:30:00+00 | 2024-01-06 09:30:00+00
+  3 | 2024-01-15 09:15:00+00 | 2024-01-15 06:15:00+00
+(3 rows)</div>
+        </div>
+        <p>
+          <code class="inl">created_at</code> — наивный <code class="inl">timestamp</code>; чтобы
+          трактовать его как момент, укажите зону: <code class="inl">AT TIME ZONE 'UTC'</code> или
+          <code class="inl">AT TIME ZONE 'Europe/Moscow'</code>. Один столбец даёт разные моменты:
+          <code class="inl">10:00+00</code> против <code class="inl">07:00+00</code>.
+        </p>
+      </section>
+
+      <!-- ══════════════════ 07. Ошибки ══════════════════ -->
+      <section>
+        <h2><span class="num">07</span>Пять ошибок, на которых спотыкаются</h2>
+        <div class="errors">
+          <div class="err">
+            <div class="h">timestamp вместо timestamptz для моментов</div>
+            <p>Колонка <code class="inl">timestamp</code> хранит «12:30» без зоны: при смене
+            <code class="inl">TimeZone</code> момент «плывёт» на часы, а <code class="inl">now()</code>
+            трактует наивное время в зоне сессии.</p>
+            <div class="fix">Моменты — в <code class="inl">timestamptz</code>; наивную колонку
+            конвертируйте явно: <code class="inl">ts AT TIME ZONE 'UTC'</code>.</div>
+          </div>
+
+          <div class="err">
+            <div class="h">BETWEEN включает правую границу</div>
+            <p><code class="inl">BETWEEN '2024-02-01' AND '2024-02-02'</code> берёт и
+            <code class="inl">'2024-02-02 00:00:00'</code>: 1441 строка вместо 1440, а на стыке
+            отчётов строка попадёт в оба.</p>
+            <div class="fix">Полуинтервал: <code class="inl">&gt;= начало AND &lt; конец</code>.
+            Для целых <code class="inl">date</code> можно и <code class="inl">BETWEEN</code> с
+            датами, если границы — дни, а не моменты.</div>
+          </div>
+
+          <div class="err">
+            <div class="h">Функция на колонке ломает индекс</div>
+            <p><code class="inl">created_at::date = ...</code> или
+            <code class="inl">date_trunc('day', created_at) = ...</code> дают Seq Scan: индекс хранит
+            исходный <code class="inl">timestamp</code>, а условие — про функцию.</p>
+            <div class="fix">Переписать в диапазон <code class="inl">&gt;= AND &lt;</code> или создать
+            индекс по выражению. Правило простое: оборачивайте константу, а не колонку.</div>
+          </div>
+
+          <div class="err">
+            <div class="h">Зона сессии меняет вывод</div>
+            <p>Один <code class="inl">timestamptz</code> печатается как <code class="inl">12:30+03</code>
+            в Москве и <code class="inl">09:30+00</code> в UTC: отчёт при другой настройке
+            <code class="inl">TimeZone</code> выглядит иначе, хотя данные те же.</p>
+            <div class="fix">Фиксируйте зону в сессии (<code class="inl">SET TIME ZONE 'UTC'</code>)
+            или указывайте её явно через <code class="inl">AT TIME ZONE</code> в самом отчёте.</div>
+          </div>
+
+          <div class="err">
+            <div class="h">epoch в секундах и миллисекундах</div>
+            <p><code class="inl">extract(epoch FROM t)</code> — <b>секунды</b> (numeric), а API и JS
+            часто ждут миллисекунды: получите дату 1970 года.</p>
+            <div class="fix">Единицы указывайте явно: <code class="inl">extract(epoch ...) * 1000</code> для ms,
+            обратно — <code class="inl">to_timestamp(ms / 1000.0)</code>.</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ══════════════════ 08. Мини-проверка ══════════════════ -->
+      <section>
+        <h2><span class="num">08</span>Мини-проверка</h2>
+        <p>Пять вопросов и две задачи. Сначала своя попытка — потом спойлер.</p>
+
+        <div class="qa">
+          <details>
+            <summary>Чем timestamp отличается от timestamptz?</summary>
+            <div class="a">
+              <p><code class="inl">timestamp</code> — время без зоны, «наивные часы».
+              <code class="inl">timestamptz</code> — момент: внутри UTC, при выводе — зона сессии.
+              «with time zone» не значит, что зона хранится в значении.</p>
+              <div class="verdict">Резюме: наивные часы против точки на шкале UTC.</div>
+            </div>
+          </details>
+        </div>
+
+        <div class="qa">
+          <details>
+            <summary>Что делает date_trunc и почему это не «округление»?</summary>
+            <div class="a">
+              <p><code class="inl">date_trunc('month', t)</code> — начало месяца:
+              <code class="inl">2024-01-15 09:15:00</code> → <code class="inl">2024-01-01 00:00:00</code>.
+              Это усечение, а не округление. Для группировки ключ удобнее номера месяца: в нём есть
+              год, и январь 2024 не смешается с январём 2025.</p>
+              <div class="verdict">Резюме: date_trunc — «начало периода», а не «середина».</div>
+            </div>
+          </details>
+        </div>
+
+        <div class="qa">
+          <details>
+            <summary>Почему для периода лучше &gt;= AND &lt;, а не BETWEEN?</summary>
+            <div class="a">
+              <p><code class="inl">BETWEEN</code> включает обе границы: граница следующего периода
+              попадает в текущий, строки на стыке считаются дважды. Полуинтервал
+              <code class="inl">&gt;= начало AND &lt; конец</code> оставляет границу ровно в одном
+              отчёте и так же хорошо работает с btree-индексом.</p>
+              <div class="verdict">Резюме: левая граница — включительно, правая — нет.</div>
+            </div>
+          </details>
+        </div>
+
+        <div class="qa">
+          <details>
+            <summary>Что делает AT TIME ZONE — конвертацию или смену зоны?</summary>
+            <div class="a">
+              <p>Зависит от типа: для <code class="inl">timestamptz</code> — возвращает
+              <code class="inl">timestamp</code> (стенное время в зоне), для наивного — трактует его
+              в зоне и даёт <code class="inl">timestamptz</code>. Момент не меняется.</p>
+              <div class="verdict">Резюме: AT TIME ZONE — про тип и зону одновременно.</div>
+            </div>
+          </details>
+        </div>
+
+        <div class="qa">
+          <details>
+            <summary>Почему created_at::date не использует индекс?</summary>
+            <div class="a">
+              <p>Индекс <code class="inl">idx_orders_big_created</code> хранит
+              <code class="inl">created_at</code>, а условие — про результат приведения: планировщик
+              видит только <code class="inl">Filter</code> и выбирает Seq Scan. Помогает диапазон
+              (<code class="inl">&gt;= день AND &lt; следующий день</code>) или индекс по выражению.</p>
+              <div class="verdict">Резюме: индекс знает про колонку, а не про функцию над ней.</div>
+            </div>
+          </details>
+        </div>
+
+        <h3><span style="color:var(--muted);font-family:var(--mono);font-size:.8rem">01</span> Выручка по месяцам и городам</h3>
+        <p>Соберите отчёт: город, месяц, выручка. Пропуск или пустая строка в городе должны стать «не указан».</p>
+        <div class="code">
+          <div class="bar"><span class="file">условие</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">-- таблицы: orders, users, products
+-- ожидается: строки «город | месяц | выручка» с сортировкой по месяцу</pre>
+        </div>
+        <div class="qa">
+          <details>
+            <summary>Показать решение и разбор</summary>
+            <div class="a">
+              <div class="code" style="margin-top:0">
+                <div class="bar"><span class="file">решение</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+                <pre data-lang="sql">SELECT COALESCE(NULLIF(TRIM(u.city), ''), 'не указан') AS city,
+       date_trunc('month', o.created_at)::date AS month,
+       SUM(o.quantity * p.price) AS revenue
+FROM orders o
+JOIN users u ON u.id = o.user_id
+JOIN products p ON p.id = o.product_id
+GROUP BY 1, date_trunc('month', o.created_at)
+ORDER BY month, city;</pre>
+                <div class="out">      city       |   month    | revenue  
+-----------------+------------+----------
+ Казань          | 2024-01-01 |  1800.00
+ Москва          | 2024-01-01 | 76350.00
+ Казань          | 2024-02-01 | 22000.00
+ Москва          | 2024-02-01 |  1500.00
+ Санкт-Петербург | 2024-02-01 |  2250.00
+ Москва          | 2024-03-01 | 75600.00
+ не указан       | 2024-03-01 | 22000.00
+(7 rows)</div>
+              </div>
+              <p><strong>Что важно.</strong> <code class="inl">date_trunc</code> даёт ключ месяца,
+              <code class="inl">GROUP BY 1</code> группирует по выражению,
+              <code class="inl">COALESCE(NULLIF(TRIM(...), ''), 'не указан')</code> убирает пустую
+              строку; сортировка фиксирует порядок.</p>
+            </div>
+          </details>
+        </div>
+
+        <h3><span style="color:var(--muted);font-family:var(--mono);font-size:.8rem">02</span> Epoch первого заказа месяца</h3>
+        <p>Для каждого месяца выведите дату начала месяца и Unix-время первого заказа — в секундах.</p>
+        <div class="code">
+          <div class="bar"><span class="file">условие</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">-- таблица orders: id, created_at
+-- ожидается: month | first_epoch_s (целые секунды)</pre>
+        </div>
+        <div class="qa">
+          <details>
+            <summary>Показать решение и разбор</summary>
+            <div class="a">
+              <div class="code" style="margin-top:0">
+                <div class="bar"><span class="file">решение</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+                <pre data-lang="sql">SELECT date_trunc('month', created_at)::date AS month,
+       MIN(extract(epoch FROM created_at))::bigint AS first_epoch_s
+FROM orders
+GROUP BY 1
+ORDER BY 1;</pre>
+                <div class="out">   month    | first_epoch_s 
+------------+---------------
+ 2024-01-01 |    1704448800
+ 2024-02-01 |    1706796000
+ 2024-03-01 |    1709453100
+(3 rows)</div>
+              </div>
+              <p><strong>Что важно.</strong> <code class="inl">date_trunc</code> — ключ месяца,
+              <code class="inl">MIN(extract(epoch ...))</code> — самое раннее время в секундах,
+              <code class="inl">::bigint</code> убирает дробную часть. Для ms умножьте на 1000.</p>
+            </div>
+          </details>
+        </div>
+      </section>
+
+      <!-- ══════════════════ 09. Мостик ══════════════════ -->
+      <section>
+        <h2><span class="num">09</span>Мостик: pandas и Python</h2>
+
+        <h3>pandas: те же операции по-другому</h3>
+        <div class="code">
+          <div class="bar"><span class="file">мост в pandas</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">import pandas as pd
+
+s = pd.Series(["2024-01-05 10:00:00", "2024-02-01 14:00:00"])
+s = pd.to_datetime(s)                     # как TIMESTAMP '...'
+s.dt.tz_localize("UTC")                   # наивное → момент (как AT TIME ZONE 'UTC')
+s.dt.tz_convert("Europe/Moscow")          # момент → другая зона (как показ в зоне сессии)
+s.dt.to_period("M")                       # как date_trunc('month', ...)</pre>
+        </div>
+        <p>
+          <code class="inl">to_datetime</code> — аналог <code class="inl">TIMESTAMP</code>,
+          <code class="inl">tz_localize</code> — трактовка наивного времени в зоне,
+          <code class="inl">tz_convert</code> — показ момента в другой зоне, а
+          <code class="inl">.dt.to_period("M")</code> — аналог <code class="inl">date_trunc</code>.
+        </p>
+
+        <h3>Python: datetime и zoneinfo</h3>
+        <div class="code">
+          <div class="bar"><span class="file">мост в Python</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
+
+naive = datetime(2024, 1, 1, 12, 30)                    # как timestamp
+aware = naive.replace(tzinfo=ZoneInfo("Europe/Moscow")) # как timestamptz
+utc = aware.astimezone(timezone.utc)                    # как AT TIME ZONE 'UTC'
+print(naive, aware, utc, sep="\n")</pre>
+        </div>
+        <p>
+          Наивный <code class="inl">datetime</code> — аналог <code class="inl">timestamp</code>,
+          aware — <code class="inl">timestamptz</code>, <code class="inl">timedelta</code> —
+          <code class="inl">interval</code>. В Python сравнение naive и aware даёт
+          <code class="inl">TypeError</code>, в SQL сервер молча подставит зону сессии — ошибка тише.
+        </p>
+
+        <div class="bridges">
+          <a class="bridge" href="ch-21-group-by-having.html"><span class="to">Глава 21</span><span>GROUP BY и HAVING</span><span class="what">→ DATE_TRUNC в отчётах</span></a>
+          <a class="bridge" href="ch-24-indexes-explain.html"><span class="to">Глава 24</span><span>Индексы и EXPLAIN</span><span class="what">→ почему created_at::date не использует индекс</span></a>
+          <a class="bridge" href="ch-27-date-time.html"><span class="to">Глава 27</span><span>Дата и время: момент, календарь и длительность</span><span class="what">→ модель и мосты между технологиями</span></a>
+          <a class="bridge" href="ref-sql-group.html"><span class="to">Справочник SQL · 03</span><span>GROUP BY: словарь-аккумулятор</span><span class="what">→ та же группировка по месяцам</span></a>
+          <a class="bridge" href="appendix-datetime.html"><span class="to">Справочник</span><span>Карта «Дата и время»</span><span class="what">→ Python, NumPy, pandas и SQL рядом</span></a>
+        </div>
+      </section>
+
+      <div class="pager">
+        <a class="prev" href="ref-dt-pandas.html"><span class="dir">← Назад</span><span class="ttl">03 · pandas</span></a>
+        <a class="next" href="appendix-datetime.html"><span class="dir">Дальше →</span><span class="ttl">Вся карта «Дата и время»</span></a>
+      </div>
+
+    </div>
+  </main>
+</div>
+<script src="assets/toc.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>

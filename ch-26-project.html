@@ -1,0 +1,401 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>26 · Проект: отчёт из нескольких таблиц — Ассоциативный гайд</title>
+<meta name="description" content="Финальный проект: пять вопросов к базе learning_shop, отчёт на SQL и pandas, проверки и воспроизводимость.">
+<link rel="stylesheet" href="assets/style.css">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#fbf8f2" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#14131a" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="assets/icons/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="assets/icons/icon-180.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Гайд Py/SQL">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+</head>
+<body data-slug="ch-26-project">
+<div class="app">
+  <aside class="sidebar" id="sidebar"></aside>
+  <main>
+    <div class="wrap">
+
+      <header class="chapter-head">
+        <div class="eyebrow">
+          <span class="part">Часть V · Интеграция</span>
+          <span class="dot"></span>
+          <span>Неделя 8 · дни 2–5</span>
+          <span class="dot"></span>
+          <span>готово</span>
+        </div>
+        <h1>Проект: отчёт из нескольких таблиц
+          <span class="sub">Собрать всё, что учили: вопросы, SQL, pandas, проверки</span>
+        </h1>
+        <p class="lead">
+          Финальная задача книги: превратить набор данных в отчёт, которому можно верить.
+          Не «я посчитал в блокноте», а воспроизводимый набор запросов и проверок, который
+          пересчитает те же числа завтра.
+        </p>
+        <div class="meta">
+          <span class="chip">⏱ <b>60–90 минут</b></span>
+          <span class="chip">🎯 уровень <b>3 — собрать</b></span>
+          <span class="chip">🐘 <b>PostgreSQL + pandas</b></span>
+          <span class="chip">📦 <b>проект</b></span>
+        </div>
+      </header>
+
+      <details class="glossary">
+        <summary>Словарь главы — если забыли термины</summary>
+        <dl>
+          <dt>CTE</dt><dd>Именованный шаг отчёта: выручка, итоги, доли.</dd>
+          <dt>окно</dt><dd>Доля категории или место в рейтинге рядом с каждой строкой.</dd>
+          <dt>контрольная сумма</dt><dd>Сверка: сумма по месяцам равна сумме категорий и общей выручке.</dd>
+          <dt>воспроизводимость</dt><dd>Схема, данные, запросы и проверки лежат в одном месте и запускаются снова.</dd>
+        </dl>
+      </details>
+
+
+      <section>
+        <h2><span class="num">01</span>Зачем это backend-разработчику</h2>
+        <ul>
+          <li><strong>Отчёт — это инженерный артефакт:</strong> его нужно повторить, проверить и объяснить.</li>
+          <li><strong>Проверки важнее запроса:</strong> неверный запрос можно исправить, незамеченную ошибку — нет.</li>
+          <li><strong>Соединение миров:</strong> SQL считает, pandas оформляет; выбор обоснован объёмом.</li>
+          <li><strong>Собеседование:</strong> «покажите проект» — лучший ответ — аккуратный отчёт с проверками.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2><span class="num">02</span>Ассоциация-якорь: конвейер проекта</h2>
+
+        <div class="anchor">
+          <div class="glyph">🧭</div>
+          <div>
+            <div class="t">Держите эту картинку в голове</div>
+            <p class="kick"><strong>Проект — это конвейер:</strong> вопросы → данные → SQL по шагам →
+            проверка → отчёт. Каждый этап можно показать и проверить отдельно.</p>
+            <p><strong>Проверка — не формальность, а часть конвейера.</strong> Если сумма из детального
+            запроса не равна сумме по группам, отчёт не готов — независимо от того, как красиво он выглядит.</p>
+          </div>
+        </div>
+
+        <figure class="art">
+          <div class="frame">
+            <img src="assets/illustrations/26-project-pipeline.webp" width="1168" height="876" loading="lazy" decoding="async" alt="Длинный стол-конвейер: папки с отчётами, калькулятор, диаграмма и степлер.">
+          </div>
+          <figcaption><b>Рис. 1.</b> Конвейер отчёта: от таблиц к агрегатам и готовому файлу.</figcaption>
+        </figure>
+
+      </section>
+
+      <section>
+        <h2><span class="num">03</span>Ассоциативный ряд: восемь звеньев</h2>
+        <ol class="chain">
+          <li><b>вопрос</b><span>что хотим узнать</span></li>
+          <li><b>схема</b><span>какие таблицы и ключи</span></li>
+          <li><b>CTE</b><span>шаг расчёта выручки</span></li>
+          <li><b>агрегат</b><span>GROUP BY по месяцам</span></li>
+          <li><b>окно</b><span>доля и рейтинг</span></li>
+          <li><b>проверка</b><span>суммы и строки</span></li>
+          <li><b>pandas</b><span>динамика и оформление</span></li>
+          <li><b>вывод</b><span>что это значит</span></li>
+        </ol>
+      </section>
+
+      <section>
+        <h2><span class="num">04</span>Схема: путь от вопроса до отчёта</h2>
+
+        <figure>
+          <div class="frame">
+            <img src="assets/maps/project-pipeline.svg" alt="Пять этапов: вопросы, данные, SQL по шагам, проверка, отчёт.">
+          </div>
+          <figcaption>
+            <b>Рис. 2.</b> Проверка возвращает нас к SQL до отчёта. Отчёт без проверки — это гипотеза,
+            а не результат.
+          </figcaption>
+        </figure>
+      </section>
+
+      <section>
+        <h2><span class="num">05</span>Бриф: пять вопросов</h2>
+        <p>
+          Данные: <code class="inl">users</code> (5), <code class="inl">products</code> (6),
+          <code class="inl">orders</code> (10). Выручка заказа — <code class="inl">quantity * price</code>.
+          Таблица <code class="inl">orders_big</code> из глав 24–25 — только для замеров, в отчёте она не участвует.
+        </p>
+        <ol>
+          <li>Как менялась выручка по месяцам и какой средний чек?</li>
+          <li>Кто вошёл в топ-3 пользователей по выручке?</li>
+          <li>Какая доля выручки у каждой категории товаров?</li>
+          <li>Сколько гостевых заказов и какая их доля?</li>
+          <li>Сходится ли общая выручка с суммой по месяцам?</li>
+        </ol>
+      </section>
+
+      <section>
+        <h2><span class="num">06</span>Лаборатория: пять запросов</h2>
+        <p>Фрагменты файла <a title="Открыть файл с номерами строк" href="snippets/view.html?f=26_project.sql"><code class="inl">26_project.sql</code></a>.</p>
+
+        <h3>Шаг 1. Выручка, заказы и средний чек по месяцам</h3>
+        <div class="code">
+          <div class="bar"><span class="file">26_project.sql</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">WITH order_revenue AS (
+    SELECT o.id, o.created_at, o.quantity * p.price AS revenue
+    FROM orders o JOIN products p ON p.id = o.product_id
+)
+SELECT DATE_TRUNC('month', created_at)::date AS month,
+       COUNT(*) AS orders,
+       SUM(revenue) AS revenue,
+       ROUND(AVG(revenue), 2) AS avg_check
+FROM order_revenue
+GROUP BY 1 ORDER BY 1;</pre>
+          <div class="out">   month    | orders | revenue  | avg_check
+------------+--------+----------+-----------
+ 2024-01-01 |      3 | 78150.00 |  26050.00
+ 2024-02-01 |      3 | 25750.00 |   8583.33
+ 2024-03-01 |      4 | 98500.00 |  24625.00</div>
+        </div>
+
+        <h3>Шаг 2. Топ-3 пользователей</h3>
+        <div class="code">
+          <div class="bar"><span class="file">26_project.sql</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">SELECT u.name, SUM(o.quantity * p.price) AS revenue,
+       COUNT(*) AS orders,
+       RANK() OVER (ORDER BY SUM(o.quantity * p.price) DESC) AS place
+FROM orders o
+JOIN users u ON u.id = o.user_id
+JOIN products p ON p.id = o.product_id
+GROUP BY u.name
+ORDER BY revenue DESC
+LIMIT 3;</pre>
+          <div class="out"> name | revenue  | orders | place
+------+----------+--------+-------
+ Anna | 76950.00 |      3 |     1
+ Olga | 76500.00 |      2 |     2
+ Ivan | 23800.00 |      2 |     3</div>
+        </div>
+
+        <h3>Шаг 3. Доля категорий</h3>
+        <div class="code">
+          <div class="bar"><span class="file">26_project.sql</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">WITH category_revenue AS (
+    SELECT p.category, SUM(o.quantity * p.price) AS revenue
+    FROM orders o JOIN products p ON p.id = o.product_id
+    GROUP BY p.category
+)
+SELECT category, revenue,
+       ROUND(100.0 * revenue / SUM(revenue) OVER (), 1) AS share_pct
+FROM category_revenue
+ORDER BY revenue DESC;</pre>
+          <div class="out">  category   |  revenue  | share_pct
+-------------+-----------+-----------
+ electronics | 195500.00 |      96.6
+ food        |   4200.00 |       2.1
+ books       |   2700.00 |       1.3</div>
+        </div>
+
+        <h3>Шаг 4. Гостевые заказы</h3>
+        <div class="code">
+          <div class="bar"><span class="file">26_project.sql</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">SELECT COUNT(*) AS guest_orders,
+       SUM(o.quantity * p.price) AS guest_revenue,
+       ROUND(100.0 * SUM(o.quantity * p.price) /
+             (SELECT SUM(o2.quantity * p2.price)
+              FROM orders o2 JOIN products p2 ON p2.id = o2.product_id), 2) AS share_pct
+FROM orders o
+JOIN products p ON p.id = o.product_id
+WHERE NOT EXISTS (SELECT 1 FROM users u WHERE u.id = o.user_id);</pre>
+          <div class="out"> guest_orders | guest_revenue | share_pct
+--------------+---------------+-----------
+            1 |        900.00 |      0.44</div>
+        </div>
+
+        <h3>Шаг 5. Контроль: общая выручка</h3>
+        <div class="code">
+          <div class="bar"><span class="file">26_project.sql</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">SELECT SUM(quantity * price) AS total_revenue
+FROM orders o JOIN products p ON p.id = o.product_id;</pre>
+          <div class="out"> total_revenue
+---------------
+     202400.00</div>
+        </div>
+        <p>
+          Сумма по месяцам (78150 + 25750 + 98500) = 202400. Сумма категорий (195500 + 4200 + 2700) =
+          202400. Контроль сошёлся — можно двигаться к выводам.
+        </p>
+      </section>
+
+      <section>
+        <h2><span class="num">07</span>Мост: небольшая аналитика в pandas</h2>
+        <p>
+          Месячная сводка — маленькая (3 строки), её удобно дооформить в pandas: посчитать динамику.
+          Сначала выгружаем сводку в CSV, затем читаем её в скрипте
+          <a title="Открыть файл с номерами строк" href="snippets/view.html?f=26_project.py"><code class="inl">26_project.py</code></a>
+          (команда экспорта — в docstring файла). Это тот же отчёт, но уже на стороне приложения.
+        </p>
+        <div class="code">
+          <div class="bar"><span class="file">26_project.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">import pandas as pd
+
+df = pd.read_csv("/tmp/monthly.csv")
+df["growth_pct"] = (df["revenue"].pct_change() * 100).round(1)
+
+print(df.to_string(index=False))
+print("total revenue:", df["revenue"].sum(), "| orders:", df["orders"].sum())</pre>
+          <div class="out">     month  orders  revenue  avg_check  growth_pct
+2024-01-01       3  78150.0   26050.00         NaN
+2024-02-01       3  25750.0    8583.33       -67.1
+2024-03-01       4  98500.0   24625.00       282.5
+
+total revenue: 202400.0 | orders: 10</div>
+        </div>
+        <p>
+          Вывод: февраль — провал (−67.1%), март — рост (+282.5%). Но осторожно: строк мало, один заказ
+          на 75 000 искажает картину. Один из выводов отчёта — «выборка слишком мала для выводов о тренде».
+        </p>
+      </section>
+
+      <section>
+        <h2><span class="num">08</span>Шесть ошибок, на которых спотыкаются</h2>
+
+        <div class="errors">
+          <div class="err">
+            <div class="h">Отчёт без проверки</div>
+            <p>Красивая таблица с неверной суммой — хуже, чем отсутствие отчёта.</p>
+            <div class="fix">Сверять детальную и агрегированную суммы.</div>
+          </div>
+          <div class="err">
+            <div class="h">Потерянные гости</div>
+            <p>INNER JOIN с users выбрасывает заказы без пользователя, и суммы не сходятся.</p>
+            <div class="fix">LEFT JOIN или отдельный контроль гостевых заказов.</div>
+          </div>
+          <div class="err">
+            <div class="h">NULL превращён в ноль молча</div>
+            <p>Средний чек искажается, если неизвестное считают нулём.</p>
+            <div class="fix">Показать COUNT(*) и COUNT(col) рядом.</div>
+          </div>
+          <div class="err">
+            <div class="h">Невоспроизводимость</div>
+            <p>Запросы остались в истории чата, данные — в голове.</p>
+            <div class="fix">Скрипт: схема, данные, запросы, проверки в одном месте.</div>
+          </div>
+          <div class="err">
+            <div class="h">Слишком широкий запрос</div>
+            <p>Один гигантский запрос на все вопросы — сложно проверить и поддерживать.</p>
+            <div class="fix">Один вопрос — один запрос/CTE, затем сборка.</div>
+          </div>
+          <div class="err">
+            <div class="h">Нет вывода</div>
+            <p>Таблица без интерпретации — это данные, а не отчёт.</p>
+            <div class="fix">2–3 вывода и одно ограничение.</div>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h2><span class="num">09</span>Вопросы для самопроверки</h2>
+        <div class="qa">
+          <details>
+            <summary>Почему в первом запросе есть CTE?</summary>
+            <div class="a">
+              <p>Чтобы отделить вычисление выручки заказа от группировки: читаемо и переиспользуемо.</p>
+              <div class="verdict">Резюме: шаг назван и проверяется отдельно.</div>
+            </div>
+          </details>
+          <details>
+            <summary>Почему для доли использовано окно, а не второй GROUP BY?</summary>
+            <div class="a">
+              <p>SUM(revenue) OVER () возвращает общий итог рядом с каждой категорией — не нужен подзапрос и не теряются строки.</p>
+              <div class="verdict">Резюме: итог рядом с деталью.</div>
+            </div>
+          </details>
+          <details>
+            <summary>Почему гостевые заказы ищутся через NOT EXISTS?</summary>
+            <div class="a">
+              <p>Потому что NOT IN с NULL в подзапросе даёт пустой результат (глава 20), а NOT EXISTS безопасен.</p>
+              <div class="verdict">Резюме: анти-соединение без ловушек.</div>
+            </div>
+          </details>
+          <details>
+            <summary>Как проверить, что отчёт полный?</summary>
+            <div class="a">
+              <p>Сверить общий итог с суммой по группам и число строк; явно проверить строки без пары.</p>
+              <div class="verdict">Резюме: контрольные суммы и анти-соединения.</div>
+            </div>
+          </details>
+          <details>
+            <summary>Почему предупреждение о малой выборке — часть отчёта?</summary>
+            <div class="a">
+              <p>Потому что числа не значат больше, чем позволяют данные. Честное ограничение ценнее уверенного вывода.</p>
+              <div class="verdict">Резюме: отчёт — это ещё и границы применимости.</div>
+            </div>
+          </details>
+          <details>
+            <summary>Что здесь сделано в SQL, а что в pandas и почему?</summary>
+            <div class="a">
+              <p>В SQL — фильтрация, соединения и агрегаты (рядом с данными). В pandas — небольшая сводка и динамика (гибко, объём мал).</p>
+              <div class="verdict">Резюме: склад считает, верстак оформляет.</div>
+            </div>
+          </details>
+        </div>
+      </section>
+
+      <section>
+        <h2><span class="num">10</span>Задание и критерии</h2>
+        <p>
+          <strong>Задание.</strong> Соберите отчёт по базе <code class="inl">learning_shop</code> из
+          пяти вопросов выше. Сдайте один скрипт или файл с запросами и результатами.
+        </p>
+        <div class="note">
+          <span class="t">Критерии сдачи (10 баллов)</span>
+          <p>2 — все пять вопросов отвечены и числа воспроизводятся; 2 — контрольные суммы сошлись;
+          2 — гостевые заказы и NULL обработаны явно; 2 — SQL и pandas использованы осознанно;
+          2 — есть 2–3 вывода и одно ограничение.</p>
+        </div>
+      </section>
+
+      <section>
+        <h2><span class="num">11</span>Что вы теперь умеете</h2>
+        <p>
+          Части I–V собраны в один маршрут: Python → NumPy → pandas → SQL → интеграция.
+          В каждой главе была одна и та же логика: ассоциация, схема, лаборатория, ошибки, вопросы.
+        </p>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Часть</th><th>Что освоено</th></tr></thead>
+            <tbody>
+              <tr><td>I · Python</td><td>dict, list/tuple, set, comprehensions, collections</td></tr>
+              <tr><td>II · NumPy</td><td>ndarray, маски, axis, broadcasting, views/copies</td></tr>
+              <tr><td>III · pandas</td><td>Series/DataFrame, loc/iloc, фильтры, groupby, merge, пропуски, даты</td></tr>
+              <tr><td>IV · SQL</td><td>WHERE/NULL, GROUP BY, CTE, окна, индексы и EXPLAIN</td></tr>
+              <tr><td>V · Интеграция</td><td>выбор инструмента и отчёт с проверками</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section>
+        <h2><span class="num">12</span>Куда ведут мостики</h2>
+        <div class="bridges">
+          <a class="bridge" href="checkpoint-4.html"><span class="to">Проверочная</span><span>Контрольная по SQL</span><span class="what">→ проверить себя</span></a>
+          <a class="bridge" href="ch-25-sql-vs-pandas.html"><span class="to">Глава 25</span><span>SQL или pandas</span><span class="what">→ осознанный выбор</span></a>
+          <a class="bridge" href="ch-24-indexes-explain.html"><span class="to">Глава 24</span><span>EXPLAIN</span><span class="what">→ проверка плана</span></a>
+          <a class="bridge" href="index.html?stay=1"><span class="to">Оглавление</span><span>Все главы</span><span class="what">→ вернуться к карте</span></a>
+          <a class="bridge" href="diagnostic.html"><span class="to">Диагностика</span><span>Повторная проверка</span><span class="what">→ увидеть прогресс</span></a>
+        </div>
+      </section>
+
+      <div class="pager">
+        <a class="prev" href="ch-25-sql-vs-pandas.html"><span class="dir">← Назад</span><span class="ttl">25 · SQL или pandas</span></a>
+        <a class="next" href="checkpoint-4.html"><span class="dir">Проверка →</span><span class="ttl">Проверочная по SQL</span></a>
+      </div>
+
+    </div>
+  </main>
+</div>
+<script src="assets/toc.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,525 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>07 · ndarray: сетка вместо списка — Ассоциативный гайд</title>
+<meta name="description" content="NumPy ndarray: shape, ndim, dtype, непрерывный буфер, векторизация, память и типичные ловушки — с лабораторией.">
+<link rel="stylesheet" href="assets/style.css">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#fbf8f2" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#14131a" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="assets/icons/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="assets/icons/icon-180.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Гайд Py/SQL">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+</head>
+<body data-slug="ch-07-ndarray">
+<div class="app">
+  <aside class="sidebar" id="sidebar"></aside>
+  <main>
+    <div class="wrap">
+
+      <header class="chapter-head">
+        <div class="eyebrow">
+          <span class="part">Часть II · NumPy</span>
+          <span class="dot"></span>
+          <span>Неделя 2 · день 1</span>
+          <span class="dot"></span>
+          <span>готово</span>
+        </div>
+        <h1>ndarray: сетка вместо списка
+          <span class="sub">Почему числовые данные хранят иначе — и почему это меняет скорость</span>
+        </h1>
+        <p class="lead">
+          NumPy начинается с решения: числа хранятся не как отдельные объекты в списке, а как ровная сетка
+          одного типа. Из этого решения сразу следует всё остальное — shape, dtype, векторизация и странное
+          поведение при копировании.
+        </p>
+        <div class="meta">
+          <span class="chip">⏱ <b>40 минут</b></span>
+          <span class="chip">🎯 уровень <b>2 — применить</b></span>
+          <span class="chip">🧮 <b>numpy 2.3</b></span>
+          <span class="chip">📚 <b>Quickstart</b></span>
+        </div>
+      </header>
+
+      <details class="glossary">
+        <summary>Словарь главы — если забыли термины</summary>
+        <dl>
+          <dt>ndarray</dt><dd>Массив NumPy: непрерывный буфер с формой, типом и шагами.</dd>
+          <dt>shape</dt><dd>Размеры по осям: <code>(3, 4)</code> — 3 строки, 4 столбца.</dd>
+          <dt>dtype</dt><dd>Тип элементов массива. Один тип на все ячейки.</dd>
+          <dt>strides</dt><dd>Сколько байт шагнуть, чтобы перейти к следующему элементу оси.</dd>
+          <dt>векторизация</dt><dd>Операция применяется ко всем элементам без цикла в Python.</dd>
+        </dl>
+      </details>
+
+
+      <section>
+        <h2><span class="num">01</span>Зачем это backend-разработчику</h2>
+        <p>
+          NumPy редко виден в коде backend-сервиса напрямую — но он лежит под pandas, scikit-learn и почти
+          любым анализом данных. Понимание ndarray объясняет, почему pandas-операции быстрые, а циклы по строкам — нет.
+        </p>
+        <ul>
+          <li><strong>Векторизация.</strong> Одна строка <code class="inl">(arr * 1.1)</code> делает то же, что цикл по миллиону элементов, но в десятки раз быстрее.</li>
+          <li><strong>Память.</strong> Миллион чисел в массиве — 8 МБ, в списке — десятки мегабайт: ссылки плюс отдельные объекты.</li>
+          <li><strong>Модель формы.</strong> <code class="inl">shape</code> — это то, что потом станет индексом и колонками в pandas. Ошибки формы — половина ошибок в анализе данных.</li>
+          <li><strong>Собеседование:</strong> «чем ndarray отличается от list», «что такое dtype», «зачем нужен shape» — проверяют понимание численного стека.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2><span class="num">02</span>Ассоциация-якорь: сетка в клетку</h2>
+
+        <div class="anchor">
+          <div class="glyph">▦</div>
+          <div>
+            <div class="t">Держите эту картинку в голове</div>
+            <p class="kick"><strong>list — это полка с коробками.</strong> На каждой полке лежит ссылка на отдельную
+            коробку: где-то в глубине памяти. Коробки могут быть разного размера и разного типа.</p>
+            <p><strong>ndarray — это лист в клетку.</strong> Клетки одинакового размера, стоят вплотную, и у листа
+            есть паспорт: сколько клеток по каждой стороне (<code class="inl">shape</code>), что в клетке
+            (<code class="inl">dtype</code>) и сколько байт до следующей (<code class="inl">strides</code>).</p>
+          </div>
+        </div>
+
+        <figure class="art">
+          <div class="frame">
+            <img src="assets/illustrations/07-ndarray-grid.webp" width="1168" height="876" loading="lazy" decoding="async" alt="Лист миллиметровки с ровной сеткой рядом с кучей картонных коробок разных размеров.">
+          </div>
+          <figcaption><b>Рис. 1.</b> Сетка в клетку против полки с коробками: у ndarray одинаковые клетки и общий буфер.</figcaption>
+        </figure>
+
+      </section>
+
+      <section>
+        <h2><span class="num">03</span>Ассоциативный ряд: восемь звеньев</h2>
+        <ol class="chain">
+          <li><b>import numpy as np</b><span>короткое имя, так принято</span></li>
+          <li><b>np.array</b><span>сетка из списка: копирует данные</span></li>
+          <li><b>shape</b><span>размеры по осям: (5,) или (3, 4)</span></li>
+          <li><b>ndim</b><span>число осей: 1 — вектор, 2 — матрица</span></li>
+          <li><b>dtype</b><span>один тип на все клетки</span></li>
+          <li><b>strides</b><span>сколько байт шагнуть по оси</span></li>
+          <li><b>векторизация</b><span>операция над всеми клетками сразу</span></li>
+          <li><b>агрегат</b><span>sum, mean, max — без цикла</span></li>
+        </ol>
+      </section>
+
+      <section>
+        <h2><span class="num">04</span>Схема: две модели памяти</h2>
+
+        <figure>
+          <div class="frame">
+            <img src="assets/maps/ndarray-vs-list.svg" alt="Слева список ссылок на отдельные int-объекты, справа ndarray с заголовком shape/dtype/strides и непрерывным буфером.">
+          </div>
+          <figcaption>
+            <b>Рис. 2.</b> Список хранит указатели на разбросанные объекты; массив хранит сами числа подряд,
+            а форма и тип описаны в заголовке. Отсюда и производительность, и правила копирования.
+          </figcaption>
+        </figure>
+
+        <figure class="wide">
+          <div class="frame">
+            <img src="assets/maps/np-memory-chart.svg" width="980" height="430" alt="Диаграмма: список на миллион чисел занимает около 36 МБ — 8 МБ указателей и 28 МБ объектов int; массив — 8 МБ. Создание списка 29,4 мс, массива 0,9 мс.">
+          </div>
+          <figcaption>
+            <b>Рис. 3.</b> Та же разница в цифрах: миллион чисел в списке — это 8 МБ указателей и 28 МБ
+            отдельных объектов, а в массиве — ровно 8 МБ подряд. Создание быстрее в 32 раза
+            (29,4 мс против 0,9 мс).
+          </figcaption>
+        </figure>
+
+        <p>
+          Запомните эту разницу — она объясняет три вещи сразу: почему <code class="inl">arr * 2</code> быстрее
+          цикла, почему в массиве не может быть «числа и строки вперемешку» и почему срез массива — это окно,
+          а срез списка — копия (глава 11).
+        </p>
+      </section>
+
+      <section>
+        <h2><span class="num">05</span>Как это устроено на самом деле</h2>
+        <p>
+          <code class="inl">ndarray</code> — это объект-описание поверх блока памяти. В нём нет самих чисел:
+          числа лежат в буфере, а объект хранит <strong>shape</strong> (размеры), <strong>dtype</strong> (тип клетки)
+          и <strong>strides</strong> (на сколько байт сдвинуться, чтобы перейти к следующему элементу по оси).
+        </p>
+
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Свойство</th><th>Что означает</th><th>Пример</th></tr></thead>
+            <tbody>
+              <tr><td class="mono">shape</td><td>размеры по осям</td><td class="mono">(5,) · (3, 4)</td></tr>
+              <tr><td class="mono">ndim</td><td>сколько осей</td><td class="mono">1 · 2</td></tr>
+              <tr><td class="mono">dtype</td><td>тип элементов</td><td class="mono">int64 · float64</td></tr>
+              <tr><td class="mono">size</td><td>всего элементов</td><td class="mono">5 · 12</td></tr>
+              <tr><td class="mono">nbytes</td><td>байт под данные</td><td class="mono">40 · 96</td></tr>
+              <tr><td class="mono">itemsize</td><td>байт на элемент</td><td class="mono">8</td></tr>
+              <tr><td class="mono">strides</td><td>байт на шаг по оси</td><td class="mono">(32, 8)</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>Почему dtype — не мелочь</h3>
+        <p>
+          Тип задаётся один раз на весь массив. Смешали целые и дробные — NumPy приведёт всё к <code class="inl">float64</code>.
+          Это удобно, но имеет цену: <code class="inl">float64</code> вдвое тяжелее <code class="inl">float32</code>,
+          а <code class="inl">int8</code> не резиновый — при переполнении он молча заворачивается.
+        </p>
+
+        <h3>arange с дробным шагом</h3>
+        <p>
+          <code class="inl">np.arange</code> считает границы в двоичных дробях, и последний элемент может «не дотянуть»
+          до правой границы — или наоборот, появиться лишний. Если важна точная сетка, берут <code class="inl">np.linspace</code>:
+          он задаёт <em>количество</em> точек, а не шаг.
+        </p>
+      </section>
+
+      <section>
+        <h2><span class="num">06</span>Лаборатория: запустить и увидеть</h2>
+        <p>
+          Фрагменты файла <a title="Открыть файл с номерами строк" href="snippets/view.html?f=07_ndarray_lab.py"><code class="inl">07_ndarray_lab.py</code></a>.
+          Время у вас будет другим — порядок величин тот же.
+        </p>
+
+        <h3>Шаг 1. Паспорт массива</h3>
+        <div class="code">
+          <div class="bar"><span class="file">07_ndarray_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">import numpy as np
+
+ages = np.array([22, 31, 25, 40, 19])
+print(ages.shape, ages.ndim, ages.dtype, ages.size)
+
+grid = np.array([[1, 2, 3], [4, 5, 6]])
+print(grid.shape, grid.ndim, grid.size)
+print(grid.strides)</pre>
+          <div class="out">(5,) 1 int64 5
+(2, 3) 2 6
+(24, 8)</div>
+        </div>
+        <p>
+          <code class="inl">(5,)</code> — кортеж из одного числа: это вектор, а не «список из пяти». Двумерный массив
+          имеет форму <code class="inl">(2, 3)</code>: две строки, три столбца. Strides говорят, что шаг по строке —
+          24 байта (три элемента по 8), по столбцу — 8 байт.
+        </p>
+
+        <h3>Шаг 2. Память: список против буфера</h3>
+        <div class="code">
+          <div class="bar"><span class="file">07_ndarray_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">import sys
+
+n = 1_000_000
+plain = list(range(n))
+arr = np.arange(n)
+
+print(sys.getsizeof(plain), arr.nbytes, sys.getsizeof(123456), arr.itemsize)</pre>
+          <div class="out">8000056 8000000 28 8</div>
+        </div>
+        <p>
+          Список занимает 8 МБ только под указатели, а каждый <code class="inl">int</code> — ещё 28 байт отдельным
+          объектом. Массив хранит те же числа в 8 МБ: 8 байт на <code class="inl">int64</code>, без объектов и ссылок.
+        </p>
+
+        <h3>Шаг 3. Скорость: почему векторизация быстрее</h3>
+        <div class="code">
+          <div class="bar"><span class="file">07_ndarray_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">squares_list = [i * i for i in range(n)]      # цикл Python
+squares_arr = np.arange(n) ** 2               # векторная операция
+
+sum(squares_list)
+squares_arr.sum()</pre>
+          <div class="out">создать: list  29.4 ms | ndarray  0.9 ms
+сложить: sum(list) 4.9 ms | .sum() 0.2 ms</div>
+        </div>
+        <p>
+          Дело не в «умном» коде, а в том, что цикл выполняется на C по непрерывной памяти. Python-цикл на каждом
+          шаге достаёт объект, проверяет тип и создаёт новый объект — на этом и теряется время.
+        </p>
+
+        <h3>Шаг 4. dtype: один тип на все элементы</h3>
+        <div class="code">
+          <div class="bar"><span class="file">07_ndarray_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">print(np.array([1, 2, 3]).dtype)          # int64
+print(np.array([1, 2, 3.0]).dtype)        # float64
+print(np.array([1, 2, 3], dtype=np.float32).dtype)
+print(np.array([1, 2, 3]).astype(float).dtype)</pre>
+          <div class="out">int64
+float64
+float32
+float64</div>
+        </div>
+
+        <h3>Шаг 5. Переполнение: int8 молчит</h3>
+        <div class="code">
+          <div class="bar"><span class="file">07_ndarray_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">tiny = np.array([127], dtype=np.int8)
+print((tiny + 1)[0])</pre>
+          <div class="out">-128</div>
+        </div>
+        <p>
+          Ни ошибки, ни предупреждения — просто заворот. Именно поэтому dtype выбирают осознанно, а деньги
+          и идентификаторы не хранят в маленьких целых.
+        </p>
+
+        <h3>Шаг 6. arange с дробным шагом</h3>
+        <div class="code">
+          <div class="bar"><span class="file">07_ndarray_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">x = np.arange(1, 1.3, 0.1)
+print(len(x), repr(x[-1]), x[-1] == 1.3)
+print(np.linspace(1, 1.3, 4))</pre>
+          <div class="out">4 np.float64(1.3000000000000003) False
+[1.  1.1 1.2 1.3]</div>
+        </div>
+        <p>
+          Четыре элемента вместо трёх, последний — не ровно 1.3. Если нужна точная сетка из N точек —
+          <code class="inl">linspace</code>, где количество задаётся явно.
+        </p>
+
+        <h3>Шаг 7. Копия или тот же массив</h3>
+        <div class="code">
+          <div class="bar"><span class="file">07_ndarray_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">original = np.array([1, 2, 3])
+print(np.array(original) is original)    # False — копия
+print(np.asarray(original) is original)  # True — тот же объект</pre>
+          <div class="out">False
+True</div>
+        </div>
+      </section>
+
+      <section>
+        <h2><span class="num">07</span>Мост: где ndarray работает под капотом</h2>
+
+        <h3>pandas: Series — это массив плюс индекс</h3>
+        <div class="code">
+          <div class="bar"><span class="file">мост в pandas</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">import pandas as pd
+
+s = pd.Series([22, 31, 25], index=["anna", "ivan", "olga"])
+s.values          # ndarray с данными
+s.dtype           # dtype этого массива
+s.to_numpy()      # явно получить массив
+
+df = pd.DataFrame({"age": [22, 31, 25]})
+df["age"].values  # тоже ndarray</pre>
+        </div>
+        <p>
+          Поэтому pandas-операции быстрые: под каждой колонкой — массив NumPy. И поэтому ошибки dtype в pandas
+          выглядят так же, как в NumPy: <code class="inl">object</code> вместо числа — это медленно.
+        </p>
+
+        <h3>SQL: NUMERIC и FLOAT — та же разница</h3>
+        <div class="code">
+          <div class="bar"><span class="file">мост в SQL</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">price NUMERIC(10, 2)   -- точные деньги, как int в «копейках»
+ratio DOUBLE PRECISION -- float64: быстрее, но с погрешностью
+amount INTEGER         -- целые, без дробной части</pre>
+        </div>
+        <p>
+          В SQL вы тоже выбираете тип один раз на колонку — ровно как dtype в массиве. И так же платите
+          за точность и размер.
+        </p>
+      </section>
+
+      <section>
+        <h2><span class="num">08</span>Шесть ошибок, на которых спотыкаются</h2>
+
+        <div class="errors">
+          <div class="err">
+            <div class="h">arange с дробным шагом</div>
+            <p><code class="inl">np.arange(1, 1.3, 0.1)</code> даёт 4 элемента и последний <code class="inl">1.3000000000000003</code>.</p>
+            <div class="fix">Для точной сетки — <code class="inl">np.linspace(start, stop, num)</code>.</div>
+          </div>
+          <div class="err">
+            <div class="h">Переполнение маленьких типов</div>
+            <p><code class="inl">np.int8(127) + 1</code> → <code class="inl">-128</code> без исключения.</p>
+            <div class="fix">Не экономить на dtype там, где значения могут вырасти; проверять диапазон.</div>
+          </div>
+          <div class="err">
+            <div class="h">Неявное приведение типов</div>
+            <p><code class="inl">np.array([1, 2, 3.0])</code> молча становится <code class="inl">float64</code> — и дальше все операции дробные.</p>
+            <div class="fix">Явный <code class="inl">dtype=</code> при создании; <code class="inl">.dtype</code> в отладке.</div>
+          </div>
+          <div class="err">
+            <div class="h">Путать (n,) и (n, 1)</div>
+            <p>Вектор формы <code class="inl">(3,)</code> и матрица-столбец <code class="inl">(3, 1)</code> — разные shape. Это ломает broadcasting и pandas-индексацию.</p>
+            <div class="fix">Проверять <code class="inl">shape</code>; при необходимости <code class="inl">reshape(-1, 1)</code>.</div>
+          </div>
+          <div class="err">
+            <div class="h">Массив из «рваных» списков</div>
+            <p><code class="inl">np.array([[1, 2], [3]])</code> в новых версиях — ошибка или массив объектов; сетка требует одинаковой длины строк.</p>
+            <div class="fix">Выравнивать данные или хранить списки, а не ndarray.</div>
+          </div>
+          <div class="err">
+            <div class="h">Ожидать копию от asarray</div>
+            <p><code class="inl">np.asarray(arr)</code> возвращает тот же объект, если тип совпадает. Изменение «копии» меняет исходник.</p>
+            <div class="fix">Нужна независимость — <code class="inl">np.array(arr, copy=True)</code> или <code class="inl">arr.copy()</code>.</div>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h2><span class="num">09</span>Вопросы с собеседования</h2>
+        <div class="qa">
+          <details>
+            <summary>Чем ndarray отличается от list?</summary>
+            <div class="a">
+              <p>Массив хранит элементы одного типа в непрерывном буфере, список — ссылки на любые объекты. У массива есть форма и dtype, операции применяются ко всем элементам сразу на C. Цена — фиксированный тип и сложность с изменением размера.</p>
+              <div class="verdict">Резюме: сетка одного типа против полки со ссылками.</div>
+            </div>
+          </details>
+          <details>
+            <summary>Что означают shape, ndim, dtype?</summary>
+            <div class="a">
+              <p><code class="inl">shape</code> — размеры по осям, <code class="inl">ndim</code> — число осей, <code class="inl">dtype</code> — тип элементов. Вместе с strides они описывают, как читать буфер.</p>
+              <div class="verdict">Резюме: паспорт массива.</div>
+            </div>
+          </details>
+          <details>
+            <summary>Что такое векторизация?</summary>
+            <div class="a">
+              <p>Операция над всем массивом без явного цикла Python: <code class="inl">arr * 2</code>, <code class="inl">arr.sum()</code>. Внутри — цикл на C по непрерывной памяти.</p>
+              <div class="verdict">Резюме: цикл есть, но не в интерпретаторе.</div>
+            </div>
+          </details>
+          <details>
+            <summary>Почему dtype важен?</summary>
+            <div class="a">
+              <p>Он определяет память (8 байт против 4), точность (float32 против float64) и поведение при переполнении. Ошибка в dtype — это либо потеря точности, либо молчаливый заворот значений.</p>
+              <div class="verdict">Резюме: тип — часть контракта данных.</div>
+            </div>
+          </details>
+          <details>
+            <summary>Чем np.array() отличается от np.asarray()?</summary>
+            <div class="a">
+              <p><code class="inl">np.array</code> копирует данные по умолчанию, <code class="inl">np.asarray</code> возвращает исходный массив, если тип и форма уже подходят. Для гарантии независимости — <code class="inl">.copy()</code>.</p>
+              <div class="verdict">Резюме: array — «сделай массив», asarray — «сделай, если ещё не массив».</div>
+            </div>
+          </details>
+          <details>
+            <summary>Почему np.arange() с float может давать неожиданные значения?</summary>
+            <div class="a">
+              <p>Границы и шаг — двоичные дроби, поэтому накопление шага даёт погрешность: последний элемент может не дотянуть до границы или появиться лишний. <code class="inl">linspace</code> задаёт количество точек и считает их делением — без накопления.</p>
+              <div class="verdict">Резюме: шаг против количества.</div>
+            </div>
+          </details>
+          <details>
+            <summary>Зачем нужны strides?</summary>
+            <div class="a">
+              <p>Они говорят, на сколько байт сдвинуться, чтобы перейти к следующему элементу по каждой оси. Отсюда быстрое чтение и возможность делать view без копирования.</p>
+              <div class="verdict">Резюме: карта перемещения по буферу.</div>
+            </div>
+          </details>
+          <details>
+            <summary>Что будет, если смешать int и float в одном массиве?</summary>
+            <div class="a">
+              <p>NumPy приведёт все элементы к общему типу — обычно <code class="inl">float64</code>. Данные не потеряются, но память и точность изменятся.</p>
+              <div class="verdict">Резюме: один тип — общий знаменатель.</div>
+            </div>
+          </details>
+        </div>
+      </section>
+
+      <section>
+        <h2><span class="num">10</span>Три задачи: сначала своя попытка</h2>
+
+        <h3><span style="color:var(--muted);font-family:var(--mono);font-size:.8rem">01</span> Паспорт и статистика</h3>
+        <p>Создайте массив зарплат из практики недели 2 и получите среднюю, максимальную зарплату и индекс максимума.</p>
+        <div class="qa">
+          <details>
+            <summary>Показать решение</summary>
+            <div class="a">
+              <div class="code" style="margin-top:0">
+                <div class="bar"><span class="file">решение</span><span class="lang">python</span><button class="copy">копировать</button></div>
+                <pre data-lang="python">import numpy as np
+
+salaries = np.array([50000, 90000, 70000, 120000, 45000])
+print(salaries.mean(), salaries.max(), salaries.argmax())
+print((salaries * 1.1).round())</pre>
+                <div class="out">75000.0 120000 3
+[ 55000.  99000.  77000. 132000.  49500.]</div>
+              </div>
+              <p><strong>Что важно.</strong> <code class="inl">argmax</code> возвращает позицию, а не значение. Умножение на 1.1 создаёт новый массив типа float64.</p>
+            </div>
+          </details>
+        </div>
+
+        <h3><span style="color:var(--muted);font-family:var(--mono);font-size:.8rem">02</span> Сетка 3×4</h3>
+        <p>Создайте массив 0…11 и превратите его в матрицу 3×4. Выведите shape, strides и элемент во второй строке, третьем столбце.</p>
+        <div class="qa">
+          <details>
+            <summary>Показать решение</summary>
+            <div class="a">
+              <div class="code" style="margin-top:0">
+                <div class="bar"><span class="file">решение</span><span class="lang">python</span><button class="copy">копировать</button></div>
+                <pre data-lang="python">m = np.arange(12).reshape(3, 4)
+print(m.shape, m.strides)
+print(m[1, 2])</pre>
+                <div class="out">(3, 4) (32, 8)
+6</div>
+              </div>
+              <p><strong>Что важно.</strong> <code class="inl">reshape</code> не копирует данные, а меняет описание: strides стали (32, 8) — шаг по строке 4×8 байт.</p>
+            </div>
+          </details>
+        </div>
+
+        <h3><span style="color:var(--muted);font-family:var(--mono);font-size:.8rem">03</span> Тип и переполнение</h3>
+        <p>Покажите переполнение на <code class="inl">int8</code> и исправьте его, выбрав подходящий dtype.</p>
+        <div class="qa">
+          <details>
+            <summary>Показать решение</summary>
+            <div class="a">
+              <div class="code" style="margin-top:0">
+                <div class="bar"><span class="file">решение</span><span class="lang">python</span><button class="copy">копировать</button></div>
+                <pre data-lang="python">small = np.array([127], dtype=np.int8)
+print((small + 1)[0])                 # -128 — заворот
+
+safe = np.array([127], dtype=np.int16)
+print((safe + 1)[0])                  # 128 — всё хорошо</pre>
+                <div class="out">-128
+128</div>
+              </div>
+              <p><strong>Что важно.</strong> Диапазон <code class="inl">int8</code> — от −128 до 127. Выбирайте тип по диапазону данных, а не по «меньше памяти».</p>
+            </div>
+          </details>
+        </div>
+      </section>
+
+      <section>
+        <h2><span class="num">11</span>Чек-лист освоения</h2>
+        <div class="check">
+          <label><input type="checkbox"><span class="box"></span><span class="txt">Объяснить разницу list и ndarray через память, а не «NumPy быстрее»</span></label>
+          <label><input type="checkbox"><span class="box"></span><span class="txt">Прочитать паспорт массива: shape, ndim, dtype, size, strides</span></label>
+          <label><input type="checkbox"><span class="box"></span><span class="txt">Создать массив нужной формы через arange/zeros/reshape</span></label>
+          <label><input type="checkbox"><span class="box"></span><span class="txt">Объяснить, почему индекс в arange(1, 1.3, 0.1) может «не сойтись»</span></label>
+          <label><input type="checkbox"><span class="box"></span><span class="txt">Сказать, как dtype влияет на память и точность</span></label>
+        </div>
+      </section>
+
+      <section>
+        <h2><span class="num">12</span>Куда ведут мостики</h2>
+        <div class="bridges">
+          <a class="bridge" href="ref-np-ndarray.html"><span class="to">Справочник</span><span>NumPy: ndarray</span><span class="what">→ создание, shape/dtype, память</span></a>
+          <a class="bridge" href="ch-08-indexing.html"><span class="to">Глава 08</span><span>Индексация и маски</span><span class="what">→ выбирать элементы по условию</span></a>
+          <a class="bridge" href="ch-09-axis.html"><span class="to">Глава 09</span><span>axis</span><span class="what">→ агрегаты по строкам и столбцам</span></a>
+          <a class="bridge" href="ch-10-broadcasting.html"><span class="to">Глава 10</span><span>Broadcasting</span><span class="what">→ операции с разными формами</span></a>
+          <a class="bridge" href="ch-11-views-copies.html"><span class="to">Глава 11</span><span>View и copy</span><span class="what">→ почему срез массива не копия</span></a>
+          <a class="bridge" href="ch-12-series-dataframe.html"><span class="to">Глава 12</span><span>Series и DataFrame</span><span class="what">→ массив плюс индекс</span></a>
+        </div>
+      </section>
+
+      <div class="pager">
+        <a class="prev" href="checkpoint-1.html"><span class="dir">← Назад</span><span class="ttl">Проверочная работа по части I</span></a>
+        <a class="next" href="ch-08-indexing.html"><span class="dir">Дальше →</span><span class="ttl">08 · индексация и маски</span></a>
+      </div>
+
+    </div>
+  </main>
+</div>
+<script src="assets/toc.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>

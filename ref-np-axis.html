@@ -1,0 +1,658 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Справочник NumPy · axis: вдоль какой стены считать — Ассоциативный гайд</title>
+<meta name="description" content="Справочник NumPy по axis: sum, mean, min, max, std, keepdims, axis=(0,1), argmax, cumsum и форма результата — с выводом numpy 2.3.5.">
+<link rel="stylesheet" href="assets/style.css">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#fbf8f2" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#14131a" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="assets/icons/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="assets/icons/icon-180.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Гайд Py/SQL">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+</head>
+<body data-slug="ref-np-axis">
+<div class="app">
+  <aside class="sidebar" id="sidebar"></aside>
+  <main>
+    <div class="wrap">
+
+      <header class="chapter-head">
+        <div class="eyebrow">
+          <span class="part">Справочник · NumPy</span>
+          <span class="dot"></span>
+          <span>страница 3 из 5</span>
+          <span class="dot"></span>
+          <span>готово</span>
+        </div>
+        <h1>axis: вдоль какой стены считать
+          <span class="sub">Агрегаты, keepdims и форма результата — ось, по которой прошли, исчезает</span>
+        </h1>
+        <p class="lead">
+          <code class="inl">axis</code> указывает не «что оставить», а <em>вдоль чего идти</em>.
+          Здесь все агрегаты с осью, форма результата, <code class="inl">keepdims</code> и
+          <code class="inl">argmax</code> — с реальным выводом numpy 2.3.5.
+        </p>
+        <div class="meta">
+          <span class="chip">⏱ <b>12 минут</b></span>
+          <span class="chip">🎯 уровень <b>2</b></span>
+          <span class="chip">🧮 <b>numpy 2.3.5</b></span>
+          <span class="chip">📚 <b>глава 09</b></span>
+        </div>
+      </header>
+
+      <p class="small">
+        Справочник NumPy: <a href="appendix-numpy.html">вся карта</a> ·
+        <a href="ref-np-ndarray.html">01 · ndarray</a> ·
+        <a href="ref-np-indexing.html">02 · индексация</a> ·
+        <b>03 · axis</b> · <a href="ref-np-broadcasting.html">04 · broadcasting</a> ·
+        <a href="ref-np-views.html">05 · view/copy</a>
+      </p>
+
+      <div class="tldr">
+        <div class="t">Самое главное</div>
+        <ul>
+          <li>Ось — направление свёртки. Из формы результата она исчезает:
+              для <code class="inl">(3, 4)</code> <code class="inl">axis=0</code> даёт
+              <code class="inl">(4,)</code>, <code class="inl">axis=1</code> — <code class="inl">(3,)</code>,
+              <code class="inl">axis=None</code> — скаляр.</li>
+          <li><code class="inl">keepdims=True</code> оставляет свёрнутую ось размером 1:
+              <code class="inl">(1, 4)</code> вместо <code class="inl">(4,)</code>. Это нужно, когда
+              результат складывают с исходным массивом.</li>
+          <li><code class="inl">argmax</code> без оси возвращает <b>плоский</b> индекс; чтобы получить
+              координаты — <code class="inl">np.unravel_index</code>. <code class="inl">mean</code>
+              по целым возвращает <code class="inl">float64</code>.</li>
+        </ul>
+      </div>
+
+      <!-- ══════════════════ 01. Что это ══════════════════ -->
+      <section>
+        <h2><span class="num">01</span>Что это и как устроено</h2>
+        <p>
+          У массива есть форма — кортеж длин по осям. У матрицы <code class="inl">(3, 4)</code>
+          ось 0 — строки, ось 1 — столбцы. Агрегат с <code class="inl">axis</code> идёт вдоль
+          указанной оси и складывает значения: ось «схлопывается» и из формы результата пропадает.
+        </p>
+        <p>
+          Поэтому <code class="inl">sum(axis=0)</code> — это «идти вниз по строкам»: в каждом
+          столбце складываются три значения, остаётся вектор длины 4. А
+          <code class="inl">sum(axis=1)</code> — «идти вправо по столбцам»: каждая строка даёт одно
+          число, остаётся вектор длины 3. <code class="inl">axis=None</code> сворачивает все оси
+          сразу и даёт скаляр.
+        </p>
+
+        <div class="anchor">
+          <div class="glyph">🧱</div>
+          <div>
+            <div class="t">Держите эту картинку в голове</div>
+            <p class="kick"><strong>Вы идёте вдоль стены и складываете кирпичи.</strong> Кирпичи на
+            стене складываются в один результат, и сама стена после этого исчезает.</p>
+            <p><code class="inl">axis=0</code> — вниз по строкам: складываем столбцы и получаем по
+            числу на каждый столбец. <code class="inl">axis=1</code> — вправо по строкам: складываем
+            каждую строку и получаем по числу на каждую строку. Метафору целиком разбирает
+            <a href="ch-09-axis.html">глава 09</a>.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ══════════════════ 02. Когда брать ══════════════════ -->
+      <section>
+        <h2><span class="num">02</span>Когда брать, а когда нет</h2>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Задача</th><th>Что вызвать</th><th>Форма результата</th></tr></thead>
+            <tbody>
+              <tr><td>Сумма или среднее по каждому столбцу</td><td class="mono">m.sum(axis=0)</td><td class="mono">(4,)</td></tr>
+              <tr><td>Сумма или среднее по каждой строке</td><td class="mono">m.sum(axis=1)</td><td class="mono">(3,)</td></tr>
+              <tr><td>Одно число по всей матрице</td><td class="mono">m.sum() / axis=None</td><td class="mono">()</td></tr>
+              <tr><td>Результат будет вычитаться из <code class="inl">m</code></td><td class="mono">axis=0, keepdims=True</td><td class="mono">(1, 4)</td></tr>
+              <tr><td>Свернуть две оси из трёх</td><td class="mono">cube.sum(axis=(0, 2))</td><td class="mono">(3,)</td></tr>
+              <tr><td>Позиция максимума внутри каждой строки</td><td class="mono">m.argmax(axis=1)</td><td class="mono">(3,)</td></tr>
+              <tr><td>Накопленная сумма по столбцам</td><td class="mono">m.cumsum(axis=0)</td><td class="mono">(3, 4)</td></tr>
+              <tr><td>Отсортировать каждую строку отдельно</td><td class="mono">np.sort(m, axis=1)</td><td class="mono">(3, 4)</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="small">
+          Ось в pandas — та же логика под другими именами: <code class="inl">axis=0</code> — индекс,
+          <code class="inl">axis=1</code> — колонки. Мостик — в конце страницы.
+        </p>
+      </section>
+
+      <!-- ══════════════════ 03. Как создать ══════════════════ -->
+      <section>
+        <h2><span class="num">03</span>Как создать и подготовить</h2>
+        <div class="code">
+          <div class="bar"><span class="file">ref_np_axis_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">import numpy as np
+
+m = np.arange(12).reshape(3, 4)
+print(m)
+print(m.shape, m.ndim, m.dtype)</pre>
+          <div class="out">[[ 0  1  2  3]
+ [ 4  5  6  7]
+ [ 8  9 10 11]]
+(3, 4) 2 int64</div>
+        </div>
+        <p>
+          <code class="inl">np.arange(12).reshape(3, 4)</code> — самый короткий способ получить
+          матрицу с известными значениями: числа 0–11 лягут по строкам. Форма
+          <code class="inl">(3, 4)</code> — это словарь осей: 3 строки и 4 столбца. Дальше все
+          примеры работают с этой же <code class="inl">m</code>.
+        </p>
+        <div class="note">
+          <span class="t">axis — направление, а не остаток</span>
+          <p>Формулировка «axis=0 — по строкам» сбивает: имеется в виду, куда идёт свёртка. Правило,
+          которое не подводит: <b>ось исчезает из формы</b>. Проверяйте
+          <code class="inl">.shape</code> результата — он и есть ответ.</p>
+        </div>
+      </section>
+
+      <!-- ══════════════════ 04. Все операции ══════════════════ -->
+      <section>
+        <h2><span class="num">04</span>Все операции</h2>
+        <p>
+          Две таблицы: свёртка формы и операции, которые форму не меняют. В «Примечании» — dtype
+          и ловушка; форма результата записана для матрицы <code class="inl">(3, 4)</code>.
+        </p>
+
+        <h3>Свёртка формы</h3>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Операция</th><th>Что делает</th><th>Форма результата</th><th>Примечание</th></tr></thead>
+            <tbody>
+              <tr><td class="mono">m.sum()</td><td>сумма всех элементов</td><td class="mono">()</td><td>скаляр numpy, не python int</td></tr>
+              <tr><td class="mono">m.sum(axis=0)</td><td>вниз по строкам, по столбцам</td><td class="mono">(4,)</td><td>ось 0 исчезла</td></tr>
+              <tr><td class="mono">m.sum(axis=1)</td><td>вправо по столбцам, по строкам</td><td class="mono">(3,)</td><td>ось 1 исчезла</td></tr>
+              <tr><td class="mono">m.sum(axis=0, keepdims=True)</td><td>то же, но ось остаётся размером 1</td><td class="mono">(1, 4)</td><td>форма совместима с m</td></tr>
+              <tr><td class="mono">m.sum(axis=(0, 1))</td><td>свернуть две оси</td><td class="mono">()</td><td>для 2D то же, что axis=None</td></tr>
+              <tr><td class="mono">m.mean(axis=0)</td><td>среднее по столбцам</td><td class="mono">(4,)</td><td>int → float64</td></tr>
+              <tr><td class="mono">m.min(axis=0) / max(axis=0)</td><td>минимум / максимум по столбцам</td><td class="mono">(4,)</td><td>dtype сохраняется</td></tr>
+              <tr><td class="mono">m.std(axis=0) / var(axis=1)</td><td>стандартное отклонение / дисперсия</td><td class="mono">(4,) / (3,)</td><td>всегда float</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>Форму не меняют</h3>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Операция</th><th>Что делает</th><th>Форма результата</th><th>Примечание</th></tr></thead>
+            <tbody>
+              <tr><td class="mono">m.argmax()</td><td>плоский индекс максимума</td><td class="mono">скаляр</td><td>для координат — <code class="inl">np.unravel_index</code></td></tr>
+              <tr><td class="mono">m.argmin()</td><td>плоский индекс минимума</td><td class="mono">скаляр</td><td>устроен так же, как argmax</td></tr>
+              <tr><td class="mono">m.argmax(axis=0)</td><td>индекс максимума в каждом столбце</td><td class="mono">(4,)</td><td>числа — номера строк</td></tr>
+              <tr><td class="mono">m.argmax(axis=1)</td><td>индекс максимума в каждой строке</td><td class="mono">(3,)</td><td>числа — номера столбцов</td></tr>
+              <tr><td class="mono">m.cumsum(axis=0)</td><td>накопленная сумма вниз</td><td class="mono">(3, 4)</td><td>размер не уменьшается</td></tr>
+              <tr><td class="mono">np.sort(m, axis=1)</td><td>сортирует каждую строку</td><td class="mono">(3, 4)</td><td>копия; ось указывает, где сортировать</td></tr>
+              <tr><td class="mono">mask.any(axis=0) / all(axis=1)</td><td>есть ли True / все ли True</td><td class="mono">(4,) / (3,)</td><td>bool → результат по оси</td></tr>
+              <tr><td class="mono">mask.sum(axis=0)</td><td>сколько True в каждом столбце</td><td class="mono">(4,)</td><td>True считается как 1</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="small">
+          Отрицательные оси считаются с конца: <code class="inl">-1</code> — последняя,
+          <code class="inl">-2</code> — предпоследняя. Для <code class="inl">(3, 4)</code>
+          <code class="inl">axis=-1</code> — то же, что <code class="inl">axis=1</code>.
+        </p>
+      </section>
+
+      <!-- ══════════════════ 05. Разбор ══════════════════ -->
+      <section>
+        <h2><span class="num">05</span>Разбор по группам</h2>
+        <p>
+          Все примеры страницы — в файле
+          <a href="snippets/view.html?f=ref_np_axis_lab.py"><code class="inl">ref_np_axis_lab.py</code></a>.
+          Нужен numpy 2.3.5: в других версиях меняется текст ошибок и repr.
+        </p>
+
+        <h3>axis=0 против axis=1</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_np_axis_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">print(m.sum(axis=0), m.sum(axis=0).shape)
+print(m.sum(axis=1), m.sum(axis=1).shape)
+print(m.sum(), m.sum().shape)</pre>
+          <div class="out">[12 15 18 21] (4,)
+[ 6 22 38] (3,)
+66 ()</div>
+        </div>
+        <p>
+          Две суммы одной матрицы: <code class="inl">axis=0</code> прошёл вниз и оставил столбцы
+          <code class="inl">(4,)</code>, <code class="inl">axis=1</code> прошёл вправо и оставил
+          строки <code class="inl">(3,)</code>. Без оси получается скаляр формы
+          <code class="inl">()</code> — это не «ноль размерностей по ошибке», а честный результат
+          свёртки всех осей.
+        </p>
+
+        <h3>Остальные агрегаты</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_np_axis_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">print(m.mean(axis=0))
+print(m.mean(axis=1))
+print(m.min(axis=0), m.max(axis=0))
+print(m.prod(axis=1))
+print(m.std(axis=0).round(2))
+print(m.var(axis=1).round(2))</pre>
+          <div class="out">[4. 5. 6. 7.]
+[1.5 5.5 9.5]
+[0 1 2 3] [ 8  9 10 11]
+[   0  840 7920]
+[3.27 3.27 3.27 3.27]
+[1.25 1.25 1.25]</div>
+        </div>
+        <p>
+          <code class="inl">mean</code>, <code class="inl">std</code> и <code class="inl">var</code>
+          возвращают <code class="inl">float64</code> даже для целой матрицы: среднее 0 и 4 — это 2.0,
+          а не int. <code class="inl">min</code>/<code class="inl">max</code>/<code class="inl">sum</code>
+          dtype сохраняют. <code class="inl">prod(axis=1)</code> перемножает каждую строку — форма
+          снова <code class="inl">(3,)</code>.
+        </p>
+
+        <h3>keepdims, отрицательная ось и (0, 1)</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_np_axis_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">print(m.sum(axis=0).shape, m.sum(axis=0, keepdims=True).shape)
+print(m.sum(axis=0, keepdims=True))
+print(np.array_equal(m.sum(axis=-1), m.sum(axis=1)))
+print(m.sum(axis=(0, 1)), m.sum(axis=(0, 1)).shape)
+print(m.sum(axis=(0, 1), keepdims=True))</pre>
+          <div class="out">(4,) (1, 4)
+[[12 15 18 21]]
+True
+66 ()
+[[66]]</div>
+        </div>
+        <p>
+          <code class="inl">keepdims=True</code> не меняет значения, но оставляет ось размером 1:
+          <code class="inl">(1, 4)</code> вместо <code class="inl">(4,)</code>. Так результат можно
+          вычитать из <code class="inl">m</code> без двусмысленности. Кортеж осей
+          <code class="inl">axis=(0, 1)</code> сворачивает сразу две; для 2D это скаляр, а
+          <code class="inl">keepdims=True</code> даёт форму <code class="inl">(1, 1)</code>.
+        </p>
+
+        <h3>any/all: правда по оси</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_np_axis_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">mask = m &gt; 5
+print(mask)
+print(mask.any(axis=0))
+print(mask.all(axis=1))
+print(mask.sum(axis=0))</pre>
+          <div class="out">[[False False False False]
+ [False False  True  True]
+ [ True  True  True  True]]
+[ True  True  True  True]
+[False False  True]
+[1 1 2 2]</div>
+        </div>
+        <p>
+          Для булевой маски агрегаты читаются так же: <code class="inl">any(axis=0)</code> — «есть ли
+          True в столбце», <code class="inl">all(axis=1)</code> — «все ли значения в строке True».
+          <code class="inl">sum(axis=0)</code> по маске считает количество True в каждом столбце —
+          True ведёт себя как единица.
+        </p>
+
+        <h3>argmax, cumsum, sort</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_np_axis_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">print(m.argmax(), m.argmax(axis=0), m.argmax(axis=1))
+print(m.argmin(axis=1))
+print(m.cumsum(axis=0))
+s = np.array([[3, 1], [0, 2]])
+print(np.sort(s, axis=0))
+print(np.sort(s, axis=1))</pre>
+          <div class="out">11 [2 2 2 2] [3 3 3]
+[0 0 0]
+[[ 0  1  2  3]
+ [ 4  6  8 10]
+ [12 15 18 21]]
+[[0 1]
+ [3 2]]
+[[1 3]
+ [0 2]]</div>
+        </div>
+        <p>
+          <code class="inl">argmax()</code> без оси — это индекс в <b>плоском</b> порядке, а не пара
+          координат: для <code class="inl">(3, 4)</code> число 11 значит «2-я строка, 3-й столбец».
+          <code class="inl">argmax(axis=0)</code> ищет максимум в каждом столбце и возвращает номера
+          строк; <code class="inl">argmin</code> устроен симметрично. <code class="inl">cumsum</code>
+          форму сохраняет, а <code class="inl">np.sort</code> с осью сортирует независимо по каждой
+          строке или столбцу.
+        </p>
+
+        <h3>Трёхмерный массив (2, 3, 4)</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_np_axis_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">cube = np.arange(24).reshape(2, 3, 4)
+print(cube.shape)
+print(cube.sum(axis=0).shape, cube.sum(axis=1).shape, cube.sum(axis=2).shape)
+print(cube.sum(axis=(0, 2)))
+print(cube.sum(axis=(0, 1)).shape, cube.sum(axis=(0, 1)))</pre>
+          <div class="out">(2, 3, 4)
+(3, 4) (2, 4) (2, 3)
+[ 60  92 124]
+(4,) [60 66 72 78]</div>
+        </div>
+        <p>
+          Оси 3D-массива: 0 — «партии», 1 — строки внутри партии, 2 — столбцы. Свёртка
+          <code class="inl">axis=0</code> убирает партии и оставляет матрицу <code class="inl">(3, 4)</code>;
+          <code class="inl">axis=(0, 2)</code> убирает партии и столбцы — остаётся вектор по строкам
+          <code class="inl">(3,)</code>; <code class="inl">axis=(0, 1)</code> — вектор по столбцам
+          <code class="inl">(4,)</code>.
+        </p>
+      </section>
+
+      <!-- ══════════════════ 06. Сценарии ══════════════════ -->
+      <section>
+        <h2><span class="num">06</span>Три сценария из практики</h2>
+
+        <h3>Выручка по дням и категориям</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_np_axis_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">sales = np.array([
+    [100, 200, 150, 50],
+    [120, 180, 160, 40],
+    [80, 220, 140, 60],
+])
+print(sales.sum(axis=0))
+print(sales.sum(axis=1))
+print(sales.mean(axis=0).round(1))</pre>
+          <div class="out">[300 600 450 150]
+[500 500 500]
+[100. 200. 150.  50.]</div>
+        </div>
+        <p>
+          Строки — дни, столбцы — категории. <code class="inl">sum(axis=0)</code> даёт итог по
+          категориям (4 числа), <code class="inl">sum(axis=1)</code> — итог по дням (3 числа), а
+          <code class="inl">mean(axis=0)</code> — средний чек по категории за день. Одна матрица,
+          три разных отчёта — без единого цикла.
+        </p>
+
+        <h3>Доли по дням через keepdims</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_np_axis_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">day_totals = sales.sum(axis=1, keepdims=True)
+shares = (sales / day_totals * 100).round(1)
+print(day_totals.shape, shares.shape)
+print(shares)</pre>
+          <div class="out">(3, 1) (3, 4)
+[[20. 40. 30. 10.]
+ [24. 36. 32.  8.]
+ [16. 44. 28. 12.]]</div>
+        </div>
+        <p>
+          <code class="inl">sum(axis=1, keepdims=True)</code> даёт столбец итогов формы
+          <code class="inl">(3, 1)</code>. Делим на него матрицу — и каждый элемент получает долю
+          в своём дне. Без <code class="inl">keepdims</code> форма была бы <code class="inl">(3,)</code>,
+          и деление пошло бы по другой оси. В сумме каждая строка долей даёт 100%.
+        </p>
+
+        <h3>3D: партии, магазины, месяцы</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_np_axis_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">cube = np.arange(24).reshape(2, 3, 4) + 1
+print(cube.shape)
+print(cube.sum(axis=0).shape)
+print(cube.sum(axis=0))
+print(cube.sum(axis=(0, 2)))</pre>
+          <div class="out">(2, 3, 4)
+(3, 4)
+[[14 16 18 20]
+ [22 24 26 28]
+ [30 32 34 36]]
+[ 68 100 132]</div>
+        </div>
+        <p>
+          В 3D-отчёте ось решает, что останется в таблице: <code class="inl">axis=0</code> суммирует
+          партии и оставляет «магазин × месяц», <code class="inl">axis=(0, 2)</code> — итог по
+          каждому магазину. Тот же приём, что в 2D, только осей больше — и номер оси становится
+          главным решением в коде.
+        </p>
+      </section>
+
+      <!-- ══════════════════ 07. Ошибки ══════════════════ -->
+      <section>
+        <h2><span class="num">07</span>Пять ошибок, на которых спотыкаются</h2>
+        <div class="errors">
+          <div class="err">
+            <div class="h">Путать axis=0 и axis=1</div>
+            <p>Кажется, что «axis=0 — это по строкам», и ожидается результат длины 3. На деле 0 —
+            направление вниз: строки исчезают, остаются столбцы <code class="inl">(4,)</code>.</p>
+            <div class="fix">Проговаривать «ось исчезает»: axis=0 → строки свернулись → остались
+            столбцы. Проверять <code class="inl">.shape</code> результата.</div>
+          </div>
+
+          <div class="err">
+            <div class="h">Ждать форму исходной матрицы</div>
+            <p><code class="inl">m.mean(axis=1)</code> возвращает <code class="inl">(3,)</code>, а не
+            <code class="inl">(3, 4)</code>. Вычитание <code class="inl">m - m.mean(axis=1)</code>
+            падает с <code class="inl">ValueError</code>: последние оси не совпадают.</p>
+            <div class="fix"><code class="inl">keepdims=True</code>, когда результат участвует в
+            арифметике с исходным массивом: <code class="inl">m - m.mean(axis=1, keepdims=True)</code>.</div>
+          </div>
+
+          <div class="err">
+            <div class="h">argmax() без оси</div>
+            <p><code class="inl">m.argmax()</code> — одно число: плоский индекс. Для матрицы
+            <code class="inl">(3, 4)</code> значение 11 значит «строка 2, столбец 3», но координат
+            в нём нет.</p>
+            <div class="fix"><code class="inl">np.unravel_index(m.argmax(), m.shape)</code> →
+            пара координат; или сразу <code class="inl">argmax(axis=0/1)</code>.</div>
+          </div>
+
+          <div class="err">
+            <div class="h">mean по int и dtype</div>
+            <p><code class="inl">m.mean(axis=0)</code> для целой матрицы — <code class="inl">float64</code>,
+            даже если все средние целые. <code class="inl">m.sum(axis=0)</code> при этом остаётся
+            <code class="inl">int64</code>.</p>
+            <div class="fix">Не полагаться на dtype вслепую: проверяйте
+            <code class="inl">.dtype</code>, приводите явно (<code class="inl">.astype(int)</code>)
+            только если дробная часть действительно не нужна.</div>
+          </div>
+
+          <div class="err">
+            <div class="h">Ось вне диапазона</div>
+            <p>Для 2D <code class="inl">m.sum(axis=2)</code> бросает
+            <code class="inl">numpy.exceptions.AxisError</code> (наследник
+            <code class="inl">ValueError</code>); в numpy 2 он больше не лежит в
+            <code class="inl">np.AxisError</code>. У скалярного массива работает только
+            <code class="inl">axis=0</code>.</p>
+            <div class="fix">Сверяться с <code class="inl">m.ndim</code>; в универсальном коде —
+            отрицательные оси (<code class="inl">-1</code>) вместо жёстких номеров.</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ══════════════════ 08. Мини-проверка ══════════════════ -->
+      <section>
+        <h2><span class="num">08</span>Мини-проверка</h2>
+        <p>Пять вопросов и две задачи. Сначала своя попытка — потом спойлер.</p>
+
+        <div class="qa">
+          <details>
+            <summary>Что означает axis=0 для матрицы (3, 4)?</summary>
+            <div class="a">
+              <p>Свёртка идёт вниз по строкам: для каждого из 4 столбцов складываются 3 значения.
+              Строки исчезают, остаётся вектор <code class="inl">(4,)</code>.</p>
+              <p><strong>Ограничение:</strong> это не «результат по строкам» — результат как раз по
+              столбцам; по строкам даёт <code class="inl">axis=1</code>.</p>
+              <div class="verdict">Резюме: axis — направление обхода, а не то, что останется.</div>
+            </div>
+          </details>
+        </div>
+
+        <div class="qa">
+          <details>
+            <summary>Почему sum(axis=1) даёт вектор длины 3?</summary>
+            <div class="a">
+              <p>Ось 1 — столбцы: свёртка идёт вправо, каждая из 3 строк превращается в одно число,
+              столбцы исчезают. В форме остаётся только ось 0 длиной 3.</p>
+              <div class="verdict">Резюме: свернули столбцы — остались строки.</div>
+            </div>
+          </details>
+        </div>
+
+        <div class="qa">
+          <details>
+            <summary>Зачем keepdims и когда без него не обойтись?</summary>
+            <div class="a">
+              <p><code class="inl">keepdims=True</code> оставляет свёрнутую ось размером 1. Без него
+              <code class="inl">m - m.mean(axis=1)</code> — это <code class="inl">(3, 4)</code> минус
+              <code class="inl">(3,)</code>, и broadcasting справа не сходится — <code class="inl">ValueError</code>.</p>
+              <p>С <code class="inl">keepdims=True</code> форма <code class="inl">(3, 1)</code>
+              однозначно говорит: «по одному среднему на строку».</p>
+              <div class="verdict">Резюме: keepdims сохраняет форму и смысл операции.</div>
+            </div>
+          </details>
+        </div>
+
+        <div class="qa">
+          <details>
+            <summary>Что делает axis=(0, 1) и чем отличается от axis=None?</summary>
+            <div class="a">
+              <p>Кортеж перечисляет оси, которые надо свернуть. Для 2D <code class="inl">(0, 1)</code> —
+              все оси, результат совпадает с <code class="inl">axis=None</code>. Для 3D
+              <code class="inl">axis=(0, 2)</code> оставляет ось 1, а <code class="inl">axis=None</code>
+              сворачивает всё.</p>
+              <div class="verdict">Резюме: axis=None — все оси; кортеж — выбранные.</div>
+            </div>
+          </details>
+        </div>
+
+        <div class="qa">
+          <details>
+            <summary>Почему argmax(axis=0) возвращает номера строк, а argmax() — одно число?</summary>
+            <div class="a">
+              <p>С осью поиск идёт вдоль неё: в каждом столбце ищется максимум, а позиция внутри
+              столбца — это номер строки, поэтому результат <code class="inl">(4,)</code>. Без оси
+              массив мысленно вытягивается в строку, и возвращается индекс в ней — одно число.</p>
+              <div class="verdict">Резюме: с осью — координата внутри оси, без оси — плоский индекс.</div>
+            </div>
+          </details>
+        </div>
+
+        <h3><span style="color:var(--muted);font-family:var(--mono);font-size:.8rem">01</span> Итоги матрицы 4×3</h3>
+        <p>Для матрицы <code class="inl">4×3</code> посчитайте суммы по столбцам и по строкам, а также максимум в каждом столбце и позицию максимума в каждой строке.</p>
+        <div class="code">
+          <div class="bar"><span class="file">условие</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">s = np.arange(12).reshape(4, 3)
+# ожидается: суммы по столбцам и строкам, максимумы и их позиции</pre>
+        </div>
+        <div class="qa">
+          <details>
+            <summary>Показать решение и разбор</summary>
+            <div class="a">
+              <div class="code" style="margin-top:0">
+                <div class="bar"><span class="file">решение</span><span class="lang">python</span><button class="copy">копировать</button></div>
+                <pre data-lang="python">s = np.arange(12).reshape(4, 3)
+print(s.sum(axis=0), s.sum(axis=1))
+print(s.max(axis=0), s.argmax(axis=1))</pre>
+                <div class="out">[18 22 26] [ 3 12 21 30]
+[ 9 10 11] [2 2 2 2]</div>
+              </div>
+              <p><strong>Что важно.</strong> Матрица <code class="inl">(4, 3)</code>: ось 0 — строки,
+              ось 1 — столбцы. <code class="inl">sum(axis=0)</code> даёт 3 числа, <code class="inl">sum(axis=1)</code> —
+              4 числа. <code class="inl">argmax(axis=1)</code> ищет позицию максимума внутри каждой
+              строки и возвращает номера столбцов.</p>
+            </div>
+          </details>
+        </div>
+
+        <h3><span style="color:var(--muted);font-family:var(--mono);font-size:.8rem">02</span> Центрирование по строкам</h3>
+        <p>Вычтите из каждой строки матрицы её среднее так, чтобы форма результата осталась <code class="inl">(3, 4)</code>.</p>
+        <div class="code">
+          <div class="bar"><span class="file">условие</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">x = np.arange(12.0).reshape(3, 4)
+# ожидается: среднее по каждой строке вычтено, форма (3, 4)</pre>
+        </div>
+        <div class="qa">
+          <details>
+            <summary>Показать решение и разбор</summary>
+            <div class="a">
+              <div class="code" style="margin-top:0">
+                <div class="bar"><span class="file">решение</span><span class="lang">python</span><button class="copy">копировать</button></div>
+                <pre data-lang="python">x = np.arange(12.0).reshape(3, 4)
+row_means = x.mean(axis=1, keepdims=True)
+centered = x - row_means
+print(row_means.shape, centered.shape)
+print(centered.mean(axis=1).round(10))</pre>
+                <div class="out">(3, 1) (3, 4)
+[0. 0. 0.]</div>
+              </div>
+              <p><strong>Что важно.</strong> <code class="inl">mean(axis=1, keepdims=True)</code> даёт
+              столбец <code class="inl">(3, 1)</code>, который broadcasting растягивает по строкам.
+              Без <code class="inl">keepdims</code> форма <code class="inl">(3,)</code> не совпадёт
+              с последней осью <code class="inl">(3, 4)</code> — будет ошибка.</p>
+            </div>
+          </details>
+        </div>
+      </section>
+
+      <!-- ══════════════════ 09. Мостик ══════════════════ -->
+      <section>
+        <h2><span class="num">09</span>Мостик: axis в pandas и SQL</h2>
+
+        <h3>pandas: та же ось, другие имена</h3>
+        <div class="code">
+          <div class="bar"><span class="file">мост в pandas</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">import pandas as pd
+
+df = pd.DataFrame(a, columns=["q1", "q2", "q3", "q4"],
+                  index=["anna", "ivan", "olga"])
+
+df.sum(axis=0)      # по колонкам: свернули строки, результат длины 4
+df.sum(axis=1)      # по строкам: свернули колонки, результат длины 3
+df.mean(axis=1)     # средний чек по каждой строке
+df.dropna(axis=1)   # «идти по колонкам» = удалять колонки</pre>
+        </div>
+        <p>
+          В pandas <code class="inl">axis=0</code> — индекс (строки), <code class="inl">axis=1</code> —
+          колонки. Значения схлопываются так же, как в NumPy, но формулировки другие:
+          <em>axis — то, что исчезает</em>. Именно поэтому <code class="inl">dropna(axis=1)</code>
+          удаляет колонки, а не строки.
+        </p>
+
+        <h3>SQL: GROUP BY — свёртка по группе</h3>
+        <div class="code">
+          <div class="bar"><span class="file">мост в SQL</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">-- как axis=0: свернуть строки в один ряд на категорию
+SELECT category, SUM(amount) AS total
+FROM sales
+GROUP BY category;
+
+-- как axis=1: свернуть колонки месяца в одну строку на день
+SELECT day, SUM(amount) AS total
+FROM sales
+GROUP BY day;</pre>
+        </div>
+        <p>
+          <code class="inl">GROUP BY</code> — это выбор «вдоль чего» сворачивать: одна строка
+          результата на группу, как одно число на столбец при <code class="inl">axis=0</code>.
+          NumPy-ось и SQL-группировка — две записи одной идеи: указать направление свёртки.
+        </p>
+
+        <div class="bridges">
+          <a class="bridge" href="ch-09-axis.html"><span class="to">Глава 09</span><span>axis: вдоль какой стены считать</span><span class="what">→ метафора и форма результата целиком</span></a>
+          <a class="bridge" href="ch-10-broadcasting.html"><span class="to">Глава 10</span><span>Broadcasting: штамп и тесто</span><span class="what">→ почему keepdims важен</span></a>
+          <a class="bridge" href="ch-11-views-copies.html"><span class="to">Глава 11</span><span>View и copy</span><span class="what">→ агрегат создаёт новый массив</span></a>
+          <a class="bridge" href="ch-15-groupby.html"><span class="to">Глава 15</span><span>groupby в pandas</span><span class="what">→ агрегаты по группам</span></a>
+          <a class="bridge" href="appendix-numpy.html"><span class="to">Справочник</span><span>Карта NumPy</span><span class="what">→ все пять страниц раздела</span></a>
+        </div>
+      </section>
+
+      <div class="pager">
+        <a class="prev" href="ref-np-indexing.html"><span class="dir">← Назад</span><span class="ttl">02 · индексация</span></a>
+        <a class="next" href="ref-np-broadcasting.html"><span class="dir">Дальше →</span><span class="ttl">04 · broadcasting</span></a>
+      </div>
+
+    </div>
+  </main>
+</div>
+<script src="assets/toc.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>

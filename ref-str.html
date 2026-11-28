@@ -1,0 +1,952 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Справочник · str: бусы из символов — Ассоциативный гайд</title>
+<meta name="description" content="Справочник по str: неизменяемость, все методы с ценой, нормализация и регистр, split/join, форматирование, кодировки и is*-проверки — с реальным выводом.">
+<link rel="stylesheet" href="assets/style.css">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#fbf8f2" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#14131a" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="assets/icons/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="assets/icons/icon-180.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Гайд Py/SQL">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+</head>
+<body data-slug="ref-str">
+<div class="app">
+  <aside class="sidebar" id="sidebar"></aside>
+  <main>
+    <div class="wrap">
+
+      <header class="chapter-head">
+        <div class="eyebrow">
+          <span class="part">Справочник · Python-коллекции</span>
+          <span class="dot"></span>
+          <span>тип 1 из 9</span>
+          <span class="dot"></span>
+          <span>готово</span>
+        </div>
+        <h1>str: бусы из символов
+          <span class="sub">Методы строк, цена каждой операции и почему любая правка создаёт новую строку</span>
+        </h1>
+        <p class="lead">
+          <code class="inl">str</code> — неизменяемая последовательность символов: у каждого есть номер,
+          но саму нить перевязать нельзя. Здесь полный набор методов с ценой, нормализация, разбиение и
+          сборка, форматирование, кодировки, проверки <code class="inl">is*</code> и пять ошибок, которые
+          встречаются в проде.
+        </p>
+        <div class="meta">
+          <span class="chip">⏱ <b>15 минут</b></span>
+          <span class="chip">🎯 уровень <b>1–2</b></span>
+          <span class="chip">🐍 Python <b>3.12</b></span>
+          <span class="chip">📚 <b>docs: str</b></span>
+        </div>
+      </header>
+
+      <p class="small">
+        Типы справочника: <a href="appendix-types.html">вся карта</a> ·
+        <b>str</b> · <a href="ref-list.html">list</a> ·
+        <a href="ref-tuple.html">tuple</a> · <a href="ref-dict.html">dict</a> ·
+        <a href="ref-set.html">set</a> · <a href="ref-frozenset.html">frozenset</a> ·
+        <a href="ref-counter.html">Counter</a> ·
+        <a href="ref-defaultdict.html">defaultdict</a> · <a href="ref-deque.html">deque</a>
+      </p>
+
+      <div class="tldr">
+        <div class="t">Самое главное</div>
+        <ul>
+          <li><code class="inl">str</code> — неизменяемая последовательность символов: индекс O(1),
+              срез O(k) и всегда новая строка. Отдельного типа «символ» нет — <code class="inl">s[0]</code>
+              возвращает <code class="inl">str</code> длины 1.</li>
+          <li>Все «изменяющие» методы — <code class="inl">upper</code>, <code class="inl">strip</code>,
+              <code class="inl">replace</code> — возвращают <b>новый</b> <code class="inl">str</code>.
+              <code class="inl">strip</code> режет набор символов с краёв, а
+              <code class="inl">removeprefix</code> — ровно префикс.</li>
+          <li>Сборка — <code class="inl">sep.join(...)</code>, а не <code class="inl">+</code> в цикле;
+              поиск — <code class="inl">in</code> или <code class="inl">find</code>; сравнение без учёта
+              регистра — <code class="inl">casefold</code>.</li>
+        </ul>
+      </div>
+
+      <!-- ══════════════════ 01. Что это ══════════════════ -->
+      <section>
+        <h2><span class="num">01</span>Что это и как устроено</h2>
+        <p>
+          Строка — <em>упорядоченная и неизменяемая</em> последовательность символов Unicode.
+          «Упорядоченная» значит, что у каждого символа есть номер и по нему можно попасть сразу.
+          «Неизменяемая» — что сам объект поменять нельзя: любая «правка» собирает новую строку.
+        </p>
+        <p>
+          Внутри CPython 3.12 строка хранится компактно: для латиницы хватает байта на символ, для
+          кириллицы — двух. Поэтому <code class="inl">len</code> и доступ по индексу — O(1), а срез
+          копирует k символов в новую строку. Длина считается в кодовых точках:
+          <code class="inl">len("🇷🇺")</code> → 2, потому что флаг собран из двух символов-индикаторов.
+        </p>
+        <p>
+          Неизменяемость — гарантия, а не ограничение: строку можно положить в ключ словаря и не
+          бояться, что её изменят под рукой. Плата — каждая «правка» выделяет новый объект и копирует
+          символы.
+        </p>
+
+        <div class="anchor">
+          <div class="glyph">📿</div>
+          <div>
+            <div class="t">Держите эту картинку в голове</div>
+            <p class="kick"><strong>Бусы из символов.</strong> Символы нанизаны по порядку: у каждой
+            бусины есть номер, и по номеру её видно сразу, без перебора. Но готовую нить не перевязать —
+            любая «правка» собирает новые бусы.</p>
+            <p>Номер бусины — это индекс: <code class="inl">s[5000]</code> стоит столько же, сколько
+            <code class="inl">s[0]</code>. Срез — новая нить из k бусин. А «замена символа» — всегда
+            новые бусы: все методы возвращают новый <code class="inl">str</code>. Изменяемую версию
+            той же последовательности разбирает <a href="ch-03-list-tuple.html">глава 03</a>:
+            <code class="inl">list</code> — те же бусы, но с разъёмными замками.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ══════════════════ 02. Когда брать ══════════════════ -->
+      <section>
+        <h2><span class="num">02</span>Когда брать, а когда нет</h2>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Задача</th><th>str?</th><th>Что взять вместо</th></tr></thead>
+            <tbody>
+              <tr><td>Текст для человека: имена, письма, отчёты</td><td><b>да</b></td><td>—</td></tr>
+              <tr><td>Нормализация ввода: регистр, пробелы, сравнение</td><td><b>да</b></td><td>—</td></tr>
+              <tr><td>Разбор простых строк: CSV, <code class="inl">key=value</code>, URL</td><td><b>да</b></td><td>—</td></tr>
+              <tr><td>Сравнение без учёта регистра</td><td><b>да</b></td><td><code class="inl">casefold</code>, а не <code class="inl">lower</code></td></tr>
+              <tr><td>Много численных операций по символам</td><td>нет</td><td><code class="inl">list</code> или <code class="inl">numpy</code></td></tr>
+              <tr><td>Менять символы на месте</td><td>нет</td><td><code class="inl">list(текст)</code> или <code class="inl">bytearray</code></td></tr>
+              <tr><td>Бинарные данные: файлы, сеть, шифрование</td><td>нет</td><td><code class="inl">bytes</code>, <code class="inl">bytearray</code></td></tr>
+              <tr><td>Склейка тысяч кусков, поиск в цикле</td><td>как основа</td><td><code class="inl">join</code>, <code class="inl">set</code>, <code class="inl">dict</code></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="small">
+          Полная карта «что выбрать» — в <a href="ch-01-python-collections.html">главе 01</a>;
+          здесь — методы и цена.
+        </p>
+      </section>
+
+      <!-- ══════════════════ 03. Как создать ══════════════════ -->
+      <section>
+        <h2><span class="num">03</span>Как создать</h2>
+        <div class="code">
+          <div class="bar"><span class="file">ref_str_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">name = "Anna"                          # литерал в кавычках
+empty = ""                             # пустая строка
+multi = """первая
+вторая"""                              # многострочный литерал
+from_parts = "".join(["Ivan", " ", "Petr"])
+from_bytes = b"Olga".decode("utf-8")
+greeting = f"Привет, {name}!"
+print(repr(empty))
+print(multi)
+print(from_parts)
+print(repr(from_bytes))
+print(greeting)
+
+print(str(42), type(str(42)).__name__)
+print(str(3.5), str(True))
+print(len(""), len("бусы"))</pre>
+          <div class="out">''
+первая
+вторая
+Ivan Petr
+'Olga'
+Привет, Anna!
+42 str
+3.5 True
+0 4</div>
+        </div>
+        <p>
+          Литерал — самый частый способ. Остальные: <code class="inl">str(x)</code> для чисел,
+          <code class="inl">join</code> для сборки из кусков, <code class="inl">decode</code> для
+          байтов. Пустая строка — это <code class="inl">""</code>, а не <code class="inl">None</code>:
+          у неё длина 0, но она существует и является строкой.
+        </p>
+        <div class="note">
+          <span class="t">Кавычки — не часть строки</span>
+          <p><code class="inl">print</code> показывает строку как есть, а <code class="inl">repr</code> —
+          как литерал: с кавычками и экранированием. Поэтому ниже <code class="inl">repr</code> стоит
+          там, где важны пробелы на краях: иначе <code class="inl">'  anna  '</code> и
+          <code class="inl">'anna'</code> на экране выглядят одинаково.</p>
+        </div>
+      </section>
+
+      <!-- ══════════════════ 04. Все методы ══════════════════ -->
+      <section>
+        <h2><span class="num">04</span>Все методы и операции</h2>
+        <p>
+          Шесть таблиц по назначению. «Цена» — средняя сложность в CPython: <code class="inl">n</code> —
+          длина строки, <code class="inl">k</code> — длина среза. Важно: <b>все</b> методы возвращают
+          новый <code class="inl">str</code>, исходная строка не меняется.
+        </p>
+
+        <h3>Доступ, операторы и срезы</h3>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Запись</th><th>Что делает</th><th>Возвращает</th><th>Цена</th></tr></thead>
+            <tbody>
+              <tr><td class="mono">s[i]</td><td>символ по индексу; отрицательный — с конца</td><td><code class="inl">str</code> длины 1</td><td>O(1)</td></tr>
+              <tr><td class="mono">s[i:j:k]</td><td>срез — <b>копия</b> куска</td><td>новый <code class="inl">str</code></td><td>O(k)</td></tr>
+              <tr><td class="mono">len(s)</td><td>число символов, не байтов</td><td><code class="inl">int</code></td><td>O(1)</td></tr>
+              <tr><td class="mono">s + t</td><td>склеивает в новую строку</td><td>новый <code class="inl">str</code></td><td>O(len(s) + len(t))</td></tr>
+              <tr><td class="mono">s * n</td><td>повторяет строку n раз</td><td>новый <code class="inl">str</code></td><td>O(len(s) · n)</td></tr>
+              <tr><td class="mono">s == t, s &lt; t</td><td>равенство посимвольно / сравнение по кодам</td><td><code class="inl">bool</code></td><td>O(n)</td></tr>
+              <tr><td class="mono">x in s</td><td>есть ли подстрока</td><td><code class="inl">bool</code></td><td>O(n)</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="small">
+          Сравнение идёт по кодам символов: <code class="inl">"Ёлка" &lt; "ёлка"</code> → <code class="inl">True</code>
+          (заглавная раньше строчной), кириллица после латиницы. Срез копирует даже
+          <code class="inl">s[:]</code>.
+        </p>
+
+        <h3>Нормализация и регистр</h3>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Метод</th><th>Что делает</th><th>Возвращает</th><th>Цена</th></tr></thead>
+            <tbody>
+              <tr><td class="mono">upper(), lower()</td><td>регистр всех букв вверх / вниз</td><td>новый <code class="inl">str</code></td><td>O(n)</td></tr>
+              <tr><td class="mono">casefold()</td><td>агрессивное свёртывание для сравнения (ß → ss)</td><td>новый <code class="inl">str</code></td><td>O(n)</td></tr>
+              <tr><td class="mono">capitalize()</td><td>первая буква вверх, остальные вниз</td><td>новый <code class="inl">str</code></td><td>O(n)</td></tr>
+              <tr><td class="mono">title()</td><td>каждое слово — с заглавной</td><td>новый <code class="inl">str</code></td><td>O(n)</td></tr>
+              <tr><td class="mono">swapcase()</td><td>инвертирует регистр каждой буквы</td><td>новый <code class="inl">str</code></td><td>O(n)</td></tr>
+              <tr><td class="mono">strip(chars)</td><td>срезает <b>набор символов</b> с обоих концов</td><td>новый <code class="inl">str</code></td><td>O(n)</td></tr>
+              <tr><td class="mono">lstrip(), rstrip()</td><td>то же только слева / только справа</td><td>новый <code class="inl">str</code></td><td>O(n)</td></tr>
+              <tr><td class="mono">removeprefix(p), removesuffix(suf)</td><td>убирает ровно префикс / суффикс, если он есть</td><td>новый <code class="inl">str</code></td><td>O(len(p))</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>Поиск</h3>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Метод</th><th>Что делает</th><th>Возвращает</th><th>Цена</th></tr></thead>
+            <tbody>
+              <tr><td class="mono">find(sub), rfind(sub)</td><td>первое / последнее вхождение или −1</td><td><code class="inl">int</code></td><td>O(n)</td></tr>
+              <tr><td class="mono">index(sub), rindex(sub)</td><td>то же, но при отсутствии — <code class="inl">ValueError</code></td><td><code class="inl">int</code></td><td>O(n)</td></tr>
+              <tr><td class="mono">count(sub)</td><td>число непересекающихся вхождений</td><td><code class="inl">int</code></td><td>O(n)</td></tr>
+              <tr><td class="mono">startswith(p), endswith(suf)</td><td>начинается / заканчивается; принимают tuple вариантов</td><td><code class="inl">bool</code></td><td>O(len(p))</td></tr>
+              <tr><td class="mono">x in s</td><td>есть ли подстрока (то же, что <code class="inl">find != -1</code>)</td><td><code class="inl">bool</code></td><td>O(n)</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="small">
+          Поиск подстроки — не посимвольное сравнение: строгий худший случай O(n·m), но CPython
+          использует оптимизированный алгоритм, и на практике это O(n + m).
+        </p>
+
+        <h3>Разбиение и сборка</h3>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Метод</th><th>Что делает</th><th>Возвращает</th><th>Цена</th></tr></thead>
+            <tbody>
+              <tr><td class="mono">split(sep, maxsplit), rsplit(...)</td><td>режет по разделителю слева / справа</td><td><code class="inl">list[str]</code></td><td>O(n)</td></tr>
+              <tr><td class="mono">split()</td><td>по пробелам; пустые куски выбрасываются</td><td><code class="inl">list[str]</code></td><td>O(n)</td></tr>
+              <tr><td class="mono">splitlines()</td><td>по переводам строк (\n и \r\n)</td><td><code class="inl">list[str]</code></td><td>O(n)</td></tr>
+              <tr><td class="mono">partition(sep), rpartition(sep)</td><td>кортеж (до, sep, после)</td><td><code class="inl">tuple[str, str, str]</code></td><td>O(n)</td></tr>
+              <tr><td class="mono">sep.join(iterable)</td><td>склеивает строки через sep</td><td>новый <code class="inl">str</code></td><td>O(суммы длин)</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>Форматирование и преобразования</h3>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Запись</th><th>Что делает</th><th>Возвращает</th><th>Цена</th></tr></thead>
+            <tbody>
+              <tr><td class="mono">f"{x}"</td><td>подставляет значение прямо в литерал</td><td><code class="inl">str</code></td><td>O(результата)</td></tr>
+              <tr><td class="mono">"…".format(...)</td><td>позиционные и именованные поля</td><td><code class="inl">str</code></td><td>O(n)</td></tr>
+              <tr><td class="mono">"%s %d" % (...)</td><td>старый стиль; не знает про запятые в числах</td><td><code class="inl">str</code></td><td>O(n)</td></tr>
+              <tr><td class="mono">template.format_map(mapping)</td><td>подстановка из словаря</td><td><code class="inl">str</code></td><td>O(n)</td></tr>
+              <tr><td class="mono">zfill(width)</td><td>добивает нулями слева, учитывая знак</td><td><code class="inl">str</code></td><td>O(n)</td></tr>
+              <tr><td class="mono">ljust(), rjust(), center()</td><td>выравнивает в поле заданной ширины</td><td><code class="inl">str</code></td><td>O(n)</td></tr>
+              <tr><td class="mono">expandtabs(tabsize)</td><td>заменяет табы пробелами до позиции</td><td><code class="inl">str</code></td><td>O(n)</td></tr>
+              <tr><td class="mono">replace(old, new, count)</td><td>меняет подстроки: все или count штук</td><td>новый <code class="inl">str</code></td><td>O(n)</td></tr>
+              <tr><td class="mono">translate(table)</td><td>меняет и удаляет символы по таблице кодов</td><td>новый <code class="inl">str</code></td><td>O(n)</td></tr>
+              <tr><td class="mono">str.maketrans(a, b)</td><td>строит таблицу для <code class="inl">translate</code></td><td><code class="inl">dict</code></td><td>O(len(a))</td></tr>
+              <tr><td class="mono">encode(encoding)</td><td>строка → байты</td><td><code class="inl">bytes</code></td><td>O(n)</td></tr>
+              <tr><td class="mono">data.decode(encoding)</td><td>байты → строка</td><td><code class="inl">str</code></td><td>O(n)</td></tr>
+              <tr><td class="mono">ord(c), chr(i)</td><td>код символа / символ по коду</td><td><code class="inl">int</code> / <code class="inl">str</code></td><td>O(1)</td></tr>
+              <tr><td class="mono">repr(x)</td><td>отладочное представление: кавычки и escape</td><td><code class="inl">str</code></td><td>O(n)</td></tr>
+              <tr><td class="mono">str(x)</td><td>человекочитаемое представление</td><td><code class="inl">str</code></td><td>O(n)</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>Проверки is*</h3>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Метод</th><th>Что проверяет</th><th>Возвращает</th><th>Цена</th></tr></thead>
+            <tbody>
+              <tr><td class="mono">isalpha()</td><td>только буквы (и хотя бы одна)</td><td><code class="inl">bool</code></td><td>O(n)</td></tr>
+              <tr><td class="mono">isdigit()</td><td>цифры Unicode, включая надстрочные <code class="inl">²</code></td><td><code class="inl">bool</code></td><td>O(n)</td></tr>
+              <tr><td class="mono">isdecimal()</td><td>десятичные цифры — те, что разберёт <code class="inl">int()</code></td><td><code class="inl">bool</code></td><td>O(n)</td></tr>
+              <tr><td class="mono">isnumeric()</td><td>любые числовые символы: <code class="inl">½</code>, <code class="inl">Ⅳ</code></td><td><code class="inl">bool</code></td><td>O(n)</td></tr>
+              <tr><td class="mono">isalnum()</td><td>буквы или цифры</td><td><code class="inl">bool</code></td><td>O(n)</td></tr>
+              <tr><td class="mono">isspace()</td><td>только пробельные символы</td><td><code class="inl">bool</code></td><td>O(n)</td></tr>
+              <tr><td class="mono">islower(), isupper()</td><td>есть буквы и все они строчные / заглавные</td><td><code class="inl">bool</code></td><td>O(n)</td></tr>
+              <tr><td class="mono">istitle()</td><td>каждое слово с заглавной, остальные строчные</td><td><code class="inl">bool</code></td><td>O(n)</td></tr>
+              <tr><td class="mono">isidentifier()</td><td>годится ли как имя переменной</td><td><code class="inl">bool</code></td><td>O(n)</td></tr>
+              <tr><td class="mono">isascii()</td><td>только символы ASCII</td><td><code class="inl">bool</code></td><td>O(n)</td></tr>
+              <tr><td class="mono">isprintable()</td><td>все символы печатаемы: пробел — да, <code class="inl">\n</code> — нет</td><td><code class="inl">bool</code></td><td>O(n)</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="small">
+          Пустая строка даёт <code class="inl">False</code> для содержательных проверок
+          (<code class="inl">isalpha</code>, <code class="inl">isdigit</code>,
+          <code class="inl">islower</code>…); исключения — <code class="inl">isascii</code> и
+          <code class="inl">isprintable</code>: для пустой строки они <code class="inl">True</code>.
+          <code class="inl">isdigit</code> ≠ <code class="inl">int()</code>:
+          <code class="inl">"-17".isdigit()</code> → <code class="inl">False</code>, хотя
+          <code class="inl">int("-17")</code> работает; <code class="inl">"½".isdigit()</code> → тоже
+          <code class="inl">False</code> (это <code class="inl">isnumeric</code>), и
+          <code class="inl">int("½")</code> падает.
+        </p>
+      </section>
+
+      <!-- ══════════════════ 05. Разбор ══════════════════ -->
+      <section>
+        <h2><span class="num">05</span>Разбор по группам</h2>
+        <p>
+          Все примеры страницы собраны в файле
+          <a href="snippets/view.html?f=ref_str_lab.py"><code class="inl">ref_str_lab.py</code></a> —
+          его можно запустить и менять строки.
+        </p>
+
+        <h3>Неизменяемость, индексы и срезы</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_str_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">s = "бусы"
+try:
+    s[0] = "Б"
+except TypeError as e:
+    print(type(e).__name__, e)
+
+new = s.replace("б", "Б")
+print(s)
+print(new)
+
+word = "бусы"
+print(word[0], word[-1], len(word))
+print(word[1:3], word[::-1])
+print(word[::2])</pre>
+          <div class="out">TypeError 'str' object does not support item assignment
+бусы
+Бусы
+б ы 4
+ус ысуб
+бс</div>
+        </div>
+        <p>
+          Присваивание по индексу запрещено на уровне типа: Python не даёт «заменить бусину» в готовой
+          нити. <code class="inl">replace</code> вернул новую строку, а <code class="inl">s</code>
+          осталась прежней.
+        </p>
+        <p>
+          <code class="inl">s[i]</code> возвращает <code class="inl">str</code> длины 1 — отдельного
+          типа <code class="inl">char</code> нет. Отрицательный индекс считается с конца, срез копирует
+          кусок: <code class="inl">start</code> включается, <code class="inl">stop</code> — нет.
+        </p>
+
+        <h3>Регистр и обрезка краёв</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_str_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">raw = "annA ivanova"
+print(raw.upper())
+print(raw.lower())
+print(raw.capitalize())
+print(raw.title())
+print("hELLo wORLD".swapcase())
+print("STRASSE".lower() == "straße".lower())
+print("STRASSE".casefold() == "straße".casefold())
+
+padded = "  anna@mail.ru  "
+print(repr(padded.strip()))
+print(repr("xxannaxx".strip("x")))
+print(repr("xxannaxx".lstrip("x")))
+print(repr("xxannaxx".rstrip("x")))
+print(repr("https://site.ru".removeprefix("https://")))
+print(repr("anna@mail.ru ".removesuffix(" ")))
+print(repr("annaxx".removeprefix("xx")))</pre>
+          <div class="out">ANNA IVANOVA
+anna ivanova
+Anna ivanova
+Anna Ivanova
+HellO World
+False
+True
+'anna@mail.ru'
+'anna'
+'annaxx'
+'xxanna'
+'site.ru'
+'anna@mail.ru'
+'annaxx'</div>
+        </div>
+        <p>
+          <code class="inl">capitalize</code> поднимает только первую букву строки,
+          <code class="inl">title</code> — каждое слово. Для <b>сравнения</b> мало
+          <code class="inl">lower</code>: <code class="inl">ß</code> превращается в
+          <code class="inl">ss</code> только при <code class="inl">casefold</code>, поэтому
+          <code class="inl">"STRASSE"</code> и <code class="inl">"straße"</code> совпадают лишь после
+          него. <code class="inl">strip("x")</code> — не «убрать префикс», а «срезать все символы из
+          набора <code class="inl">{x}</code> с обоих концов»; <code class="inl">removeprefix</code>
+          убирает ровно одну подстроку и только если она совпала.
+        </p>
+        <div class="note">
+          <span class="t">casefold — для сравнения, не для вывода</span>
+          <p><code class="inl">casefold</code> — агрессивный <code class="inl">lower</code> для
+          caseless matching: логины, email, поиск по названиям. Он может вернуть строку, непохожую на
+          исходную, поэтому показывать результат не стоит — только сравнивать.</p>
+        </div>
+
+        <h3>Поиск: find, index, count, startswith</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_str_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">text = "anna@mail.ru; ivan@mail.ru"
+print(text.find("@"))
+print(text.rfind("@"))
+print(text.find("gmail"))
+print(text.count("@"), text.count("mail"))
+try:
+    text.index("gmail")
+except ValueError as e:
+    print(type(e).__name__, e)
+print(text.startswith("anna"), text.endswith(".ru"))
+print(text.startswith(("src/", "anna@")))
+print("mail" in text)</pre>
+          <div class="out">4
+18
+-1
+2 2
+ValueError substring not found
+True True
+True
+True</div>
+        </div>
+        <p>
+          <code class="inl">find</code> возвращает <code class="inl">-1</code> и не падает —
+          удобно, когда отсутствие нормально. <code class="inl">index</code> в той же ситуации бросает
+          <code class="inl">ValueError</code>: выбирайте его, когда подстрока обязана быть.
+          <code class="inl">startswith</code>/<code class="inl">endswith</code> принимают кортеж
+          вариантов и не требуют <code class="inl">or</code> из трёх проверок.
+        </p>
+
+        <h3>Разбиение и сборка: split, partition, join</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_str_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">line = "Anna;1200;2024-02-01"
+print(line.split(";"))
+print(line.split(";", 1))
+print(line.rsplit(";", 1))
+print("a,b,,c".split(","))
+print("  Anna   Ivanova  ".split())
+text = "первая\nвторая\r\nтретья"
+print(text.splitlines())
+print("anna@mail.ru".partition("@"))
+print("anna@mail.ru".rpartition("@"))
+print("no-at-sign".partition("@"))
+
+try:
+    "abc".split("")
+except ValueError as e:
+    print(type(e).__name__, e)
+
+parts = ["Anna", "Olga", "Ivan"]
+print(", ".join(parts))
+print("-".join("бусы"))
+print(", ".join(str(n) for n in [1, 2, 3]))
+try:
+    ", ".join([1, 2])
+except TypeError as e:
+    print(type(e).__name__, e)</pre>
+          <div class="out">['Anna', '1200', '2024-02-01']
+['Anna', '1200;2024-02-01']
+['Anna;1200', '2024-02-01']
+['a', 'b', '', 'c']
+['Anna', 'Ivanova']
+['первая', 'вторая', 'третья']
+('anna', '@', 'mail.ru')
+('anna', '@', 'mail.ru')
+('no-at-sign', '', '')
+ValueError empty separator
+Anna, Olga, Ivan
+б-у-с-ы
+1, 2, 3
+TypeError sequence item 0: expected str instance, int found</div>
+        </div>
+        <p>
+          <code class="inl">maxsplit</code> ограничивает число разрезов: <code class="inl">split(";", 1)</code>
+          режет один раз слева, <code class="inl">rsplit(";", 1)</code> — справа. Без аргумента
+          <code class="inl">split()</code> режет по пробелам и выбрасывает пустые куски, а
+          <code class="inl">splitlines()</code> понимает <code class="inl">\n</code> и
+          <code class="inl">\r\n</code>. <code class="inl">partition</code> всегда возвращает три
+          элемента: если разделителя нет — <code class="inl">(всё, "", "")</code>.
+          <code class="inl">split("")</code> запрещён — <code class="inl">ValueError</code>.
+        </p>
+        <p>
+          <code class="inl">join</code> вызывается у <b>разделителя</b>, а не у списка, и принимает
+          только строки: один раз считает суммарную длину и копирует данные. Склейка
+          <code class="inl">s = s + chunk</code> в цикле каждый раз создаёт новую строку: O(n²).
+          Поэтому «собрать из кусков» — это список плюс <code class="inl">join</code>.
+        </p>
+
+        <h3>Форматирование и преобразования</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_str_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">name, amount = "Anna", 1200
+print(f"{name}: {amount:,} ₽")
+print("{}: {:,} ₽".format(name, amount))
+print("%s: %d ₽" % (name, amount))
+print("{name}: {amount:,}".format_map({"name": "Olga", "amount": 900}))
+print("42".zfill(5))
+print("[" + "Анна".ljust(8, ".") + "]")
+print("[" + "Анна".rjust(8, ".") + "]")
+print("[" + "Анна".center(8, ".") + "]")
+print(repr("a\tb\tc".expandtabs(4)))
+
+text = "anna@mail.ru"
+print(text.replace("@", " at "))
+print(text.replace("m", "M", 1))
+print(text.replace(".ru", ""))
+print("анна".translate(str.maketrans("ан", "an")))
+print("+7 (999) 123-45-67".translate(str.maketrans("", "", " ()-")))</pre>
+          <div class="out">Anna: 1,200 ₽
+Anna: 1,200 ₽
+Anna: 1200 ₽
+Olga: 900
+00042
+[Анна....]
+[....Анна]
+[..Анна..]
+'a   b   c'
+anna at mail.ru
+anna@Mail.ru
+anna@mail
+anna
++79991234567</div>
+        </div>
+        <p>
+          <code class="inl">f-string</code> — обычный способ в 3.12: значение подставляется в литерал,
+          формат задаётся после двоеточия (<code class="inl">{amount:,}</code> — запятая в тысячах,
+          <code class="inl">{amount:&gt;6,}</code> — выравнивание вправо). <code class="inl">format</code>
+          нужен для шаблонов из конфига, <code class="inl">%</code> — только для старого кода: про
+          запятые в числах он не знает. <code class="inl">replace</code> работает с подстроками, а
+          <code class="inl">translate</code> — посимвольно по таблице кодов: так удобно чистить
+          телефоны и убирать пунктуацию.
+        </p>
+
+        <h3>Кодировки: str, bytes, ord, repr</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_str_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">raw = "Анна"
+encoded = raw.encode("utf-8")
+print(encoded)
+print(type(encoded).__name__, len(encoded), len(raw))
+print(encoded.decode("utf-8"))
+print(b"Anna".decode("ascii"))
+try:
+    "Анна".encode("ascii")
+except UnicodeEncodeError as e:
+    print(type(e).__name__)
+print(ord("A"), ord("А"), chr(65), chr(1040))
+print(str(raw), repr(raw))
+try:
+    print("сумма: " + 1200)
+except TypeError as e:
+    print(type(e).__name__, e)</pre>
+          <div class="out">b'\xd0\x90\xd0\xbd\xd0\xbd\xd0\xb0'
+bytes 8 4
+Анна
+Anna
+UnicodeEncodeError
+65 1040 A А
+Анна 'Анна'
+TypeError can only concatenate str (not "int") to str</div>
+        </div>
+        <p>
+          <code class="inl">str</code> — текст, <code class="inl">bytes</code> — байты: это разные
+          типы, и <code class="inl">encode</code>/<code class="inl">decode</code> — единственный мост
+          между ними. Кириллица в UTF-8 занимает два байта на символ, поэтому четыре символа дали
+          восемь байт. <code class="inl">ord</code>/<code class="inl">chr</code> переводят символ в
+          код и обратно, <code class="inl">repr</code> показывает отладочную запись с кавычками, а
+          <code class="inl">str</code> — человекочитаемую.
+        </p>
+
+        <h3>Проверки is*</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_str_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">print("Anna".isalpha(), "Anna 2".isalpha(), "".isalpha())
+print("anna".islower(), "ANNA".isupper(), "Anna Ivanova".istitle())
+print("py123".isalnum(), "py 123".isalnum())
+print("  \t".isspace(), " a ".isspace())
+print("hello_world".isidentifier(), "2x".isidentifier())
+print("café".isascii(), "cafe".isascii())
+print("a b".isprintable(), "\n".isprintable())
+print("42".isdigit(), "42".isdecimal(), "42".isnumeric())
+print("½".isdigit(), "½".isdecimal(), "½".isnumeric())
+print("²".isdigit(), "Ⅳ".isnumeric(), "Ⅳ".isdigit())
+number = "-17"
+print(number.isdigit(), int(number))
+try:
+    int("½")
+except ValueError as e:
+    print(type(e).__name__, e)</pre>
+          <div class="out">True False False
+True True True
+True False
+True False
+True False
+False True
+True False
+True True True
+False False True
+True True False
+False -17
+ValueError invalid literal for int() with base 10: '½'</div>
+        </div>
+        <p>
+          Проверки требуют «хотя бы один подходящий символ и ни одного неподходящего»: пустая строка
+          даёт <code class="inl">False</code> почти везде (исключения — <code class="inl">isascii</code>
+          и <code class="inl">isprintable</code>), а <code class="inl">" a "</code> — не
+          <code class="inl">isspace</code>, потому что там есть буква. Три «цифровые» проверки вложены
+          по строгости: <code class="inl">isdecimal</code> ⊂ <code class="inl">isdigit</code> ⊂
+          <code class="inl">isnumeric</code>.
+        </p>
+      </section>
+
+      <!-- ══════════════════ 06. Сценарии ══════════════════ -->
+      <section>
+        <h2><span class="num">06</span>Три сценария из практики</h2>
+
+        <h3>Нормализация email</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_str_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">def normalize_email(raw):
+    return raw.strip().lower()
+
+inbox = ["  Anna@Mail.RU ", "ivan@MAIL.RU", "  Anna@mail.ru"]
+clean = [normalize_email(e) for e in inbox]
+print(clean)
+print(len(clean), len(set(clean)))</pre>
+          <div class="out">['anna@mail.ru', 'ivan@mail.ru', 'anna@mail.ru']
+3 2</div>
+        </div>
+        <p>
+          Три адреса после <code class="inl">strip().lower()</code> схлопнулись в два: без нормализации
+          «Anna@Mail.RU» и «Anna@mail.ru» считались бы разными людьми. Порядок важен: сначала срезать
+          пробелы, потом менять регистр.
+        </p>
+
+        <h3>Разбор CSV-строки</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_str_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">row = "Ivan;800;2024-03-01"
+name, amount, day = row.split(";", 2)
+print(name, int(amount), day, sep=" | ")
+bad = "Olga;1500"
+print(bad.count(";") + 1)
+try:
+    bad.split(";", 2)[2]
+except IndexError as e:
+    print(type(e).__name__)</pre>
+          <div class="out">Ivan | 800 | 2024-03-01
+2
+IndexError</div>
+        </div>
+        <p>
+          <code class="inl">split(";", 2)</code> с распаковкой в три имени — короткий способ разобрать
+          строку известного формата. Число полей проверяется до разбора:
+          <code class="inl">count(";") + 1</code>. Если полей меньше, распаковка или индекс бросят
+          <code class="inl">IndexError</code> — нормальный сигнал, что данные битые.
+        </p>
+
+        <h3>Сборка отчёта через join</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_str_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">totals = {"Anna": 1700, "Olga": 1800, "Ivan": 800}
+rows = [f"{name:8} {amount:&gt;6,}" for name, amount in totals.items()]
+report = "\n".join(rows)
+print(report)
+print(len(report.splitlines()))</pre>
+          <div class="out">Anna      1,700
+Olga      1,800
+Ivan        800
+3</div>
+        </div>
+        <p>
+          Строки отчёта собираются в список, а <code class="inl">join</code> склеивает их одним
+          проходом: O(суммы длин) вместо O(n²) у <code class="inl">+</code> в цикле. Формат
+          <code class="inl">{name:8}</code> дополняет имя до ширины 8, а
+          <code class="inl">{amount:&gt;6,}</code> прижимает сумму вправо и ставит запятую в тысячах.
+        </p>
+      </section>
+
+      <!-- ══════════════════ 07. Ошибки ══════════════════ -->
+      <section>
+        <h2><span class="num">07</span>Пять ошибок, на которых спотыкаются</h2>
+        <div class="errors">
+          <div class="err">
+            <div class="h">Ждать от строки изменяемости</div>
+            <p><code class="inl">s[0] = "Б"</code> бросает
+            <code class="inl">TypeError: 'str' object does not support item assignment</code>.
+            <code class="inl">s.upper()</code> тоже не меняет <code class="inl">s</code> — он создаёт
+            новую строку и возвращает её.</p>
+            <div class="fix">Собрать новую и присвоить: <code class="inl">s = s.upper()</code>,
+            <code class="inl">s = s.replace("б", "Б")</code> или <code class="inl">s[:i] + "Б" + s[i+1:]</code>.</div>
+          </div>
+
+          <div class="err">
+            <div class="h">Путать strip и removeprefix</div>
+            <p><code class="inl">"xxannaxx".strip("x")</code> → <code class="inl">"anna"</code>: это не
+            префикс, а <b>набор символов</b>, который срезается с обоих концов. При этом
+            <code class="inl">"annaxx".removeprefix("xx")</code> не меняет ничего — префикса
+            <code class="inl">"xx"</code> там нет.</p>
+            <div class="fix">Нужен префикс или суффикс — <code class="inl">removeprefix</code>/<code class="inl">removesuffix</code>.
+            Нужен набор символов на краях — <code class="inl">strip</code>.</div>
+          </div>
+
+          <div class="err">
+            <div class="h">split("") не работает</div>
+            <p>Пустой разделитель не имеет смысла: <code class="inl">"abc".split("")</code> →
+            <code class="inl">ValueError: empty separator</code>. Это частая попытка «разрезать на
+            символы» по аналогии с <code class="inl">join</code>.</p>
+            <div class="fix">На символы — <code class="inl">list("abc")</code>; по пробелам —
+            <code class="inl">"abc".split()</code>; по разделителю — <code class="inl">split(",")</code>.</div>
+          </div>
+
+          <div class="err">
+            <div class="h">str + int</div>
+            <p><code class="inl">"сумма: " + 1200</code> бросает
+            <code class="inl">TypeError: can only concatenate str (not "int") to str</code>: Python не
+            приводит типы неявно, в отличие от JavaScript.</p>
+            <div class="fix">f-string: <code class="inl">f"сумма: {1200}"</code> или явно
+            <code class="inl">"сумма: " + str(1200)</code>. Обратно — <code class="inl">int(текст)</code>,
+            но с <code class="inl">try/except</code> на битых данных.</div>
+          </div>
+
+          <div class="err">
+            <div class="h">O(n²) из-за + и in в цикле</div>
+            <p><code class="inl">s += chunk</code> в цикле каждый раз копирует всё накопленное:
+            O(n²) по времени. <code class="inl">if word in big_text</code> внутри цикла по словам
+            тоже умножает O(n) на число итераций.</p>
+            <div class="fix">Копить куски в списке и один раз вызвать <code class="inl">join</code>;
+            для повторных проверок — <code class="inl">set</code> или <code class="inl">dict</code>,
+            а не <code class="inl">in</code> по длинному тексту.</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ══════════════════ 08. Мини-проверка ══════════════════ -->
+      <section>
+        <h2><span class="num">08</span>Мини-проверка</h2>
+        <p>Пять вопросов и две задачи. Сначала своя попытка — потом спойлер.</p>
+
+        <div class="qa">
+          <details>
+            <summary>Почему s[0] = "X" падает и как всё-таки «изменить» строку?</summary>
+            <div class="a">
+              <p>Строка неизменяема: у типа нет операции присваивания по индексу, поэтому Python
+              бросает <code class="inl">TypeError</code>. «Изменить» строку можно только собрав новую:
+              <code class="inl">s = s.replace("a", "A")</code> или
+              <code class="inl">s = s[:i] + "X" + s[i+1:]</code>. Старый объект при этом не меняется —
+              другой код, держащий ссылку, видит прежнее значение.</p>
+              <div class="verdict">Резюме: строка — значение, а не контейнер; правка создаёт новые бусы.</div>
+            </div>
+          </details>
+        </div>
+
+        <div class="qa">
+          <details>
+            <summary>Чем strip("x") отличается от removeprefix("x")?</summary>
+            <div class="a">
+              <p><code class="inl">strip("x")</code> снимает с обоих концов любые символы из набора
+              <code class="inl">"x"</code> — сколько бы их ни было. <code class="inl">removeprefix("x")</code>
+              снимает ровно одну подстроку <code class="inl">"x"</code> и только если строка с неё
+              начинается.</p>
+              <p><code class="inl">"xxannaxx".strip("x")</code> → <code class="inl">"anna"</code>,
+              <code class="inl">"xxanna".removeprefix("x")</code> → <code class="inl">"xanna"</code>.</p>
+              <div class="verdict">Резюме: strip — про набор символов на краях, removeprefix — про точный префикс.</div>
+            </div>
+          </details>
+        </div>
+
+        <div class="qa">
+          <details>
+            <summary>Когда брать find, а когда index?</summary>
+            <div class="a">
+              <p><code class="inl">find</code> возвращает <code class="inl">-1</code>, если подстроки
+              нет, — это удобно, когда отсутствие нормально. <code class="inl">index</code> в той же
+              ситуации бросает <code class="inl">ValueError</code> — берите его, когда подстрока
+              обязана быть и падение лучше тихого <code class="inl">-1</code>. Если нужен только ответ
+              «есть или нет» — <code class="inl">sub in s</code>.</p>
+              <div class="verdict">Резюме: find — «где, если есть», index — «где, раз обязано быть».</div>
+            </div>
+          </details>
+        </div>
+
+        <div class="qa">
+          <details>
+            <summary>Почему " ".join(parts) лучше, чем + в цикле?</summary>
+            <div class="a">
+              <p>Каждая <code class="inl">s + chunk</code> создаёт новую строку и копирует в неё всё
+              накопленное: после n шагов скопировано 1 + 2 + … + n символов — O(n²).
+              <code class="inl">join</code> заранее знает суммарную длину и копирует данные один раз —
+              O(суммы длин). Ограничение: <code class="inl">join</code> принимает только строки,
+              поэтому числа приводят через <code class="inl">map(str, ...)</code> или f-string.</p>
+              <div class="verdict">Резюме: собрать список и склеить один раз — дешевле и читается лучше.</div>
+            </div>
+          </details>
+        </div>
+
+        <div class="qa">
+          <details>
+            <summary>Зачем casefold, если есть lower?</summary>
+            <div class="a">
+              <p><code class="inl">lower</code> меняет регистр, но не делает строки сравнимыми:
+              <code class="inl">"STRASSE".lower() == "straße".lower()</code> → <code class="inl">False</code>.
+              <code class="inl">casefold</code> выполняет агрессивное свёртывание
+              (<code class="inl">ß</code> → <code class="inl">ss</code>), и сравнение даёт
+              <code class="inl">True</code>. Для логинов, email и поиска по названиям — только
+              <code class="inl">casefold</code>; для вывода он не годится.</p>
+              <div class="verdict">Резюме: lower — для вида, casefold — для сравнения.</div>
+            </div>
+          </details>
+        </div>
+
+        <h3><span style="color:var(--muted);font-family:var(--mono);font-size:.8rem">01</span> Дата из ISO</h3>
+        <p>Превратите <code class="inl">"2024-02-01"</code> в <code class="inl">"01.02.2024"</code>.</p>
+        <div class="code">
+          <div class="bar"><span class="file">условие</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">date = "2024-02-01"
+# ожидается: 01.02.2024</pre>
+        </div>
+        <div class="qa">
+          <details>
+            <summary>Показать решение и разбор</summary>
+            <div class="a">
+              <div class="code" style="margin-top:0">
+                <div class="bar"><span class="file">решение</span><span class="lang">python</span><button class="copy">копировать</button></div>
+                <pre data-lang="python">date = "2024-02-01"
+year, month, day = date.split("-")
+print(".".join([day, month, year]))</pre>
+                <div class="out">01.02.2024</div>
+              </div>
+              <p><strong>Что важно.</strong> <code class="inl">split</code> отдаёт три строки,
+              распаковка даёт имена, <code class="inl">join</code> склеивает их в обратном порядке —
+              без срезов и склеек <code class="inl">+</code>.</p>
+            </div>
+          </details>
+        </div>
+
+        <h3><span style="color:var(--muted);font-family:var(--mono);font-size:.8rem">02</span> Отчёт из пар</h3>
+        <p>Соберите отчёт по строкам «имя;сумма»: просуммируйте суммы по человеку и выведите по строке на каждого.</p>
+        <div class="code">
+          <div class="bar"><span class="file">условие</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">lines = ["Anna;1200", "Olga;1500", "Anna;500"]
+# ожидается: суммы по пользователям, по строке на человека</pre>
+        </div>
+        <div class="qa">
+          <details>
+            <summary>Показать решение и разбор</summary>
+            <div class="a">
+              <div class="code" style="margin-top:0">
+                <div class="bar"><span class="file">решение</span><span class="lang">python</span><button class="copy">копировать</button></div>
+                <pre data-lang="python">lines = ["Anna;1200", "Olga;1500", "Anna;500"]
+totals = {}
+for line in lines:
+    name, amount = line.split(";")
+    totals[name] = totals.get(name, 0) + int(amount)
+report = "\n".join(f"{name:&lt;6}{amount:&gt;8,}" for name, amount in totals.items())
+print(report)</pre>
+                <div class="out">Anna     1,700
+Olga     1,500</div>
+              </div>
+              <p><strong>Что важно.</strong> <code class="inl">split(";")</code> даёт пару,
+              <code class="inl">int</code> превращает сумму в число, словарь копит итоги, а
+              <code class="inl">join</code> собирает строки. Складывать надо числа, а не строки —
+              иначе суммы не сложились бы.</p>
+            </div>
+          </details>
+        </div>
+      </section>
+
+      <!-- ══════════════════ 09. Мостик ══════════════════ -->
+      <section>
+        <h2><span class="num">09</span>Мостик: та же идея в pandas и SQL</h2>
+
+        <h3>pandas: аксессор .str</h3>
+        <div class="code">
+          <div class="bar"><span class="file">мост в pandas</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">import pandas as pd
+
+df = pd.DataFrame({"email": ["  Anna@Mail.RU ", "ivan@MAIL.RU"]})
+df["email"].str.strip().str.lower()       # та же нормализация, векторно
+df["email"].str.contains("@")             # как in, но для каждой строки
+df["email"].str.len()                     # как len()
+df["email"].str.split("@", expand=True)   # split → две колонки</pre>
+        </div>
+        <p>
+          <code class="inl">.str</code> — это те же методы строк, применённые к каждой ячейке колонки.
+          Пропуски <code class="inl">NaN</code> аксессор пропускает, поэтому вместо ручного цикла с
+          <code class="inl">strip().lower()</code> пишут одну цепочку. Подробнее — в
+          <a href="ch-18-dates-reshape.html">главе 18</a>.
+        </p>
+
+        <h3>SQL: UPPER, TRIM, LIKE, REPLACE</h3>
+        <div class="code">
+          <div class="bar"><span class="file">мост в SQL</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">-- регистр и обрезка: как lower() и strip()
+SELECT LOWER(TRIM(email)) FROM users;
+
+-- поиск подстроки: как in и find
+SELECT name FROM users WHERE name LIKE '%анна%';
+
+-- в PostgreSQL регистр приводит ILIKE
+SELECT name FROM users WHERE name ILIKE '%анна%';
+
+-- сборка и длина: как join и len
+SELECT UPPER(name) || ' &lt;' || email || '&gt;' AS label,
+       LENGTH(TRIM(name)) AS name_len
+FROM users;
+
+-- замена подстроки: как replace
+SELECT REPLACE(phone, ' ', '') FROM users;</pre>
+        </div>
+        <p>
+          SQL-функции делают то же, но на стороне базы: <code class="inl">UPPER</code> и
+          <code class="inl">LOWER</code> — регистр, <code class="inl">TRIM</code> — края,
+          <code class="inl">LIKE</code> — поиск по шаблону, <code class="inl">||</code> — склейка.
+          <code class="inl">LIKE</code> в PostgreSQL регистрозависим, поэтому для «как casefold» нужен
+          <code class="inl">ILIKE</code>. Подробнее — в <a href="ch-20-select-where-null.html">главе 20</a>.
+        </p>
+
+        <div class="bridges">
+          <a class="bridge" href="ch-18-dates-reshape.html"><span class="to">Глава 18</span><span>Даты и reshape: .str в pandas</span><span class="what">→ strip, lower, contains по колонке</span></a>
+          <a class="bridge" href="ch-20-select-where-null.html"><span class="to">Глава 20</span><span>SELECT и WHERE: LIKE, IN, NULL</span><span class="what">→ UPPER, TRIM и LIKE вместо методов строк</span></a>
+          <a class="bridge" href="ch-03-list-tuple.html"><span class="to">Глава 03</span><span>list и tuple: изменяемость и копии</span><span class="what">→ та же последовательность, но изменяемая</span></a>
+          <a class="bridge" href="appendix-types.html"><span class="to">Справочник</span><span>Карта типов данных</span><span class="what">→ когда str, а когда list, set или dict</span></a>
+        </div>
+      </section>
+
+      <div class="pager">
+        <a class="prev" href="appendix-types.html"><span class="dir">← Назад</span><span class="ttl">Справочник по типам</span></a>
+        <a class="next" href="ref-list.html"><span class="dir">Дальше →</span><span class="ttl">list: поезд с вагонами</span></a>
+      </div>
+
+    </div>
+  </main>
+</div>
+<script src="assets/toc.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>

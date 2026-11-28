@@ -1,0 +1,622 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Справочник · SELECT, WHERE и NULL — Ассоциативный гайд</title>
+<meta name="description" content="Справочник по SELECT и NULL в PostgreSQL 14: WHERE, DISTINCT, ORDER BY, LIMIT, IN, BETWEEN, LIKE, CASE, COUNT — с реальным выводом psql на базе learning_shop.">
+<link rel="stylesheet" href="assets/style.css">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#fbf8f2" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#14131a" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="assets/icons/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="assets/icons/icon-180.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Гайд Py/SQL">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+</head>
+<body data-slug="ref-sql-select">
+<div class="app">
+  <aside class="sidebar" id="sidebar"></aside>
+  <main>
+    <div class="wrap">
+
+      <header class="chapter-head">
+        <div class="eyebrow">
+          <span class="part">Справочник · SQL</span>
+          <span class="dot"></span>
+          <span>страница 1 из 6</span>
+          <span class="dot"></span>
+          <span>готово</span>
+        </div>
+        <h1>SELECT, WHERE и NULL
+          <span class="sub">Как выбрать строки, не споткнуться о пропуски и стабильно отсортировать результат</span>
+        </h1>
+        <p class="lead"><code class="inl">SELECT</code> — способ задать таблице вопрос: какие строки, какие колонки, в каком порядке. Здесь — конвейер запроса, полный набор условий <code class="inl">WHERE</code>, логика трёх значений и точный вывод <code class="inl">psql</code> на базе <code class="inl">learning_shop</code>.</p>
+        <div class="meta">
+          <span class="chip">⏱ <b>12 минут</b></span>
+          <span class="chip">🎯 уровень <b>2</b></span>
+          <span class="chip">🐘 <b>PostgreSQL 14</b></span>
+          <span class="chip">📚 <b>глава 19</b></span>
+        </div>
+      </header>
+
+            <p class="small">
+        Справочник SQL: <a href="appendix-sql.html">вся карта</a> ·
+        <b>01 · SELECT и NULL</b> · <a href="ref-sql-join.html">02 · JOIN</a> ·
+        <a href="ref-sql-group.html">03 · GROUP BY</a> ·
+        <a href="ref-sql-window.html">04 · окна</a> ·
+        <a href="ref-sql-cte.html">05 · CTE</a> ·
+        <a href="ref-sql-index.html">06 · индексы</a>
+      </p>
+
+      <div class="tldr">
+        <div class="t">Самое главное</div>
+        <ul>
+          <li>Запрос пишется сверху вниз, а выполняется по конвейеру:
+              <code class="inl">FROM → WHERE → GROUP BY → HAVING → SELECT → DISTINCT → ORDER BY → LIMIT</code>.
+              Поэтому алиас виден в <code class="inl">ORDER BY</code>, но не в <code class="inl">WHERE</code>.</li>
+          <li><code class="inl">NULL</code> — отсутствие значения: <code class="inl">= NULL</code> и
+              <code class="inl">&lt;&gt; '…'</code> пропуск не находят, нужен
+              <code class="inl">IS NULL</code>. NULL внутри <code class="inl">NOT IN</code> обнуляет результат.</li>
+          <li><code class="inl">COUNT(*)</code> считает строки, <code class="inl">COUNT(col)</code> — непустые
+              значения. Без <code class="inl">ORDER BY</code> порядок не определён, а
+              <code class="inl">NULLS FIRST/LAST</code> задаёт место пропусков явно.</li>
+        </ul>
+      </div>
+
+      <!-- ══════════════════ 01. Что это ══════════════════ -->
+      <section>
+        <h2><span class="num">01</span>Что это и как читается</h2>
+        <p><code class="inl">SELECT</code> — декларация: вы описываете, <em>что</em> хотите получить, а не <em>как</em> это добывать. База сама решает, читать ли таблицу целиком, идти по индексу или строить хеш — на результат это не влияет, на скорость влияет сильно.</p>
+        <p>Читается запрос сверху вниз, но смысл задаёт конвейер этапов: сначала <code class="inl">FROM</code> строит множество строк, <code class="inl">WHERE</code> оставляет нужные, <code class="inl">GROUP BY</code> собирает группы, и только потом <code class="inl">SELECT</code> вычисляет колонки и алиасы. Дальше — <code class="inl">DISTINCT</code>, <code class="inl">ORDER BY</code> и <code class="inl">LIMIT</code>.</p>
+        <p class="small">Порядок логический: физически база может делать иначе, но результат обязан ему соответствовать. Подробно — в <a href="ch-19-order-of-execution.html">главе 19</a>.</p>
+
+        <div class="anchor">
+          <div class="glyph">🏭</div>
+          <div>
+            <div class="t">Держите эту картинку в голове</div>
+            <p class="kick"><strong>Запрос — это сборочный конвейер.</strong> На ленту попадают детали (FROM), брак отбрасывается (WHERE), детали собираются в узлы (GROUP BY), узлы проверяются (HAVING), затем выбирается то, что нужно показать (SELECT), убираются дубли (DISTINCT), всё сортируется (ORDER BY) и только в конце отрезается нужное количество (LIMIT).</p>
+            <p><strong>SELECT стоит в середине конвейера.</strong> Поэтому алиасы, придуманные в SELECT, не существуют на этапе WHERE — их ещё не создали. Метафору целиком разбирает <a href="ch-19-order-of-execution.html">глава 19</a>.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ══════════════════ 02. Когда применять ══════════════════ -->
+      <section>
+        <h2><span class="num">02</span>Когда применять</h2>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Задача</th><th>SELECT?</th><th>Что дальше</th></tr></thead>
+            <tbody>
+              <tr><td>Отобрать строки по условию</td><td><b>да</b></td><td><code class="inl">WHERE</code> и <code class="inl">IS NULL</code> — эта страница</td></tr>
+              <tr><td>Оставить уникальные значения</td><td><b>да</b></td><td><code class="inl">DISTINCT</code>; если нужны агрегаты — <code class="inl">GROUP BY</code>, страница 03</td></tr>
+              <tr><td>Отсортировать и взять первые N</td><td><b>да</b></td><td><code class="inl">ORDER BY</code> + <code class="inl">LIMIT</code></td></tr>
+              <tr><td>Найти пропуски или подставить значение</td><td><b>да</b></td><td><code class="inl">IS NULL</code>, <code class="inl">COALESCE</code></td></tr>
+              <tr><td>Соединить таблицы по ключу</td><td>нет</td><td><code class="inl">JOIN</code> — страница 02</td></tr>
+              <tr><td>Свернуть строки в группы</td><td>нет</td><td><code class="inl">GROUP BY</code> / <code class="inl">HAVING</code> — страница 03</td></tr>
+              <tr><td>Посчитать по окну, не схлопывая строки</td><td>нет</td><td>оконные функции — страница 04</td></tr>
+              <tr><td>Изменить данные</td><td>нет</td><td><code class="inl">INSERT</code>, <code class="inl">UPDATE</code>, <code class="inl">DELETE</code> — это не SELECT</td></tr>
+              <tr><td>Ускорить запрос</td><td>как основа</td><td>индекс и <code class="inl">EXPLAIN</code> — страница 06</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="small">Карта целиком — в <a href="appendix-sql.html">справочнике SQL</a>; здесь — конструкции и их поведение на живых данных.</p>
+      </section>
+
+      <!-- ══════════════════ 03. Синтаксис-шаблон ══════════════════ -->
+      <section>
+        <h2><span class="num">03</span>Синтаксис-шаблон</h2>
+        <p>Минимальный рабочий запрос — список колонок, <code class="inl">FROM</code>, <code class="inl">WHERE</code> и <code class="inl">LIMIT</code>. Порядок ключевых слов фиксирован: ненужные этапы можно выбрасывать, менять их местами — нельзя.</p>
+        <div class="code">
+          <div class="bar"><span class="file">ref_sql_select_lab.sql</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">SELECT name, city, email
+FROM users
+WHERE city IS NOT NULL
+ORDER BY name
+LIMIT 3;</pre>
+          <div class="out"> name  |      city       |    email
+-------+-----------------+--------------
+ Anna  | Москва          | anna@mail.ru
+ Ivan  | Казань          | ivan@mail.ru
+ Maria | Санкт-Петербург |
+(3 rows)</div>
+        </div>
+        <p>Вывод в книге — это stdout <code class="inl">psql</code>: заголовки, разделитель и строка <code class="inl">(N rows)</code>. Пропуск печатается пустой ячейкой — так psql показывает <code class="inl">NULL</code> по умолчанию.</p>
+        <p>Псевдоним <code class="inl">AS</code> даёт колонке имя в результате. Оно появляется на этапе <code class="inl">SELECT</code>, поэтому <code class="inl">ORDER BY</code> его видит:</p>
+        <div class="code">
+          <div class="bar"><span class="file">ref_sql_select_lab.sql</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">SELECT name, price * 1.2 AS price_with_tax
+FROM products
+ORDER BY price_with_tax DESC, name
+LIMIT 3;</pre>
+          <div class="out">  name   | price_with_tax
+---------+----------------
+ Ноутбук |      90000.000
+ Монитор |      26400.000
+ Мышь    |       1800.000
+(3 rows)</div>
+        </div>
+        <p>А в <code class="inl">WHERE</code> тот же алиас — ошибка: <code class="inl">WHERE</code> выполняется раньше <code class="inl">SELECT</code>. Подробнее — ошибка №3.</p>
+      </section>
+
+      <!-- ══════════════════ 04. Все конструкции ══════════════════ -->
+      <section>
+        <h2><span class="num">04</span>Все конструкции</h2>
+        <p>«Примечание» — про порядок выполнения, поведение с NULL и план. Цифр стоимости здесь нет: на пяти строках <code class="inl">users</code> планировщик берёт <b>Seq Scan</b>, а на объёме решает индекс — это разбирает <a href="ref-sql-index.html">страница 06</a>.</p>
+
+        <h3>Каркас запроса</h3>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Конструкция</th><th>Что делает</th><th>Результат</th><th>Примечание</th></tr></thead>
+            <tbody>
+              <tr><td class="mono">SELECT col, expr</td><td>выбирает колонки и выражения</td><td>таблица</td><td>вычисляется после WHERE</td></tr>
+              <tr><td class="mono">SELECT *</td><td>все колонки</td><td>таблица</td><td>удобно для отладки; в коде лучше перечислить</td></tr>
+              <tr><td class="mono">expr AS alias</td><td>даёт колонке имя</td><td>имя в выводе</td><td>виден в ORDER BY, не виден в WHERE</td></tr>
+              <tr><td class="mono">FROM table [AS] alias</td><td>источник строк</td><td>—</td><td>алиас нужен для JOIN и длинных имён</td></tr>
+              <tr><td class="mono">DISTINCT</td><td>убирает дубли результата</td><td>таблица</td><td>после SELECT; NULL — тоже значение</td></tr>
+              <tr><td class="mono">ORDER BY expr [ASC|DESC]</td><td>сортирует результат</td><td>таблица</td><td>видит алиасы SELECT; по умолчанию ASC</td></tr>
+              <tr><td class="mono">NULLS FIRST / NULLS LAST</td><td>задаёт место NULL в сортировке</td><td>таблица</td><td>в PostgreSQL по умолчанию NULLS LAST при ASC</td></tr>
+              <tr><td class="mono">LIMIT n / OFFSET m</td><td>отрезает строки</td><td>таблица</td><td>без ORDER BY порядок не определён</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>Условия WHERE</h3>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Конструкция</th><th>Что делает</th><th>Результат</th><th>Примечание</th></tr></thead>
+            <tbody>
+              <tr><td class="mono">=, &lt;&gt;, &lt;, &gt;, &lt;=, &gt;=</td><td>сравнивает значения</td><td>TRUE / FALSE / UNKNOWN</td><td>с NULL — всегда UNKNOWN</td></tr>
+              <tr><td class="mono">IS NULL / IS NOT NULL</td><td>проверяет отсутствие значения</td><td>TRUE / FALSE</td><td>единственный корректный способ найти пропуск</td></tr>
+              <tr><td class="mono">IN (список)</td><td>вхождение в набор</td><td>TRUE / FALSE / UNKNOWN</td><td>краткая запись цепочки OR</td></tr>
+              <tr><td class="mono">NOT IN (подзапрос)</td><td>«не входит в набор»</td><td>TRUE / FALSE / UNKNOWN</td><td>NULL внутри делает результат пустым</td></tr>
+              <tr><td class="mono">BETWEEN a AND b</td><td>диапазон</td><td>TRUE / FALSE / UNKNOWN</td><td>обе границы включаются</td></tr>
+              <tr><td class="mono">LIKE / ILIKE</td><td>поиск по шаблону</td><td>TRUE / FALSE</td><td><code class="inl">%</code> — любая строка, <code class="inl">_</code> — символ; ILIKE без учёта регистра</td></tr>
+              <tr><td class="mono">AND / OR / NOT</td><td>комбинирует условия</td><td>TRUE / FALSE / UNKNOWN</td><td>WHERE пропускает только TRUE</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>NULL в выводе и агрегаты</h3>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Конструкция</th><th>Что делает</th><th>Результат</th><th>Примечание</th></tr></thead>
+            <tbody>
+              <tr><td class="mono">COALESCE(x, fallback)</td><td>первое не-NULL значение</td><td>значение</td><td>SQL-аналог <code class="inl">fillna</code></td></tr>
+              <tr><td class="mono">CASE WHEN … THEN … ELSE … END</td><td>ветвление выражения</td><td>значение</td><td>NULL проверяют через <code class="inl">IS NULL</code></td></tr>
+              <tr><td class="mono">COUNT(*)</td><td>число строк группы</td><td>int</td><td>включает строки с пропусками</td></tr>
+              <tr><td class="mono">SUM / AVG / MIN / MAX</td><td>агрегат по группе</td><td>число / значение</td><td>NULL игнорируются; подробно — страница 03</td></tr>
+              <tr><td class="mono">COUNT(col)</td><td>число непустых значений</td><td>int</td><td>разница с <code class="inl">COUNT(*)</code> = число NULL</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ══════════════════ 05. Разбор ══════════════════ -->
+      <section>
+        <h2><span class="num">05</span>Разбор по вариантам</h2>
+        <p>Все примеры страницы — в файле <a href="snippets/view.html?f=ref_sql_select_lab.sql"><code class="inl">ref_sql_select_lab.sql</code></a>: его можно запустить на <code class="inl">learning_shop</code> и сравнить вывод.</p>
+
+        <h3>DISTINCT и NULL</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_sql_select_lab.sql</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">SELECT DISTINCT city
+FROM users
+ORDER BY city;</pre>
+          <div class="out">      city
+-----------------
+ Казань
+ Москва
+ Санкт-Петербург
+
+(4 rows)</div>
+        </div>
+        <p>Четыре строки, а не три: <code class="inl">NULL</code> для <code class="inl">DISTINCT</code> — такое же отдельное значение, как «Москва». В psql его ячейка выглядит пустой.</p>
+
+        <h3>WHERE: = NULL, IS NULL и &lt;&gt;</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_sql_select_lab.sql</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">SELECT id, name
+FROM users
+WHERE city = NULL;
+
+SELECT id, name, city
+FROM users
+WHERE city IS NULL;
+
+SELECT name, city
+FROM users
+WHERE city &lt;&gt; 'Москва'
+ORDER BY name;</pre>
+          <div class="out"> id | name
+----+------
+(0 rows)
+
+ id | name | city
+----+------+------
+  4 | Petr |
+(1 row)
+
+ name  |      city
+-------+-----------------
+ Ivan  | Казань
+ Maria | Санкт-Петербург
+(2 rows)</div>
+        </div>
+        <p><code class="inl">= NULL</code> не находит ничего: сравнение с неизвестным даёт UNKNOWN. <code class="inl">IS NULL</code> находит Petr. А <code class="inl">&lt;&gt; 'Москва'</code> не включает Petr: <code class="inl">NULL &lt;&gt; 'Москва'</code> — тоже UNKNOWN. Нужны «все, кроме Москвы, включая неизвестных» — <code class="inl">OR city IS NULL</code>.</p>
+
+        <h3>IN и NOT IN с NULL</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_sql_select_lab.sql</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">SELECT name, city
+FROM users
+WHERE city IN ('Москва', 'Казань')
+ORDER BY name;
+
+SELECT name, city
+FROM users
+WHERE city IN ('Москва', NULL)
+ORDER BY name;
+
+SELECT name
+FROM users
+WHERE city NOT IN (SELECT city FROM users)
+ORDER BY name;</pre>
+          <div class="out"> name |  city
+------+--------
+ Anna | Москва
+ Ivan | Казань
+ Olga | Москва
+(3 rows)
+
+ name |  city
+------+--------
+ Anna | Москва
+ Olga | Москва
+(2 rows)
+
+ name
+------
+(0 rows)</div>
+        </div>
+        <p><code class="inl">IN</code> с обычным списком работает предсказуемо. Второй запрос кладёт NULL прямо в список: он не находит пропуск и не ломает остальные совпадения — просто «не совпадает ни с чем». А <code class="inl">NOT IN</code> по подзапросу, в котором есть NULL, возвращает пусто: одно из сравнений даёт UNKNOWN, и итог не TRUE. Поэтому «не входит» пишут через <code class="inl">NOT EXISTS</code> — это приём <a href="ref-sql-cte.html">страницы 05</a>.</p>
+
+        <h3>BETWEEN и LIKE/ILIKE</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_sql_select_lab.sql</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">SELECT name, price
+FROM products
+WHERE price BETWEEN 1000 AND 30000
+ORDER BY price;
+
+SELECT name
+FROM users
+WHERE city LIKE '%москва%'
+ORDER BY name;
+
+SELECT name
+FROM users
+WHERE city ILIKE '%москва%'
+ORDER BY name;</pre>
+          <div class="out">  name   |  price
+---------+----------
+ Мышь    |  1500.00
+ Монитор | 22000.00
+(2 rows)
+
+ name
+------
+(0 rows)
+
+ name
+------
+ Anna
+ Olga
+(2 rows)</div>
+        </div>
+        <p><code class="inl">BETWEEN 1000 AND 30000</code> включает обе границы: «Мышь» (1500) и «Монитор» (22000) попали. <code class="inl">LIKE</code> в PostgreSQL учитывает регистр, поэтому «%москва%» ничего не находит; <code class="inl">ILIKE</code> — находит Anna и Olga.</p>
+
+        <h3>ORDER BY, NULLS и LIMIT</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_sql_select_lab.sql</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">SELECT name, city
+FROM users
+ORDER BY city ASC NULLS FIRST, name;
+
+SELECT name, city
+FROM users
+ORDER BY city DESC NULLS LAST, name
+LIMIT 3;</pre>
+          <div class="out"> name  |      city
+-------+-----------------
+ Petr  |
+ Ivan  | Казань
+ Anna  | Москва
+ Olga  | Москва
+ Maria | Санкт-Петербург
+(5 rows)
+
+ name  |      city
+-------+-----------------
+ Maria | Санкт-Петербург
+ Anna  | Москва
+ Olga  | Москва
+(3 rows)</div>
+        </div>
+        <p><code class="inl">NULLS FIRST</code> ставит Petr в начало, <code class="inl">NULLS LAST</code> — в конец. Второй ключ <code class="inl">name</code> нужен как тай-брейкер: у Anna и Olga одинаковый город, и без него порядок между ними не определён.</p>
+
+        <h3>CASE, COALESCE и COUNT</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_sql_select_lab.sql</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">SELECT name,
+       COALESCE(city, 'неизвестно') AS city_filled,
+       CASE WHEN city IS NULL THEN 'нет данных' ELSE city END AS city_case
+FROM users
+ORDER BY id;
+
+SELECT COUNT(*) AS all_rows,
+       COUNT(city) AS known_city,
+       COUNT(email) AS known_email
+FROM users;</pre>
+          <div class="out"> name  |   city_filled   |    city_case
+-------+-----------------+-----------------
+ Anna  | Москва          | Москва
+ Ivan  | Казань          | Казань
+ Olga  | Москва          | Москва
+ Petr  | неизвестно      | нет данных
+ Maria | Санкт-Петербург | Санкт-Петербург
+(5 rows)
+
+ all_rows | known_city | known_email
+----------+------------+-------------
+        5 |          4 |           4
+(1 row)</div>
+        </div>
+        <p><code class="inl">COALESCE</code> подставляет запасное значение, <code class="inl">CASE</code> позволяет выразить любое правило. <code class="inl">COUNT(*)</code> вернул 5, <code class="inl">COUNT(city)</code> и <code class="inl">COUNT(email)</code> — по 4: у Petr нет города, у Maria нет email.</p>
+      </section>
+
+      <!-- ══════════════════ 06. Сценарии ══════════════════ -->
+      <section>
+        <h2><span class="num">06</span>Три сценария на learning_shop</h2>
+
+        <h3>Фильтр по городу с пропусками</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_sql_select_lab.sql</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">SELECT name, city
+FROM users
+WHERE city &lt;&gt; 'Москва' OR city IS NULL
+ORDER BY name;</pre>
+          <div class="out"> name  |      city
+-------+-----------------
+ Ivan  | Казань
+ Maria | Санкт-Петербург
+ Petr  |
+(3 rows)</div>
+        </div>
+        <p>Типичная задача отчёта: «все, кроме Москвы». Без <code class="inl">OR city IS NULL</code> Petr выпал бы — его город неизвестен, а не «не Москва». Решение нужно принимать осознанно: иногда пропуски надо исключать, иногда показывать отдельной строкой.</p>
+
+        <h3>Поиск по названию</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_sql_select_lab.sql</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">SELECT name, category, price
+FROM products
+WHERE name ILIKE '%о%'
+ORDER BY price DESC;</pre>
+          <div class="out">  name   |  category   |  price
+---------+-------------+----------
+ Ноутбук | electronics | 75000.00
+ Монитор | electronics | 22000.00
+ Кофе    | food        |   450.00
+(3 rows)</div>
+        </div>
+        <p><code class="inl">ILIKE '%о%'</code> ищет подстроку без учёта регистра; сортировка по цене сразу превращает поиск в «самые дорогие из найденных». Для настоящего полнотекстового поиска в PostgreSQL есть <code class="inl">tsvector</code>, но для «найти в названии» хватает LIKE.</p>
+
+        <h3>Топ-N с сортировкой</h3>
+        <div class="code">
+          <div class="bar"><span class="file">ref_sql_select_lab.sql</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">SELECT id, name, price
+FROM products
+ORDER BY price DESC, name
+LIMIT 3;</pre>
+          <div class="out"> id |  name   |  price
+----+---------+----------
+  1 | Ноутбук | 75000.00
+  5 | Монитор | 22000.00
+  2 | Мышь    |  1500.00
+(3 rows)</div>
+        </div>
+        <p>«Топ-3» — это всегда <code class="inl">ORDER BY</code> + <code class="inl">LIMIT</code>; один <code class="inl">LIMIT</code> без сортировки отдаёт произвольные строки. Второй ключ <code class="inl">name</code> делает результат воспроизводимым при равных ценах.</p>
+      </section>
+
+      <!-- ══════════════════ 07. Ошибки ══════════════════ -->
+      <section>
+        <h2><span class="num">07</span>Пять ошибок, на которых спотыкаются</h2>
+        <div class="errors">
+          <div class="err">
+            <div class="h">= NULL вместо IS NULL</div>
+            <p><code class="inl">WHERE city = NULL</code> не возвращает ничего: сравнение с неизвестным даёт UNKNOWN, а WHERE пропускает только TRUE. Тот же провал — с <code class="inl">&lt;&gt; NULL</code>.</p>
+            <div class="fix"><code class="inl">IS NULL</code> / <code class="inl">IS NOT NULL</code>.</div>
+          </div>
+
+          <div class="err">
+            <div class="h">NOT IN с NULL в подзапросе</div>
+            <p><code class="inl">WHERE city NOT IN (SELECT city FROM users)</code> возвращает пусто, если в подзапросе есть NULL: одно сравнение даёт UNKNOWN и «отравляет» всю цепочку.</p>
+            <div class="fix">Фильтр <code class="inl">WHERE city IS NOT NULL</code> в подзапросе или <code class="inl">NOT EXISTS</code> (страница 05).</div>
+          </div>
+
+          <div class="err">
+            <div class="h">Алиас в WHERE</div>
+            <p><code class="inl">WHERE price_with_tax &gt; 1000</code> после <code class="inl">SELECT price * 1.2 AS price_with_tax</code> падает: алиас создаётся на этапе SELECT, который идёт позже WHERE.</p>
+            <div class="fix">Повторить выражение, обернуть в подзапрос или CTE; для агрегатов — <code class="inl">HAVING</code>.</div>
+          </div>
+
+          <div class="err">
+            <div class="h">LIMIT без ORDER BY</div>
+            <p>Строки вернутся в том порядке, в котором их отдал план. Сегодня это «первые по вставке», завтра — другой план, и результат изменится.</p>
+            <div class="fix">Всегда <code class="inl">ORDER BY</code>; при равных значениях — второй ключ (например, <code class="inl">id</code>).</div>
+          </div>
+
+          <div class="err">
+            <div class="h">COUNT(*) как COUNT(col)</div>
+            <p>Числа расходятся при пропусках: в <code class="inl">users</code> это 5 против 4. Причина — <code class="inl">COUNT(col)</code> не считает NULL.</p>
+            <div class="fix">Решить, что нужно: строки (<code class="inl">COUNT(*)</code>) или известные значения (<code class="inl">COUNT(col)</code>).</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ══════════════════ 08. Мини-проверка ══════════════════ -->
+      <section>
+        <h2><span class="num">08</span>Мини-проверка</h2>
+        <p>Пять вопросов и две задачи. Сначала своя попытка — потом спойлер.</p>
+
+        <div class="qa">
+          <details>
+            <summary>В каком порядке логически выполняется запрос?</summary>
+            <div class="a">
+              <p><code class="inl">FROM → JOIN → WHERE → GROUP BY → HAVING → SELECT → DISTINCT → ORDER BY → LIMIT</code>. Текст пишется в другом порядке, но смысл задаёт конвейер.</p>
+              <div class="verdict">Резюме: конвейер, а не текст.</div>
+            </div>
+          </details>
+        </div>
+
+        <div class="qa">
+          <details>
+            <summary>Почему city = NULL не находит пропуски?</summary>
+            <div class="a">
+              <p>NULL — не значение, а его отсутствие. Любое сравнение с NULL даёт UNKNOWN, а WHERE пропускает только TRUE. Поэтому пропуск ищут проверкой факта: <code class="inl">IS NULL</code>.</p>
+              <div class="verdict">Резюме: неизвестное нельзя сравнить — можно только проверить.</div>
+            </div>
+          </details>
+        </div>
+
+        <div class="qa">
+          <details>
+            <summary>Почему алиас виден в ORDER BY, но не в WHERE?</summary>
+            <div class="a">
+              <p>Алиас создаётся на этапе SELECT. WHERE выполняется раньше, ORDER BY — позже. Это не прихоть синтаксиса, а следствие конвейера.</p>
+              <div class="verdict">Резюме: всё решает позиция этапа.</div>
+            </div>
+          </details>
+        </div>
+
+        <div class="qa">
+          <details>
+            <summary>Чем DISTINCT отличается от GROUP BY?</summary>
+            <div class="a">
+              <p><code class="inl">DISTINCT</code> убирает повторы уже выбранных строк. <code class="inl">GROUP BY</code> собирает строки в группы, по которым можно считать агрегаты. Для «просто уникальных значений» достаточно DISTINCT, для «сколько и сколько в сумме» — GROUP BY.</p>
+              <div class="verdict">Резюме: дедупликация результата против группировки для агрегатов.</div>
+            </div>
+          </details>
+        </div>
+
+        <div class="qa">
+          <details>
+            <summary>Чем COUNT(*) отличается от COUNT(col)?</summary>
+            <div class="a">
+              <p><code class="inl">COUNT(*)</code> считает строки, <code class="inl">COUNT(col)</code> — только непустые значения колонки. Разница равна числу NULL.</p>
+              <div class="verdict">Резюме: строки против известных значений.</div>
+            </div>
+          </details>
+        </div>
+
+        <h3><span style="color:var(--muted);font-family:var(--mono);font-size:.8rem">01</span> Пользователь без города</h3>
+        <p>Выведите имя и email пользователей, у которых не указан город.</p>
+        <div class="code">
+          <div class="bar"><span class="file">условие</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">-- users(id, name, city, email); у Petr city IS NULL</pre>
+        </div>
+        <div class="qa">
+          <details>
+            <summary>Показать решение и разбор</summary>
+            <div class="a">
+              <div class="code" style="margin-top:0">
+                <div class="bar"><span class="file">решение</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+                <pre data-lang="sql">SELECT name, email
+FROM users
+WHERE city IS NULL
+ORDER BY name;</pre>
+                <div class="out"> name |    email
+------+--------------
+ Petr | petr@mail.ru
+(1 row)</div>
+              </div>
+              <p><strong>Что важно.</strong> <code class="inl">= NULL</code> здесь вернул бы 0 строк: пропуск находится только через <code class="inl">IS NULL</code>.</p>
+            </div>
+          </details>
+        </div>
+
+        <h3><span style="color:var(--muted);font-family:var(--mono);font-size:.8rem">02</span> Три последних заказа</h3>
+        <p>Выведите три заказа с самой поздней датой: id, дату и количество. Порядок должен быть воспроизводимым.</p>
+        <div class="code">
+          <div class="bar"><span class="file">условие</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">-- orders(id, user_id, product_id, quantity, created_at)</pre>
+        </div>
+        <div class="qa">
+          <details>
+            <summary>Показать решение и разбор</summary>
+            <div class="a">
+              <div class="code" style="margin-top:0">
+                <div class="bar"><span class="file">решение</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+                <pre data-lang="sql">SELECT id, created_at, quantity
+FROM orders
+ORDER BY created_at DESC, id
+LIMIT 3;</pre>
+                <div class="out"> id |     created_at      | quantity
+----+---------------------+----------
+ 10 | 2024-03-20 15:55:00 |        1
+  9 | 2024-03-15 13:10:00 |        1
+  8 | 2024-03-07 19:30:00 |        1
+(3 rows)</div>
+              </div>
+              <p><strong>Что важно.</strong> <code class="inl">ORDER BY … DESC</code> задаёт направление, <code class="inl">id</code> — тай-брейкер для одинаковых дат, <code class="inl">LIMIT 3</code> отрезает результат уже после сортировки.</p>
+            </div>
+          </details>
+        </div>
+      </section>
+
+      <!-- ══════════════════ 09. Мостик ══════════════════ -->
+      <section>
+        <h2><span class="num">09</span>Мостик: та же логика в pandas</h2>
+
+        <h3>pandas: те же условия, но маской</h3>
+        <div class="code">
+          <div class="bar"><span class="file">мост в pandas</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">import pandas as pd
+
+users = pd.DataFrame({
+    "name": ["Anna", "Ivan", "Olga", "Petr", "Maria"],
+    "city": ["Москва", "Казань", "Москва", None, "Санкт-Петербург"],
+    "email": ["anna@mail.ru", "ivan@mail.ru", "olga@mail.ru", "petr@mail.ru", None],
+})
+
+users[users["city"] == "Москва"]            # WHERE city = 'Москва'
+users[users["city"].isna()]                 # WHERE city IS NULL
+users[users["city"] != "Москва"]            # &lt;&gt; не включает NULL — так же, как в SQL
+users["city"].isin(["Москва", "Казань"])    # WHERE city IN (...)
+users["city"].drop_duplicates()             # SELECT DISTINCT city
+users.sort_values("name").head(3)           # ORDER BY + LIMIT</pre>
+        </div>
+        <p><code class="inl">==</code>, <code class="inl">isna</code>, <code class="inl">isin</code>, <code class="inl">drop_duplicates</code> и <code class="inl">sort_values</code> — прямые аналоги SQL-конструкций. Разница в деталях: pandas умеет хранить пропуски разных типов (глава 17), а SQL знает один NULL.</p>
+
+        <div class="bridges">
+          <a class="bridge" href="ch-19-order-of-execution.html"><span class="to">Глава 19</span><span>Порядок выполнения</span><span class="what">→ почему алиас не виден в WHERE</span></a>
+          <a class="bridge" href="ch-20-select-where-null.html"><span class="to">Глава 20</span><span>SELECT, WHERE и NULL</span><span class="what">→ логика трёх значений</span></a>
+          <a class="bridge" href="ch-14-filtering.html"><span class="to">Глава 14</span><span>Фильтрация в pandas</span><span class="what">→ WHERE как булева маска</span></a>
+          <a class="bridge" href="ref-sql-join.html"><span class="to">Справочник</span><span>02 · JOIN</span><span class="what">→ следующий шаг: соединить таблицы</span></a>
+        </div>
+      </section>
+
+      <div class="pager">
+        <a class="prev" href="appendix-sql.html"><span class="dir">← Назад</span><span class="ttl">Справочник: SQL</span></a>
+        <a class="next" href="ref-sql-join.html"><span class="dir">Дальше →</span><span class="ttl">02 · JOIN: соединение таблиц</span></a>
+      </div>
+
+    </div>
+  </main>
+</div>
+<script src="assets/toc.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,514 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>12 · Series и DataFrame: таблица с оглавлением — Ассоциативный гайд</title>
+<meta name="description" content="pandas: Series и DataFrame, индекс, колонки, dtype, чтение CSV, head/info/describe — с лабораторией и ошибками.">
+<link rel="stylesheet" href="assets/style.css">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#fbf8f2" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#14131a" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="assets/icons/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="assets/icons/icon-180.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Гайд Py/SQL">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+</head>
+<body data-slug="ch-12-series-dataframe">
+<div class="app">
+  <aside class="sidebar" id="sidebar"></aside>
+  <main>
+    <div class="wrap">
+
+      <header class="chapter-head">
+        <div class="eyebrow">
+          <span class="part">Часть III · pandas</span>
+          <span class="dot"></span>
+          <span>Неделя 3 · день 1</span>
+          <span class="dot"></span>
+          <span>готово</span>
+        </div>
+        <h1>Series и DataFrame: таблица с оглавлением
+          <span class="sub">Индекс, колонки и свой тип у каждой колонки</span>
+        </h1>
+        <p class="lead">
+          pandas начинается с двух объектов: колонка с подписями (<code class="inl">Series</code>) и таблица
+          (<code class="inl">DataFrame</code>). Понять, что такое индекс и почему он не равен номеру строки, —
+          значит избежать половины будущих ошибок.
+        </p>
+        <div class="meta">
+          <span class="chip">⏱ <b>40 минут</b></span>
+          <span class="chip">🎯 уровень <b>2 — применить</b></span>
+          <span class="chip">🐼 <b>pandas 3.0</b></span>
+          <span class="chip">📚 <b>Getting Started</b></span>
+        </div>
+      </header>
+
+      <details class="glossary">
+        <summary>Словарь главы — если забыли термины</summary>
+        <dl>
+          <dt>Series</dt><dd>Одномерные значения с индексом: колонка таблицы.</dd>
+          <dt>DataFrame</dt><dd>Таблица из колонок с общим индексом строк.</dd>
+          <dt>индекс</dt><dd>Подписи строк. Не то же самое, что номера позиций.</dd>
+          <dt>dtype</dt><dd>Тип колонки: <code>int64</code>, <code>float64</code>, <code>str</code>.</dd>
+          <dt>read_csv</dt><dd>Загрузка CSV в DataFrame с разбором типов.</dd>
+        </dl>
+      </details>
+
+
+      <section>
+        <h2><span class="num">01</span>Зачем это backend-разработчику</h2>
+        <ul>
+          <li><strong>Выгрузки и отчёты.</strong> CSV из админки, экспорт заказов, сводка по дням — pandas делает это за десяток строк.</li>
+          <li><strong>Проверка данных.</strong> Быстро посмотреть форму, типы, пропуски и диапазоны — до того, как данные попадут в базу.</li>
+          <li><strong>Мостик к SQL.</strong> Таблица pandas — почти таблица в базе: колонки, строки, типы. Дальше это сравнение станет привычкой.</li>
+          <li><strong>Собеседование:</strong> «чем Series отличается от DataFrame», «что такое индекс», «loc или iloc» — базовые вопросы по pandas.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2><span class="num">02</span>Ассоциация-якорь: книга с оглавлением</h2>
+
+        <div class="anchor">
+          <div class="glyph">📖</div>
+          <div>
+            <div class="t">Держите эту картинку в голове</div>
+            <p class="kick"><strong>DataFrame — это таблица с оглавлением.</strong> Колонки — это разделы,
+            а индекс — подписи строк, по которым можно быстро найти нужную.</p>
+            <p><strong>Series — одна страница из этой книги.</strong> У неё те же подписи (индекс), но значения
+            только из одной колонки. Поэтому Series — это не «просто список», а список с оглавлением.</p>
+          </div>
+        </div>
+
+        <figure class="art">
+          <div class="frame">
+            <img src="assets/illustrations/12-dataframe-book.webp" width="1168" height="876" loading="lazy" decoding="async" alt="Открытая книга, страницы которой расчерчены как таблица, с закладкой и боковым указателем.">
+          </div>
+          <figcaption><b>Рис. 1.</b> Таблица с оглавлением: строки и колонки плюс индекс, по которому ищут.</figcaption>
+        </figure>
+
+      </section>
+
+      <section>
+        <h2><span class="num">03</span>Ассоциативный ряд: восемь звеньев</h2>
+        <ol class="chain">
+          <li><b>pd.Series</b><span>значения + индекс</span></li>
+          <li><b>pd.DataFrame</b><span>таблица из колонок</span></li>
+          <li><b>index</b><span>подписи строк, не номера</span></li>
+          <li><b>columns</b><span>имена колонок</span></li>
+          <li><b>dtypes</b><span>тип у каждой колонки</span></li>
+          <li><b>shape</b><span>(строки, колонки)</span></li>
+          <li><b>read_csv</b><span>загрузка и разбор типов</span></li>
+          <li><b>head/info</b><span>первый взгляд на данные</span></li>
+        </ol>
+      </section>
+
+      <section>
+        <h2><span class="num">04</span>Схема: из чего состоит таблица</h2>
+
+        <figure>
+          <div class="frame">
+            <img src="assets/maps/dataframe-anatomy.svg" alt="DataFrame с индексом и колонками; колонка amount вынесена как Series.">
+          </div>
+          <figcaption>
+            <b>Рис. 2.</b> Индекс — подписи строк, колонки — имена столбцов, значения — данные. Колонка — это
+            Series с тем же индексом и своим dtype.
+          </figcaption>
+        </figure>
+      </section>
+
+      <section>
+        <h2><span class="num">05</span>Как это устроено на самом деле</h2>
+        <p>
+          <code class="inl">Series</code> — это массив NumPy плюс индекс плюс имя. <code class="inl">DataFrame</code> —
+          набор Series с общим индексом. Поэтому колонки имеют собственные типы, а операции по колонке
+          остаются векторными, как в NumPy.
+        </p>
+
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Понятие</th><th>Что это</th><th>Аналог в SQL</th></tr></thead>
+            <tbody>
+              <tr><td class="mono">index</td><td>подписи строк</td><td>ключ / уникальный идентификатор</td></tr>
+              <tr><td class="mono">columns</td><td>имена колонок</td><td>поля таблицы</td></tr>
+              <tr><td class="mono">dtype</td><td>тип колонки</td><td>тип поля</td></tr>
+              <tr><td class="mono">shape</td><td>(строки, колонки)</td><td>COUNT(*) и число полей</td></tr>
+              <tr><td class="mono">values</td><td>ndarray с данными</td><td>сами строки</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>pandas 3: строки — это str</h3>
+        <p>
+          В третьей версии строковые колонки получают тип <code class="inl">str</code>, а не <code class="inl">object</code>.
+          Это делает операции быстрее и предсказуемее, но меняет привычные проверки: <code class="inl">df["city"].dtype</code>
+          теперь <code class="inl">str</code>.
+        </p>
+
+        <h3>values может потерять типы</h3>
+        <p>
+          <code class="inl">df.values</code> сводит все колонки к одному массиву. Если в таблице есть и числа,
+          и строки, получится <code class="inl">dtype=object</code> — самый медленный и опасный вариант.
+          Для работы с числами лучше брать конкретную колонку.
+        </p>
+      </section>
+
+      <section>
+        <h2><span class="num">06</span>Лаборатория: запустить и увидеть</h2>
+        <p>
+          Фрагменты файла <a title="Открыть файл с номерами строк" href="snippets/view.html?f=12_series_dataframe_lab.py"><code class="inl">12_series_dataframe_lab.py</code></a>.
+          CSV читается из строки, чтобы не зависеть от файлов на диске.
+        </p>
+
+        <h3>Шаг 1. Series: значения плюс индекс</h3>
+        <div class="code">
+          <div class="bar"><span class="file">12_series_dataframe_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">import pandas as pd
+
+s = pd.Series([1200, 800, 500], index=["anna", "ivan", "olga"], name="amount")
+print(s)
+print(s.index.tolist(), s.dtype, s.name)</pre>
+          <div class="out">anna    1200
+ivan     800
+olga     500
+Name: amount, dtype: int64
+['anna', 'ivan', 'olga'] int64 amount</div>
+        </div>
+
+        <h3>Шаг 2. DataFrame из словаря</h3>
+        <div class="code">
+          <div class="bar"><span class="file">12_series_dataframe_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">df = pd.DataFrame({
+    "user": ["anna", "ivan", "olga"],
+    "amount": [1200, 800, 500],
+    "city": ["Москва", "Казань", "Москва"],
+})
+print(df.shape, df.columns.tolist(), df.index.tolist())
+print(df.dtypes)</pre>
+          <div class="out">(3, 3) ['user', 'amount', 'city'] [0, 1, 2]
+user        str
+amount    int64
+city        str
+dtype: object</div>
+        </div>
+
+        <h3>Шаг 3. Колонка — это Series</h3>
+        <div class="code">
+          <div class="bar"><span class="file">12_series_dataframe_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">col = df["amount"]
+print(type(col).__name__, col.index.tolist(), col.name)</pre>
+          <div class="out">Series [0, 1, 2] amount</div>
+        </div>
+
+        <h3>Шаг 4. Чтение CSV</h3>
+        <div class="code">
+          <div class="bar"><span class="file">12_series_dataframe_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">import io
+
+csv = """user,amount,city
+anna,1200,Москва
+ivan,800,Казань
+olga,500,Москва
+"""
+df2 = pd.read_csv(io.StringIO(csv))
+print(df2.shape, df2.size)
+print(df2.head(2))</pre>
+          <div class="out">(3, 3) 9
+   user  amount    city
+0  anna    1200  Москва
+1  ivan     800  Казань</div>
+        </div>
+
+        <h3>Шаг 5. Первый взгляд: info и describe</h3>
+        <div class="code">
+          <div class="bar"><span class="file">12_series_dataframe_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">df2.info()
+print(df2.describe())</pre>
+          <div class="out">&lt;class 'pandas.DataFrame'&gt;
+RangeIndex: 3 entries, 0 to 2
+Data columns (total 3 columns):
+ #   Column  Non-Null Count  Dtype
+---  ------  --------------  -----
+ 0   user    3 non-null      str
+ 1   amount  3 non-null      int64
+ 2   city    3 non-null      str
+dtypes: int64(1), str(2)
+memory usage: 204.0 bytes
+            amount
+count     3.000000
+mean    833.333333
+std     351.188458
+min     500.000000
+25%     650.000000
+50%     800.000000
+75%    1000.000000
+max    1200.000000
+ 2   city    3 non-null      str
+...          amount
+count     3.000000
+mean    833.333333
+std     351.188458
+min     500.000000
+max    1200.000000</div>
+        </div>
+        <p>
+          <code class="inl">info()</code> отвечает на вопросы «сколько строк, какие типы, есть ли пропуски»,
+          <code class="inl">describe()</code> — «какие диапазоны у числовых колонок».
+        </p>
+
+        <h3>Шаг 6. Новая колонка — векторная операция</h3>
+        <div class="code">
+          <div class="bar"><span class="file">12_series_dataframe_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">df2["amount_with_tax"] = df2["amount"] * 1.2
+print(df2[["user", "amount", "amount_with_tax"]])</pre>
+          <div class="out">   user  amount  amount_with_tax
+0  anna    1200           1440.0
+1  ivan     800            960.0
+2  olga     500            600.0</div>
+        </div>
+
+        <h3>Шаг 7. Индекс — не номер строки</h3>
+        <div class="code">
+          <div class="bar"><span class="file">12_series_dataframe_lab.py</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">shuffled = df2.sort_values("amount")
+print(shuffled)
+print(shuffled.index.tolist())</pre>
+          <div class="out">   user  amount  ...
+2  olga     500
+1  ivan     800
+0  anna    1200
+[2, 1, 0]</div>
+        </div>
+        <p>
+          После сортировки порядок строк изменился, а метки остались при своих значениях. Поэтому
+          <code class="inl">iloc[0]</code> — это «первая строка результата», а не «строка с индексом 0».
+          Подробно — в главе 13.
+        </p>
+      </section>
+
+      <section>
+        <h2><span class="num">07</span>Мост: та же таблица в SQL</h2>
+
+        <h3>DataFrame и таблица базы</h3>
+        <div class="code">
+          <div class="bar"><span class="file">мост в SQL</span><span class="lang">sql</span><button class="copy">копировать</button></div>
+          <pre data-lang="sql">-- dataframe: колонки user, amount, city
+SELECT user, amount, city FROM orders;   -- те же колонки и строки
+SELECT COUNT(*) FROM orders;             -- df.shape[0]
+SELECT amount FROM orders;               -- df["amount"]</pre>
+        </div>
+
+        <h3>pandas читает SQL напрямую</h3>
+        <div class="code">
+          <div class="bar"><span class="file">мост в pandas</span><span class="lang">python</span><button class="copy">копировать</button></div>
+          <pre data-lang="python">import pandas as pd
+
+df = pd.read_sql("SELECT user, amount FROM orders", con=engine)
+df.to_sql("report", con=engine, if_exists="replace", index=False)</pre>
+        </div>
+        <p>
+          <code class="inl">read_sql</code> возвращает DataFrame с колонками из запроса, <code class="inl">to_sql</code> —
+          записывает таблицу обратно. Это ровно тот мост, который понадобится в части V.
+        </p>
+      </section>
+
+      <section>
+        <h2><span class="num">08</span>Шесть ошибок, на которых спотыкаются</h2>
+
+        <div class="errors">
+          <div class="err">
+            <div class="h">Считать индекс номером строки</div>
+            <p>После сортировки или фильтрации метки сохраняются, а позиции меняются. <code class="inl">df.loc[0]</code> и <code class="inl">df.iloc[0]</code> дают разные строки.</p>
+            <div class="fix">Помнить: loc — метка, iloc — позиция. При необходимости <code class="inl">reset_index(drop=True)</code>.</div>
+          </div>
+          <div class="err">
+            <div class="h">Думать, что values сохраняет типы</div>
+            <p>При смешанных колонках <code class="inl">df.values</code> становится <code class="inl">object</code> — медленно и опасно.</p>
+            <div class="fix">Работать с конкретными колонками; для чисел — <code class="inl">df[["amount"]].to_numpy()</code>.</div>
+          </div>
+          <div class="err">
+            <div class="h">Игнорировать dtype после read_csv</div>
+            <p>Коды, ИНН и даты могут прочитаться как числа или строки не тем способом — и потерять ведущие нули.</p>
+            <div class="fix">Указывать <code class="inl">dtype</code> и <code class="inl">parse_dates</code> при чтении.</div>
+          </div>
+          <div class="err">
+            <div class="h">Создавать DataFrame в цикле</div>
+            <p>Добавление строк по одной — квадратичная стоимость и потеря типов.</p>
+            <div class="fix">Собрать список словарей и вызвать <code class="inl">pd.DataFrame(rows)</code> один раз.</div>
+          </div>
+          <div class="err">
+            <div class="h">df["col"] против df[["col"]]</div>
+            <p>Одинарные скобки дают Series, двойные — DataFrame с одной колонкой. Дальше операции ведут себя по-разному.</p>
+            <div class="fix">Выбирать осознанно: Series для вычислений, DataFrame — когда нужна таблица.</div>
+          </div>
+          <div class="err">
+            <div class="h">Забыть про shape и size</div>
+            <p><code class="inl">shape</code> — (строки, колонки), <code class="inl">size</code> — общее число ячеек.</p>
+            <div class="fix">Для проверки полноты данных — <code class="inl">shape[0]</code>, а не <code class="inl">size</code>.</div>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h2><span class="num">09</span>Вопросы с собеседования</h2>
+        <div class="qa">
+          <details>
+            <summary>Чем DataFrame отличается от Series?</summary>
+            <div class="a">
+              <p>Series — одномерный объект: индекс плюс значения. DataFrame — двумерный: набор Series с общим индексом и именами колонок.</p>
+              <div class="verdict">Резюме: колонка с оглавлением против таблицы.</div>
+            </div>
+          </details>
+          <details>
+            <summary>Что такое индекс pandas?</summary>
+            <div class="a">
+              <p>Подписи строк, по которым можно обращаться через <code class="inl">loc</code>. Индекс не обязан быть числовым и не обязан совпадать с позицией строки.</p>
+              <div class="verdict">Резюме: имена строк, а не номера.</div>
+            </div>
+          </details>
+          <details>
+            <summary>Почему индекс не всегда совпадает с номером строки?</summary>
+            <div class="a">
+              <p>Сортировка, фильтрация и объединения сохраняют исходные метки. Позиции пересчитываются, метки — нет.</p>
+              <div class="verdict">Резюме: метка живёт дольше позиции.</div>
+            </div>
+          </details>
+          <details>
+            <summary>Чем df["salary"] отличается от df[["salary"]]?</summary>
+            <div class="a">
+              <p>Первое — Series, второе — DataFrame с одной колонкой. Форма разная, и это влияет на операции и присваивания.</p>
+              <div class="verdict">Резюме: одни скобки — вектор, двойные — таблица.</div>
+            </div>
+          </details>
+          <details>
+            <summary>Что возвращает df.info()?</summary>
+            <div class="a">
+              <p>Сводку: число строк, имена колонок, количество непустых значений и dtype. Первый инструмент диагностики таблицы.</p>
+              <div class="verdict">Резюме: паспорт набора данных.</div>
+            </div>
+          </details>
+          <details>
+            <summary>Чем shape отличается от size?</summary>
+            <div class="a">
+              <p><code class="inl">shape</code> — кортеж (строки, колонки), <code class="inl">size</code> — произведение, общее число ячеек.</p>
+              <div class="verdict">Резюме: размеры против количества.</div>
+            </div>
+          </details>
+          <details>
+            <summary>Что такое dtype колонки и почему они разные?</summary>
+            <div class="a">
+              <p>Каждая колонка — отдельный массив со своим типом: int64, float64, str, datetime. Разные типы — норма для таблицы.</p>
+              <div class="verdict">Резюме: таблица не обязана быть однородной, колонка — обязана.</div>
+            </div>
+          </details>
+          <details>
+            <summary>Как быстро получить общее представление о новых данных?</summary>
+            <div class="a">
+              <p><code class="inl">head()</code>, <code class="inl">info()</code>, <code class="inl">describe()</code>, <code class="inl">shape</code>, <code class="inl">dtypes</code> — минимальный набор первого взгляда.</p>
+              <div class="verdict">Резюме: пять вызовов — и вы понимаете датасет.</div>
+            </div>
+          </details>
+        </div>
+      </section>
+
+      <section>
+        <h2><span class="num">10</span>Три задачи: сначала своя попытка</h2>
+
+        <h3><span style="color:var(--muted);font-family:var(--mono);font-size:.8rem">01</span> Таблица из словаря</h3>
+        <p>Создайте DataFrame с колонками name, age, city из трёх строк. Выведите shape, dtypes и первые две строки.</p>
+        <div class="qa">
+          <details>
+            <summary>Показать решение</summary>
+            <div class="a">
+              <div class="code" style="margin-top:0">
+                <div class="bar"><span class="file">решение</span><span class="lang">python</span><button class="copy">копировать</button></div>
+                <pre data-lang="python">df = pd.DataFrame({
+    "name": ["anna", "ivan", "olga"],
+    "age": [22, 31, 25],
+    "city": ["Москва", "Казань", "Москва"],
+})
+print(df.shape, df.dtypes.astype(str).to_dict())
+print(df.head(2))</pre>
+                <div class="out">(3, 3) {'name': 'str', 'age': 'int64', 'city': 'str'}
+   name  age    city
+0  anna   22  Москва
+1  ivan   31  Казань</div>
+              </div>
+            </div>
+          </details>
+        </div>
+
+        <h3><span style="color:var(--muted);font-family:var(--mono);font-size:.8rem">02</span> Новая колонка</h3>
+        <p>Добавьте колонку с годовой зарплатой, если в таблице есть месячная.</p>
+        <div class="qa">
+          <details>
+            <summary>Показать решение</summary>
+            <div class="a">
+              <div class="code" style="margin-top:0">
+                <div class="bar"><span class="file">решение</span><span class="lang">python</span><button class="copy">копировать</button></div>
+                <pre data-lang="python">df["salary_year"] = df["salary_month"] * 12</pre>
+              </div>
+              <p><strong>Что важно.</strong> Операция векторная: цикл не нужен. Новая колонка появляется в конце таблицы.</p>
+            </div>
+          </details>
+        </div>
+
+        <h3><span style="color:var(--muted);font-family:var(--mono);font-size:.8rem">03</span> Портрет данных</h3>
+        <p>Загрузите CSV и напишите пять вызовов, которые дают первое представление о данных.</p>
+        <div class="qa">
+          <details>
+            <summary>Показать решение</summary>
+            <div class="a">
+              <div class="code" style="margin-top:0">
+                <div class="bar"><span class="file">решение</span><span class="lang">python</span><button class="copy">копировать</button></div>
+                <pre data-lang="python">df = pd.read_csv("data.csv")
+print(df.shape, df.columns.tolist())
+print(df.dtypes)
+print(df.head())
+df.info()
+print(df.describe())</pre>
+              </div>
+              <p><strong>Что важно.</strong> Эти пять вызовов ловят 80% проблем: не тот разделитель, не тот тип,
+              лишняя пустая колонка, подозрительные диапазоны.</p>
+            </div>
+          </details>
+        </div>
+      </section>
+
+      <section>
+        <h2><span class="num">11</span>Чек-лист освоения</h2>
+        <div class="check">
+          <label><input type="checkbox"><span class="box"></span><span class="txt">Объяснить разницу Series и DataFrame на одном примере</span></label>
+          <label><input type="checkbox"><span class="box"></span><span class="txt">Прочитать shape, columns, index, dtypes</span></label>
+          <label><input type="checkbox"><span class="box"></span><span class="txt">Загрузить CSV и оценить его через head/info/describe</span></label>
+          <label><input type="checkbox"><span class="box"></span><span class="txt">Добавить вычисляемую колонку без циклов</span></label>
+          <label><input type="checkbox"><span class="box"></span><span class="txt">Объяснить, почему индекс не равен позиции</span></label>
+        </div>
+      </section>
+
+      <section>
+        <h2><span class="num">12</span>Куда ведут мостики</h2>
+        <div class="bridges">
+          <a class="bridge" href="ref-pd-series.html"><span class="to">Справочник</span><span>pandas: Series и DataFrame</span><span class="what">→ создание, свойства, dtypes и память</span></a>
+          <a class="bridge" href="ch-13-loc-iloc.html"><span class="to">Глава 13</span><span>loc и iloc</span><span class="what">→ имя против номера</span></a>
+          <a class="bridge" href="ch-14-filtering.html"><span class="to">Глава 14</span><span>Фильтрация</span><span class="what">→ маска на таблице</span></a>
+          <a class="bridge" href="ch-15-groupby.html"><span class="to">Глава 15</span><span>groupby</span><span class="what">→ агрегаты по колонкам</span></a>
+          <a class="bridge" href="ch-07-ndarray.html"><span class="to">Глава 07</span><span>ndarray</span><span class="what">→ на чём стоит Series</span></a>
+          <a class="bridge" href="ch-19-order-of-execution.html"><span class="to">Глава 19</span><span>Порядок SQL</span><span class="what">→ таблица как SELECT</span></a>
+        </div>
+      </section>
+
+      <div class="pager">
+        <a class="prev" href="checkpoint-2.html"><span class="dir">← Назад</span><span class="ttl">Проверочная по части II</span></a>
+        <a class="next" href="ch-13-loc-iloc.html"><span class="dir">Дальше →</span><span class="ttl">13 · loc и iloc</span></a>
+      </div>
+
+    </div>
+  </main>
+</div>
+<script src="assets/toc.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>

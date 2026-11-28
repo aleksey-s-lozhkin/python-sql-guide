@@ -1,0 +1,86 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 470" role="img" aria-labelledby="t1 d1">
+  <title id="t1">merge: many-to-one сохраняет число строк, many-to-many размножает их</title>
+  <desc id="d1">Заказы и пользователи соединяются по user_id; уникальный ключ справа сохраняет 4 строки, дубли с обеих сторон дают произведение.</desc>
+  <defs>
+    <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#8a7f73"/>
+    </marker>
+    <style>
+      .h { font: 700 14px system-ui, -apple-system, "Segoe UI", sans-serif; fill: #1d1b26; }
+      .lbl { font: 700 10.5px system-ui, -apple-system, "Segoe UI", sans-serif; fill: #8a7f73; letter-spacing: .12em; }
+      .v { font: 500 12.5px ui-monospace, "SF Mono", Menlo, monospace; fill: #1d1b26; }
+      .s { font: 400 12.5px system-ui, -apple-system, "Segoe UI", sans-serif; fill: #4a4458; }
+      .n { font: 400 12px system-ui, -apple-system, "Segoe UI", sans-serif; fill: #7a7285; }
+      .r { font: 700 12.5px ui-monospace, "SF Mono", Menlo, monospace; fill: #a23b3b; }
+    
+      .mg-blue { opacity: 0; animation: mg-blue 8s ease-in-out infinite; }
+      .mg-green { opacity: 0; animation: mg-green 8s ease-in-out infinite; }
+      .mg-ring { opacity: 0; animation: mg-ring 8s ease-in-out infinite; }
+      @keyframes mg-blue {
+        0%, 6% { opacity: 0; transform: translate(0, 0); }
+        10% { opacity: 1; transform: translate(0, 0); }
+        34% { opacity: 1; transform: translate(170px, 0); }
+        40%, 100% { opacity: 0; transform: translate(170px, 0); }
+      }
+      @keyframes mg-green {
+        0%, 30% { opacity: 0; transform: translate(0, 0); }
+        34% { opacity: 1; transform: translate(0, 0); }
+        56% { opacity: 1; transform: translate(170px, -114px); }
+        62%, 100% { opacity: 0; transform: translate(170px, -114px); }
+      }
+      @keyframes mg-ring {
+        0%, 62% { opacity: 0; }
+        68% { opacity: .9; }
+        84%, 100% { opacity: 0; }
+      }
+        </style>
+  </defs>
+
+  <text class="lbl" x="30" y="34">ДВЕ ТАБЛИЦЫ</text>
+  <text class="lbl" x="480" y="34">РЕЗУЛЬТАТ</text>
+
+  <!-- orders -->
+  <rect x="30" y="56" width="270" height="126" rx="12" fill="#fff" stroke="#b9cfe6"/>
+  <text class="h" x="48" y="84">orders</text>
+  <text class="s" x="48" y="106">4 строки</text>
+  <text class="v" x="48" y="130">order_id, user_id, amount</text>
+  <rect x="48" y="144" width="234" height="26" rx="6" fill="#eef4fb"/>
+  <text class="v" x="60" y="162">user_id: 10, 20, 10, 30</text>
+
+  <!-- users -->
+  <rect x="30" y="230" width="270" height="126" rx="12" fill="#fff" stroke="#9cc0a8"/>
+  <text class="h" x="48" y="258">users</text>
+  <text class="s" x="48" y="280">3 строки, ключ уникален</text>
+  <text class="v" x="48" y="304">user_id, name</text>
+  <rect x="48" y="318" width="234" height="26" rx="6" fill="#e9f2ec"/>
+  <text class="v" x="60" y="336">user_id: 10, 20, 40</text>
+
+  <!-- arrows -->
+  <path d="M304,120 C350,120 400,120 444,120" fill="none" stroke="#8a7f73" stroke-width="2" marker-end="url(#ar)"/>
+  <path d="M304,292 C360,292 390,200 444,178" fill="none" stroke="#8a7f73" stroke-width="2" marker-end="url(#ar)"/>
+  <text class="s" x="330" y="106">merge(on="user_id")</text>
+
+  <!-- result -->
+  <rect x="460" y="56" width="300" height="150" rx="12" fill="#fff" stroke="#d8d1c6"/>
+  <text class="h" x="478" y="84">4 строки</text>
+  <text class="s" x="478" y="108">many-to-one:</text>
+  <text class="n" x="478" y="128">каждая строка orders получает name</text>
+  <text class="n" x="478" y="150">одна строка — одна запись orders</text>
+  <text class="v" x="478" y="178">заказ 4 (user 30) → name = NaN</text>
+
+  <!-- warning -->
+  <rect x="460" y="228" width="480" height="140" rx="12" fill="#fbeeee" stroke="#e0b8b8"/>
+  <text class="h" x="480" y="256">many-to-many</text>
+  <text class="s" x="480" y="280">если ключ не уникален С ДВУХ сторон:</text>
+  <text class="r" x="480" y="306">2 строки × 2 строки = 4 строки</text>
+  <text class="n" x="480" y="330">заказы не «удвоились» — они перемножились.</text>
+  <text class="n" x="480" y="352">Проверка: validate="one_to_one" / "many_to_one".</text>
+
+  <rect x="30" y="384" width="910" height="46" rx="10" fill="#f4f1ea" stroke="#e0d9cd"/>
+  <text class="s" x="50" y="412">Кардинальность важнее синтаксиса: сначала выясните, сколько строк ожидаете, потом пишите merge.</text>
+
+  <!-- заказ и пользователь едут в результат -->
+  <g class="mg-blue"><circle cx="290" cy="120" r="6" fill="#1e5f9e"/></g>
+  <g class="mg-green"><circle cx="290" cy="292" r="6" fill="#2f6b4f"/></g>
+  <rect class="mg-ring" x="470" y="288" width="220" height="26" rx="7" fill="none" stroke="#a23b3b" stroke-width="2"/>
+        </svg>
